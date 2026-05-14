@@ -9,33 +9,53 @@ async function headers() {
 }
 
 export async function listarFotosPasta(folderId) {
-  const params = new URLSearchParams({
-    q: `'${folderId}' in parents and mimeType contains 'image/' and not name contains '_' and trashed = false`,
-    fields: "files(id,name,mimeType,thumbnailLink,createdTime,size)",
-    pageSize: "1000",
-    orderBy: "createdTime desc",
-    supportsAllDrives: "true",
-    includeItemsFromAllDrives: "true",
-  });
-  const res = await fetch(`${DRIVE_API}/files?${params}`, { headers: await headers() });
-  if (!res.ok) throw new Error(`Drive listar: ${res.status}`);
-  const data = await res.json();
-  return data.files ?? [];
+  // Query simples (sem filtro de mimetype — shared drives nao tratam 'contains' direito)
+  // Filtramos em JS depois.
+  const todos = [];
+  let pageToken = null;
+  do {
+    const params = new URLSearchParams({
+      q: `'${folderId}' in parents and trashed = false`,
+      fields: "nextPageToken,files(id,name,mimeType,thumbnailLink,createdTime,size)",
+      pageSize: "1000",
+      orderBy: "createdTime desc",
+      supportsAllDrives: "true",
+      includeItemsFromAllDrives: "true",
+      corpora: "allDrives",
+    });
+    if (pageToken) params.set("pageToken", pageToken);
+    const res = await fetch(`${DRIVE_API}/files?${params}`, { headers: await headers() });
+    if (!res.ok) throw new Error(`Drive listar: ${res.status}`);
+    const data = await res.json();
+    todos.push(...(data.files ?? []));
+    pageToken = data.nextPageToken;
+  } while (pageToken);
+  // Filtra: so imagens, sem nomes ocultos
+  return todos.filter(
+    (f) =>
+      f.mimeType &&
+      f.mimeType.startsWith("image/") &&
+      !f.name.startsWith("_")
+  );
 }
 
 export async function lerArquivoOculto(folderId, fileName) {
   const params = new URLSearchParams({
     q: `'${folderId}' in parents and name = '${fileName}' and trashed = false`,
     fields: "files(id,name)",
+    supportsAllDrives: "true",
+    includeItemsFromAllDrives: "true",
+    corpora: "allDrives",
   });
   const searchRes = await fetch(`${DRIVE_API}/files?${params}`, { headers: await headers() });
   const searchData = await searchRes.json();
   if (!searchData.files?.length) return null;
 
   const fileId = searchData.files[0].id;
-  const contentRes = await fetch(`${DRIVE_API}/files/${fileId}?alt=media`, {
-    headers: await headers(),
-  });
+  const contentRes = await fetch(
+    `${DRIVE_API}/files/${fileId}?alt=media&supportsAllDrives=true`,
+    { headers: await headers() }
+  );
   if (!contentRes.ok) return null;
   return contentRes.json();
 }
@@ -45,6 +65,9 @@ export async function salvarArquivoOculto(folderId, fileName, data) {
   const params = new URLSearchParams({
     q: `'${folderId}' in parents and name = '${fileName}' and trashed = false`,
     fields: "files(id)",
+    supportsAllDrives: "true",
+    includeItemsFromAllDrives: "true",
+    corpora: "allDrives",
   });
   const searchRes = await fetch(`${DRIVE_API}/files?${params}`, { headers: await headers() });
   const searchData = await searchRes.json();
@@ -56,7 +79,7 @@ export async function salvarArquivoOculto(folderId, fileName, data) {
   if (existingId) {
     // Atualiza com upload simples
     const res = await fetch(
-      `https://www.googleapis.com/upload/drive/v3/files/${existingId}?uploadType=media`,
+      `https://www.googleapis.com/upload/drive/v3/files/${existingId}?uploadType=media&supportsAllDrives=true`,
       {
         method: "PATCH",
         headers: {
@@ -83,7 +106,7 @@ export async function salvarArquivoOculto(folderId, fileName, data) {
     `--${boundary}--`;
 
   const res = await fetch(
-    `https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart`,
+    `https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true`,
     {
       method: "POST",
       headers: {
@@ -99,7 +122,7 @@ export async function salvarArquivoOculto(folderId, fileName, data) {
 // Baixa o conteudo binario de uma foto (Buffer)
 export async function baixarFoto(fileId) {
   const token = await getAccessToken();
-  const res = await fetch(`${DRIVE_API}/files/${fileId}?alt=media`, {
+  const res = await fetch(`${DRIVE_API}/files/${fileId}?alt=media&supportsAllDrives=true`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) throw new Error(`Drive download ${fileId}: ${res.status}`);
@@ -112,7 +135,7 @@ export async function baixarThumb(fileId, size = 800) {
   const token = await getAccessToken();
   // Pega thumbnailLink dinamicamente
   const metaRes = await fetch(
-    `${DRIVE_API}/files/${fileId}?fields=thumbnailLink`,
+    `${DRIVE_API}/files/${fileId}?fields=thumbnailLink&supportsAllDrives=true`,
     { headers: { Authorization: `Bearer ${token}` } }
   );
   if (!metaRes.ok) throw new Error(`Drive meta ${fileId}: ${metaRes.status}`);
