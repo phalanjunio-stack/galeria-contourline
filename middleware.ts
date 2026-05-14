@@ -1,8 +1,9 @@
-import { auth } from "@/auth";
+// Middleware edge-safe: usa authConfig (sem fs/path) em vez do auth.ts completo
+import NextAuth from "next-auth";
+import { authConfig } from "./auth.config";
 import { NextResponse } from "next/server";
 
-// Força Node.js runtime — auth.ts usa fs/path que nao existem no Edge Runtime
-export const runtime = "nodejs";
+const { auth } = NextAuth(authConfig);
 
 export default auth((req) => {
   const { pathname } = req.nextUrl;
