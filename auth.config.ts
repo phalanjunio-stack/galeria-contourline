@@ -7,6 +7,10 @@ const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? "")
   .map((e) => e.trim().toLowerCase());
 
 export const authConfig: NextAuthConfig = {
+  // Secret explícito — idêntico ao auth.ts para o middleware Edge não crashar
+  secret: process.env.AUTH_SECRET
+    ?? process.env.NEXTAUTH_SECRET
+    ?? "56d99d13400fccc48be2b47222619a787cf86521bc956b7f75b752f157787f50",
   pages: { signIn: "/login" },
   providers: [],
   callbacks: {

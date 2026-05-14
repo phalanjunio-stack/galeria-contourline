@@ -23,5 +23,6 @@ export default auth((req) => {
 });
 
 export const config = {
-  matcher: ["/admin/:path*"],
+  // Cobre /admin (raiz) e /admin/qualquer-coisa
+  matcher: ["/admin", "/admin/:path*"],
 };
