@@ -77,6 +77,8 @@ export async function getAccessTokenFromEnv(): Promise<string | null> {
 }
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
+  // Passa secret explicitamente — garante funcionar mesmo que a deteccao automatica falhe
+  secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
   providers: [
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID!,
