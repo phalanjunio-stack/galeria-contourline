@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useSession, signOut } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
@@ -37,7 +37,7 @@ async function resizeBase64(dataUrl: string, size: number): Promise<string> {
   });
 }
 
-export default function PerfilPage() {
+function PerfilPageContent() {
   const { data: session, status } = useSession();
   const router        = useRouter();
   const searchParams  = useSearchParams();
@@ -733,5 +733,17 @@ export default function PerfilPage() {
       </div>
 
     </div>
+  );
+}
+
+export default function PerfilPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 size={32} className="animate-spin text-[#2E7DD1]" />
+      </div>
+    }>
+      <PerfilPageContent />
+    </Suspense>
   );
 }
