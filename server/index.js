@@ -59,12 +59,46 @@ app.get("/debug/conta", exigirSecret, async (req, res) => {
 
 app.get("/debug/pasta/:folderId", exigirSecret, async (req, res) => {
   try {
-    const { listarFotosPasta } = await import("./lib/drive.js");
-    const fotos = await listarFotosPasta(req.params.folderId);
+    const { getAccessToken } = await import("./lib/auth.js");
+    const token = await getAccessToken();
+    const folderId = req.params.folderId;
+    // Query 1: nosso filtro padrao
+    const q1 = `'${folderId}' in parents and mimeType contains 'image/' and not name contains '_' and trashed = false`;
+    const r1 = await fetch(
+      `https://www.googleapis.com/drive/v3/files?${new URLSearchParams({
+        q: q1,
+        fields: "files(id,name,mimeType),incompleteSearch",
+        pageSize: "5",
+        supportsAllDrives: "true",
+        includeItemsFromAllDrives: "true",
+      })}`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    const d1 = await r1.json();
+    // Query 2: sem filtro de tipo, so pra ver se acha qualquer coisa
+    const q2 = `'${folderId}' in parents and trashed = false`;
+    const r2 = await fetch(
+      `https://www.googleapis.com/drive/v3/files?${new URLSearchParams({
+        q: q2,
+        fields: "files(id,name,mimeType),incompleteSearch",
+        pageSize: "5",
+        supportsAllDrives: "true",
+        includeItemsFromAllDrives: "true",
+      })}`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    const d2 = await r2.json();
+    // Query 3: metadata da propria pasta
+    const r3 = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${folderId}?fields=id,name,mimeType,parents,driveId,owners,permissions&supportsAllDrives=true`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    const d3 = await r3.json();
     res.json({
-      folderId: req.params.folderId,
-      totalFotos: fotos.length,
-      primeiras: fotos.slice(0, 3).map((f) => ({ id: f.id, name: f.name })),
+      folderId,
+      pasta: d3,
+      comFiltroImg: { status: r1.status, ...d1 },
+      semFiltro: { status: r2.status, ...d2 },
     });
   } catch (err) {
     res.status(500).json({ error: err.message });

@@ -14,6 +14,8 @@ export async function listarFotosPasta(folderId) {
     fields: "files(id,name,mimeType,thumbnailLink,createdTime,size)",
     pageSize: "1000",
     orderBy: "createdTime desc",
+    supportsAllDrives: "true",
+    includeItemsFromAllDrives: "true",
   });
   const res = await fetch(`${DRIVE_API}/files?${params}`, { headers: await headers() });
   if (!res.ok) throw new Error(`Drive listar: ${res.status}`);
