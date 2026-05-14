@@ -2,6 +2,7 @@
 import express from "express";
 import { initFaceApi } from "./lib/face.js";
 import { novoJob, getJob, indexarEvento } from "./lib/indexar.js";
+import { iniciarAutoIndexacao } from "./lib/auto-indexar.js";
 
 const app = express();
 app.use(express.json({ limit: "10mb" }));
@@ -144,5 +145,6 @@ const PORT = process.env.PORT || 10000;
   await initFaceApi();
   app.listen(PORT, () => {
     console.log(`[boot] Servidor pronto em http://localhost:${PORT}`);
+    iniciarAutoIndexacao();
   });
 })();
