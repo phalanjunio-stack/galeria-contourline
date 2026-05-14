@@ -6,7 +6,7 @@ services:
     plan: free
     region: oregon
     buildCommand: npm install
-    startCommand: npm start
+    startCommand: npm run start:render
     healthCheckPath: /health
     autoDeploy: true
     envVars:

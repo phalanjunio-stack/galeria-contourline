@@ -89,7 +89,10 @@ export async function salvarArquivoOculto(folderId, fileName, data) {
         body: content,
       }
     );
-    if (!res.ok) throw new Error(`Drive PATCH ${fileName}: ${res.status}`);
+    if (!res.ok) {
+      const body = await res.text();
+      throw new Error(`Drive PATCH ${fileName}: ${res.status} — ${body.slice(0, 200)}`);
+    }
     return;
   }
 
@@ -116,7 +119,10 @@ export async function salvarArquivoOculto(folderId, fileName, data) {
       body,
     }
   );
-  if (!res.ok) throw new Error(`Drive POST ${fileName}: ${res.status}`);
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Drive POST ${fileName}: ${res.status} — ${body.slice(0, 300)}`);
+  }
 }
 
 // Baixa o conteudo binario de uma foto (Buffer)

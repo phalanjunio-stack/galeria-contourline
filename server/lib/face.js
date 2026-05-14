@@ -1,11 +1,20 @@
 // Inicializacao face-api em Node + funcao de detectar rostos numa foto
-import * as faceapi from "@vladmandic/face-api";
-import * as tf from "@tensorflow/tfjs-node";
+// face-api node-wasm + canvas v3 (binarios pre-compilados)
+import * as tf from "@tensorflow/tfjs";
+import { setWasmPaths } from "@tensorflow/tfjs-backend-wasm";
+import faceapiPkg from "@vladmandic/face-api/dist/face-api.node-wasm.js";
+const faceapi = faceapiPkg.default || faceapiPkg;
 import canvas from "canvas";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const { Canvas, Image, ImageData, loadImage } = canvas;
+const { Canvas, Image, ImageData, loadImage, createCanvas } = canvas;
+
+// Aponta para arquivos .wasm dentro de node_modules
+const __dirname2 = path.dirname(fileURLToPath(import.meta.url));
+const wasmDir = path.resolve(__dirname2, "..", "node_modules", "@tensorflow", "tfjs-backend-wasm", "dist");
+setWasmPaths(wasmDir + "/");
+
 // Patch para face-api usar canvas do Node
 faceapi.env.monkeyPatch({ Canvas, Image, ImageData });
 
@@ -16,7 +25,8 @@ let initialized = false;
 
 export async function initFaceApi() {
   if (initialized) return;
-  // tfjs-node ja carrega backend nativo
+  // Backend WASM (acelera tfjs sem precisar tfjs-node nativo)
+  await tf.setBackend("wasm");
   await tf.ready();
   console.log("[face] Backend TF:", tf.getBackend());
 
@@ -32,7 +42,7 @@ export async function initFaceApi() {
 export async function detectarRostos(buffer) {
   await initFaceApi();
   const img = await loadImage(buffer);
-  const cnv = canvas.createCanvas(img.width, img.height);
+  const cnv = createCanvas(img.width, img.height);
   const ctx = cnv.getContext("2d");
   ctx.drawImage(img, 0, 0);
 
