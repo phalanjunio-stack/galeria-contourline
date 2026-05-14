@@ -1,0 +1,20 @@
+{
+  "name": "galeria-contourline-face-server",
+  "version": "1.0.0",
+  "description": "Servidor Node.js para indexacao facial em background (Render Free Tier)",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "@tensorflow/tfjs-node": "^4.22.0",
+    "@vladmandic/face-api": "^1.7.14",
+    "canvas": "^2.11.2",
+    "express": "^4.21.2"
+  }
+}
