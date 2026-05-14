@@ -8,13 +8,18 @@ const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? "")
 
 export const authConfig: NextAuthConfig = {
   pages: { signIn: "/login" },
-  providers: [], // providers completos ficam em auth.ts
+  providers: [],
   callbacks: {
-    // Reconstroi session.user.isAdmin a partir do token JWT (sem fs)
     async session({ session, token }) {
-      session.user.isAdmin =
-        !!(token.isLocalAdmin) ||
-        ADMIN_EMAILS.includes(session.user.email?.toLowerCase() ?? "");
+      try {
+        if (session?.user) {
+          (session.user as Record<string, unknown>).isAdmin =
+            !!(token?.isLocalAdmin) ||
+            ADMIN_EMAILS.includes(session.user.email?.toLowerCase() ?? "");
+        }
+      } catch (e) {
+        console.error("[authConfig] session error:", e);
+      }
       return session;
     },
   },

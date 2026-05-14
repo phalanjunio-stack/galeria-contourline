@@ -104,6 +104,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
   callbacks: {
     async jwt({ token, account }) {
+      try { /* jwt ok */ } catch(e) { console.error("[auth] jwt error:", e); }
       // ── Login Google ──────────────────────────────────────────────
       if (account?.provider === "google") {
         token.accessToken  = account.access_token;
@@ -147,9 +148,15 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     },
 
     async session({ session, token }) {
-      session.accessToken  = token.accessToken as string;
-      session.user.isAdmin = !!(token.isLocalAdmin) ||
-        ADMIN_EMAILS.includes(session.user.email?.toLowerCase() ?? "");
+      try {
+        session.accessToken  = token.accessToken as string;
+        if (session.user) {
+          session.user.isAdmin = !!(token.isLocalAdmin) ||
+            ADMIN_EMAILS.includes(session.user.email?.toLowerCase() ?? "");
+        }
+      } catch (err) {
+        console.error("[auth] session callback error:", err);
+      }
       return session;
     },
   },
