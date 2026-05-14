@@ -364,6 +364,7 @@ export default function AdminDashboard() {
             <div className="grid grid-cols-2 gap-2">
               {[
                 { href: "/admin/reconhecimento", icon: ScanFace, label: "Reconhecimento IA" },
+                { href: "/admin/reconhecimento-servidor", icon: ScanFace, label: "Reconhecimento (Servidor)" },
                 { href: "/admin/usuarios",       icon: Users,    label: "Usuários"           },
                 { href: "/admin/fotos",          icon: Camera,   label: "Galeria"            },
                 { href: "/admin/drive",          icon: HardDrive, label: "Drive"             },
