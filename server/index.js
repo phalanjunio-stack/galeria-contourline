@@ -42,6 +42,35 @@ app.get("/health", (req, res) => {
   res.json({ ok: true, uptime: process.uptime(), ts: Date.now() });
 });
 
+// Debug: retorna info da conta autenticada + lista de uma pasta
+app.get("/debug/conta", exigirSecret, async (req, res) => {
+  try {
+    const { getAccessToken } = await import("./lib/auth.js");
+    const token = await getAccessToken();
+    const r = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const userInfo = await r.json();
+    res.json({ ok: true, conta: userInfo });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("/debug/pasta/:folderId", exigirSecret, async (req, res) => {
+  try {
+    const { listarFotosPasta } = await import("./lib/drive.js");
+    const fotos = await listarFotosPasta(req.params.folderId);
+    res.json({
+      folderId: req.params.folderId,
+      totalFotos: fotos.length,
+      primeiras: fotos.slice(0, 3).map((f) => ({ id: f.id, name: f.name })),
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Inicia um job de indexacao (responde imediato)
 app.post("/indexar", exigirSecret, async (req, res) => {
   const { eventoId, eventoNome, folderId, perfis } = req.body || {};
