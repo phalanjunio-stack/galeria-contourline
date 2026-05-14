@@ -77,8 +77,10 @@ export async function getAccessTokenFromEnv(): Promise<string | null> {
 }
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
-  // Passa secret explicitamente — garante funcionar mesmo que a deteccao automatica falhe
-  secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
+  // Secret explícito — fallback hardcoded para quando env var nao chega na Vercel
+  secret: process.env.AUTH_SECRET
+    ?? process.env.NEXTAUTH_SECRET
+    ?? "56d99d13400fccc48be2b47222619a787cf86521bc956b7f75b752f157787f50",
   providers: [
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID!,
