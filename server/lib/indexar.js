@@ -1,10 +1,6 @@
 // Logica principal de indexacao facial
-import {
-  listarFotosPasta,
-  lerArquivoOculto,
-  salvarArquivoOculto,
-  baixarThumb,
-} from "./drive.js";
+import { listarFotosPasta, baixarThumb } from "./drive.js";
+import { lerArquivo, salvarArquivo } from "./storage.js";
 import { detectarRostos, distanceEuclidean } from "./face.js";
 
 // Parametros (mesmos do client-side)
@@ -57,7 +53,7 @@ export async function indexarEvento(jobId, perfis) {
     // ─── Fase 2: Recuperar progresso parcial ──────────────────────
     job.fase = "recuperando_progresso";
     const descPrevios =
-      (await lerArquivoOculto(job.folderId, `_desc_${job.eventoId}.json`)) || [];
+      (await lerArquivo(job.folderId, `_desc_${job.eventoId}.json`)) || [];
     const idsJaProcessados = new Set(descPrevios.map((d) => d.fotoId));
     const fotosParaProcessar = fotos.filter(
       (f) => !idsJaProcessados.has(f.id)
@@ -90,7 +86,7 @@ export async function indexarEvento(jobId, perfis) {
       // Salvamento parcial periodico
       const desdeUltimoSave = job.fotosProcessadas % SAVE_A_CADA;
       if (desdeUltimoSave < LOTE) {
-        await salvarArquivoOculto(
+        await salvarArquivo(
           job.folderId,
           `_desc_${job.eventoId}.json`,
           descriptors
@@ -100,7 +96,7 @@ export async function indexarEvento(jobId, perfis) {
     }
 
     // Salvamento final dos descritores
-    await salvarArquivoOculto(
+    await salvarArquivo(
       job.folderId,
       `_desc_${job.eventoId}.json`,
       descriptors
@@ -146,7 +142,7 @@ export async function indexarEvento(jobId, perfis) {
 
     // ─── Fase 5: Salvar matches ───────────────────────────────────
     job.fase = "salvando_matches";
-    await salvarArquivoOculto(job.folderId, `_matches_${job.eventoId}.json`, {
+    await salvarArquivo(job.folderId, `_matches_${job.eventoId}.json`, {
       eventoId: job.eventoId,
       eventoNome: job.eventoNome,
       processadoEm: new Date().toISOString(),
@@ -158,7 +154,7 @@ export async function indexarEvento(jobId, perfis) {
     // ─── Fase 6: Clustering de pessoas (versao simples) ───────────
     job.fase = "clusterizando";
     const clusters = clusterizarRostos(descriptors);
-    await salvarArquivoOculto(job.folderId, `_pessoas_${job.eventoId}.json`, {
+    await salvarArquivo(job.folderId, `_pessoas_${job.eventoId}.json`, {
       eventoId: job.eventoId,
       processadoEm: new Date().toISOString(),
       threshold: CLUSTER_THRESHOLD,

@@ -2,7 +2,8 @@
 // e indexa automaticamente os que tem fotos novas.
 import fs from "node:fs/promises";
 import path from "node:path";
-import { listarFotosPasta, lerArquivoOculto } from "./drive.js";
+import { listarFotosPasta } from "./drive.js";
+import { lerArquivo } from "./storage.js";
 import { novoJob, indexarEvento, getJob } from "./indexar.js";
 
 const INTERVAL_MS = parseInt(process.env.AUTO_INDEX_INTERVAL_MIN || "30") * 60_000;
@@ -28,7 +29,7 @@ async function precisaIndexar(evento) {
   try {
     const [fotosDrive, descritores] = await Promise.all([
       listarFotosPasta(evento.folder_id),
-      lerArquivoOculto(evento.folder_id, `_desc_${evento.id}.json`),
+      lerArquivo(evento.folder_id, `_desc_${evento.id}.json`),
     ]);
 
     const totalDrive = fotosDrive.length;
