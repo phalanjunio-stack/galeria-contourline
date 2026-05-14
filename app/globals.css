@@ -1,0 +1,120 @@
+@import "tailwindcss";
+
+:root {
+  --navy-900: #0D2B4E;
+  --navy-700: #1A4A80;
+  --blue-600: #2E7DD1;
+  --blue-400: #5BA4E5;
+  --bg-light: #EFF5FF;
+}
+
+* { box-sizing: border-box; }
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background-color: #ffffff;
+  color: #0D2B4E;
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #f1f5f9; }
+::-webkit-scrollbar-thumb { background: #2E7DD1; border-radius: 3px; }
+
+.gradient-primary { background: linear-gradient(135deg, #1A4A80 0%, #2E7DD1 100%); }
+.gradient-navy    { background: linear-gradient(135deg, #0D2B4E 0%, #1A4A80 100%); }
+.gradient-hero    { background: linear-gradient(135deg, #0D2B4E 0%, #1A4A80 50%, #2E7DD1 100%); }
+.gradient-sidebar { background: linear-gradient(180deg, #0D2B4E 0%, #1A4A80 100%); }
+.gradient-text {
+  background: linear-gradient(135deg, #2E7DD1, #5BA4E5);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Layout fixo — sidebar + topbar */
+.sidebar              { display: none; }
+.topbar               { left: 0; }
+.main-with-sidebar    { margin-left: 0; }
+
+/* Topbar: mobile mostra logo+menu e busca abaixo; desktop mostra busca inline */
+.topbar-mobile-logo   { display: flex; }
+.topbar-mobile-search { display: flex; }
+.topbar-search        { display: none; }
+.topbar-facial        { display: none; }
+.topbar-spacer        { display: flex; }
+
+@media (min-width: 768px) {
+  .sidebar              { display: flex; }
+  .topbar               { left: 240px; }
+  .main-with-sidebar    { margin-left: 240px; }
+
+  .topbar-mobile-logo   { display: none; }
+  .topbar-mobile-search { display: none; }
+  .topbar-search        { display: flex; }
+  .topbar-facial        { display: flex; }
+  .topbar-spacer        { display: none; }
+}
+
+@keyframes scan {
+  0%   { top: 0%; opacity: 0.8; }
+  100% { top: 100%; opacity: 0; }
+}
+.face-scan-line { animation: scan 2s ease-in-out infinite; }
+
+@keyframes pulse-ring {
+  0%   { transform: scale(1); opacity: 0.6; }
+  100% { transform: scale(1.4); opacity: 0; }
+}
+.pulse-ring { animation: pulse-ring 1.8s ease-out infinite; }
+
+@keyframes slide-up {
+  from { transform: translateY(20px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+.animate-slide-up { animation: slide-up 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-up { animation: fade-up 0.4s ease both; }
+
+/* Loading galeria */
+@keyframes spin-slow {
+  to { transform: rotate(360deg); }
+}
+.animate-spin-slow { animation: spin-slow 12s linear infinite; }
+
+@keyframes orbit-slow {
+  to { transform: rotate(360deg); }
+}
+.animate-orbit-slow { animation: orbit-slow 7s linear infinite; }
+
+@keyframes orbit-fast {
+  to { transform: rotate(360deg); }
+}
+.animate-orbit-fast { animation: orbit-fast 2.2s linear infinite; }
+
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+.animate-shimmer {
+  animation: shimmer 1.8s linear infinite;
+  background-size: 200% 100%;
+}
+
+@keyframes ellipsis {
+  0%, 20%  { content: ".";   }
+  40%      { content: "..";  }
+  60%,100% { content: "..."; }
+}
+.animate-ellipsis::after {
+  content: "...";
+  animation: ellipsis 1.4s steps(1) infinite;
+}

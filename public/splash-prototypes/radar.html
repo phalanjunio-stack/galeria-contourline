@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Splash · Radar Sweep</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { height:100%; font-family: Inter, system-ui, sans-serif; overflow:hidden; }
+  body {
+    background: linear-gradient(135deg, #020b18 0%, #0D2B4E 55%, #1A4A80 100%);
+    display:flex; align-items:center; justify-content:center; color:#fff;
+  }
+  .preview-frame {
+    width: 420px; height: 520px; border-radius: 20px; overflow:hidden;
+    background: linear-gradient(135deg, #020b18 0%, #0D2B4E 55%, #1A4A80 100%);
+    box-shadow: 0 30px 80px rgba(0,0,0,0.6);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    position:relative;
+  }
+  /* Brilho central */
+  .preview-frame::before {
+    content:""; position:absolute; top:42%; left:50%;
+    width:500px; height:500px; transform:translate(-50%,-50%);
+    background: radial-gradient(circle, rgba(46,125,209,0.15) 0%, transparent 60%);
+    pointer-events:none;
+  }
+  .stage {
+    position:relative; width: 220px; height: 220px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  /* Anéis estáticos */
+  .ring {
+    position:absolute; border-radius:50%; border:1px solid rgba(91,164,229,0.18);
+  }
+  .ring.r1 { width:100%; height:100%; }
+  .ring.r2 { width:78%;  height:78%;  border-color: rgba(91,164,229,0.10); }
+  .ring.r3 { width:55%;  height:55%;  border-color: rgba(91,164,229,0.06); }
+
+  /* Marcas dos eixos */
+  .tick { position:absolute; width:6px; height:6px; border-radius:50%; background:rgba(91,164,229,0.4); }
+  .tick.t1 { top:0;    left:50%; transform:translate(-50%, -50%); }
+  .tick.t2 { right:0;  top:50%;  transform:translate(50%, -50%); }
+  .tick.t3 { bottom:0; left:50%; transform:translate(-50%, 50%); }
+  .tick.t4 { left:0;   top:50%;  transform:translate(-50%, -50%); }
+
+  /* Sweep do radar — leque que gira */
+  .sweep {
+    position:absolute; inset:0; border-radius:50%;
+    background: conic-gradient(from 0deg,
+      rgba(91,164,229,0) 0deg,
+      rgba(91,164,229,0) 320deg,
+      rgba(91,164,229,0.55) 358deg,
+      rgba(91,164,229,0.85) 360deg);
+    animation: spin 2.4s linear infinite;
+    mask: radial-gradient(circle, transparent 0%, transparent 18%, black 19%, black 100%);
+    -webkit-mask: radial-gradient(circle, transparent 0%, transparent 18%, black 19%, black 100%);
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Núcleo com logo */
+  .core {
+    position:relative; z-index:2;
+    width: 96px; height: 96px; border-radius:50%;
+    background: radial-gradient(circle, rgba(91,164,229,0.35), rgba(91,164,229,0) 70%);
+    display:flex; align-items:center; justify-content:center;
+    animation: pulse 2.4s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%,100% { box-shadow: 0 0 24px rgba(91,164,229,0.55); }
+    50%     { box-shadow: 0 0 42px rgba(91,164,229,0.85); }
+  }
+  .core img { width: 64px; height: 64px; filter: brightness(2) drop-shadow(0 0 12px rgba(91,164,229,0.6)); }
+
+  /* Textos */
+  .title { margin-top: 36px; font-size: 22px; font-weight: 800; letter-spacing: 0.5px; }
+  .title em { font-style: normal; color: #5BA4E5; }
+  .ver { color: rgba(255,255,255,0.35); font-size: 11px; font-weight: 500; margin-top:6px; }
+
+  /* Rodapé */
+  .footer {
+    position:absolute; bottom: 22px; left:0; right:0; text-align:center;
+    color: rgba(255,255,255,0.28); font-size: 11px; display:flex; align-items:center; justify-content:center; gap:6px;
+  }
+  .footer svg { width:12px; height:12px; }
+</style>
+</head>
+<body>
+  <div class="preview-frame">
+    <div class="stage">
+      <div class="ring r1"></div>
+      <div class="ring r2"></div>
+      <div class="ring r3"></div>
+      <div class="tick t1"></div><div class="tick t2"></div><div class="tick t3"></div><div class="tick t4"></div>
+      <div class="sweep"></div>
+      <div class="core">
+        <img src="/logos/icon.png" alt="Contourline" />
+      </div>
+    </div>
+    <div class="title">Iniciando <em>Contourline</em></div>
+    <div class="ver">versão 1.0.0</div>
+    <div class="footer">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      Seus dados estão protegidos
+    </div>
+  </div>
+</body>
+</html>

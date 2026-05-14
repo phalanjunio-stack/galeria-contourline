@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Splash · Orbital (DNA do GaleriaLoading)</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { height:100%; font-family: Inter, system-ui, sans-serif; overflow:hidden; }
+  body {
+    background: linear-gradient(135deg, #020b18 0%, #0D2B4E 55%, #1A4A80 100%);
+    display:flex; align-items:center; justify-content:center; color:#fff;
+  }
+  .preview-frame {
+    width: 460px; height: 560px; border-radius: 20px; overflow:hidden;
+    background: linear-gradient(135deg, #020b18 0%, #0D2B4E 55%, #1A4A80 100%);
+    box-shadow: 0 30px 80px rgba(0,0,0,0.6);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    position:relative; padding-top: 40px;
+  }
+  .preview-frame::before {
+    content:""; position:absolute; top:42%; left:50%;
+    width:600px; height:600px; transform:translate(-50%,-50%);
+    background: radial-gradient(circle, rgba(46,125,209,0.12) 0%, transparent 70%);
+    pointer-events:none;
+  }
+
+  /* Stage idêntico ao GaleriaLoading mas um pouco maior */
+  .stage {
+    position:relative; width: 200px; height: 200px;
+    display:flex; align-items:center; justify-content:center;
+  }
+
+  /* Anel externo tracejado — gira lento */
+  .ring-outer {
+    position:absolute; inset:0; border-radius:50%;
+    border: 1px dashed rgba(255,255,255,0.10);
+    animation: spinSlow 28s linear infinite;
+  }
+  /* Anel interno sutil */
+  .ring-inner {
+    position:absolute; inset:16px; border-radius:50%;
+    border: 1px solid rgba(46,125,209,0.25);
+  }
+  /* NOVO: anel ainda mais externo, contínuo — diferencia do GaleriaLoading */
+  .ring-outermost {
+    position:absolute; inset:-20px; border-radius:50%;
+    border: 1px solid rgba(91,164,229,0.08);
+  }
+  /* Arco rotativo no anel externo (estilo "carregando OS") */
+  .arc {
+    position:absolute; inset:-20px; border-radius:50%;
+    border: 2px solid transparent;
+    border-top-color: rgba(91,164,229,0.85);
+    border-right-color: rgba(91,164,229,0.35);
+    animation: spinFast 1.6s cubic-bezier(0.4,0,0.2,1) infinite;
+  }
+
+  @keyframes spinSlow { to { transform: rotate(360deg); } }
+  @keyframes spinFast { to { transform: rotate(360deg); } }
+
+  /* Ponto brilhante rápido — DNA do GaleriaLoading */
+  .orbit-fast {
+    position:absolute; inset:0;
+    animation: spinSlow 2.8s linear infinite;
+  }
+  .orbit-fast .dot {
+    position:absolute; top:-7px; left:50%; transform:translateX(-50%);
+    width:14px; height:14px; border-radius:50%; background:#5BA4E5;
+    box-shadow: 0 0 14px 5px rgba(91,164,229,0.65);
+  }
+
+  /* Pontos orbitando devagar — 4 ao invés de 5 (sutilmente diferente) */
+  .orbit-slow {
+    position:absolute; inset:0;
+    animation: spinSlow 16s linear infinite;
+  }
+  .orbit-slow .dot {
+    position:absolute; top:-6px; left:50%; transform: translateX(-50%);
+    width:8px; height:8px; border-radius:50%;
+    background: rgba(255,255,255,0.85);
+    box-shadow: 0 0 6px 2px rgba(255,255,255,0.35);
+  }
+  .orbit-slow:nth-child(2) { animation-delay:  -4s; }
+  .orbit-slow:nth-child(3) { animation-delay:  -8s; }
+  .orbit-slow:nth-child(4) { animation-delay: -12s; }
+  .orbit-slow:nth-child(3) .dot,
+  .orbit-slow:nth-child(4) .dot {
+    width:6px; height:6px;
+    background: rgba(91,164,229,0.6); box-shadow:none;
+  }
+
+  /* Núcleo com logo */
+  .core {
+    position:relative; z-index:5;
+    width: 90px; height: 90px; display:flex; align-items:center; justify-content:center;
+  }
+  .core img {
+    width: 70px; height: 70px;
+    filter: brightness(2) drop-shadow(0 0 18px rgba(91,164,229,0.55));
+    animation: breathe 3s ease-in-out infinite;
+  }
+  @keyframes breathe {
+    0%, 100% { transform: scale(1);    filter: brightness(2)   drop-shadow(0 0 18px rgba(91,164,229,0.55)); }
+    50%      { transform: scale(1.04); filter: brightness(2.3) drop-shadow(0 0 26px rgba(91,164,229,0.85)); }
+  }
+
+  /* Textos — DIFERENTES do GaleriaLoading */
+  .title {
+    margin-top: 44px; font-size: 24px; font-weight: 800;
+    letter-spacing: 0.5px; text-align:center;
+  }
+  .title em { font-style: normal; color: #5BA4E5; }
+  .ver { color: rgba(255,255,255,0.4); font-size: 12px; font-weight: 500; margin-top:6px; }
+
+  /* 3 dots de loading — animação simples (não os "steps" do GaleriaLoading) */
+  .dots { display:flex; gap:6px; margin-top: 22px; }
+  .dots span {
+    width:6px; height:6px; border-radius:50%; background:#2E7DD1;
+    animation: bounce 1.4s ease-in-out infinite;
+  }
+  .dots span:nth-child(2) { animation-delay: 0.15s; }
+  .dots span:nth-child(3) { animation-delay: 0.30s; }
+  @keyframes bounce {
+    0%, 80%, 100% { transform: translateY(0);    opacity: 0.4; }
+    40%           { transform: translateY(-6px); opacity: 1;   }
+  }
+
+  .footer {
+    position:absolute; bottom: 22px; left:0; right:0; text-align:center;
+    color: rgba(255,255,255,0.28); font-size: 11px;
+    display:flex; align-items:center; justify-content:center; gap:6px;
+  }
+  .footer svg { width:12px; height:12px; }
+</style>
+</head>
+<body>
+  <div class="preview-frame">
+    <div class="stage">
+      <div class="ring-outermost"></div>
+      <div class="ring-outer"></div>
+      <div class="ring-inner"></div>
+      <div class="arc"></div>
+
+      <div class="orbit-fast"><div class="dot"></div></div>
+      <div class="orbit-slow"><div class="dot"></div></div>
+      <div class="orbit-slow"><div class="dot"></div></div>
+      <div class="orbit-slow"><div class="dot"></div></div>
+      <div class="orbit-slow"><div class="dot"></div></div>
+
+      <div class="core">
+        <img src="/logos/icon.png" alt="Contourline" />
+      </div>
+    </div>
+
+    <div class="title">Iniciando <em>Contourline</em></div>
+    <div class="ver">versão 1.0.0</div>
+    <div class="dots"><span></span><span></span><span></span></div>
+
+    <div class="footer">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      Seus dados estão protegidos
+    </div>
+  </div>
+</body>
+</html>

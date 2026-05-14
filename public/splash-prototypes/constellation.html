@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Splash · Constellation</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { height:100%; font-family: Inter, system-ui, sans-serif; overflow:hidden; }
+  body {
+    background: linear-gradient(135deg, #020b18 0%, #0D2B4E 55%, #1A4A80 100%);
+    display:flex; align-items:center; justify-content:center; color:#fff;
+  }
+  .preview-frame {
+    width: 420px; height: 520px; border-radius: 20px; overflow:hidden;
+    background: linear-gradient(135deg, #020b18 0%, #0D2B4E 55%, #1A4A80 100%);
+    box-shadow: 0 30px 80px rgba(0,0,0,0.6);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    position:relative;
+  }
+  .preview-frame::before {
+    content:""; position:absolute; top:42%; left:50%;
+    width:520px; height:520px; transform:translate(-50%,-50%);
+    background: radial-gradient(circle, rgba(46,125,209,0.18) 0%, transparent 65%);
+    pointer-events:none;
+  }
+
+  .stage {
+    position:relative; width: 280px; height: 240px;
+    display:flex; align-items:center; justify-content:center;
+  }
+
+  /* Estrelas em volta — convergem pro centro */
+  .star {
+    position:absolute; width: 4px; height: 4px; border-radius:50%;
+    background: #ffffff;
+    box-shadow: 0 0 6px rgba(255,255,255,0.8), 0 0 12px rgba(91,164,229,0.6);
+    opacity: 0;
+    animation: converge 2.4s ease-in-out infinite;
+  }
+
+  @keyframes converge {
+    0%   { opacity: 0; transform: translate(var(--x), var(--y)) scale(0.4); }
+    25%  { opacity: 1; }
+    70%  { opacity: 1; transform: translate(0, 0) scale(1.1); }
+    100% { opacity: 0; transform: translate(0, 0) scale(0); }
+  }
+
+  /* Linhas saindo do centro (revelando) */
+  .line {
+    position:absolute; top:50%; left:50%; height: 1px;
+    background: linear-gradient(90deg, rgba(91,164,229,0.7), rgba(91,164,229,0));
+    transform-origin: 0 50%;
+    opacity:0;
+    animation: lineFade 2.4s ease-in-out infinite;
+  }
+  @keyframes lineFade {
+    0%, 35%   { opacity: 0; width: 0; }
+    50%       { opacity: 0.8; width: 110px; }
+    80%, 100% { opacity: 0; width: 110px; }
+  }
+
+  /* Núcleo com logo */
+  .core {
+    position:relative; z-index:3;
+    width: 96px; height: 96px; border-radius:50%;
+    background: radial-gradient(circle, rgba(91,164,229,0.4), rgba(91,164,229,0) 70%);
+    display:flex; align-items:center; justify-content:center;
+    animation: coreBreath 2.4s ease-in-out infinite;
+  }
+  @keyframes coreBreath {
+    0%, 100% { box-shadow: 0 0 24px rgba(91,164,229,0.45); }
+    50%      { box-shadow: 0 0 48px rgba(91,164,229,0.85); }
+  }
+  .core img { width: 64px; height: 64px; filter: brightness(2) drop-shadow(0 0 12px rgba(91,164,229,0.7)); }
+
+  .title { margin-top: 28px; font-size: 22px; font-weight: 800; letter-spacing: 0.5px; }
+  .title em { font-style: normal; color: #5BA4E5; }
+  .ver { color: rgba(255,255,255,0.35); font-size: 11px; font-weight: 500; margin-top:6px; }
+
+  .footer {
+    position:absolute; bottom: 22px; left:0; right:0; text-align:center;
+    color: rgba(255,255,255,0.28); font-size: 11px; display:flex; align-items:center; justify-content:center; gap:6px;
+  }
+  .footer svg { width:12px; height:12px; }
+</style>
+</head>
+<body>
+  <div class="preview-frame">
+    <div class="stage" id="stage">
+      <div class="core">
+        <img src="/logos/icon.png" alt="Contourline" />
+      </div>
+    </div>
+    <div class="title">Iniciando <em>Contourline</em></div>
+    <div class="ver">versão 1.0.0</div>
+    <div class="footer">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      Seus dados estão protegidos
+    </div>
+  </div>
+
+  <script>
+    // Gera estrelas convergindo de pontos aleatórios
+    const stage = document.getElementById('stage');
+    const N = 14;
+    for (let i = 0; i < N; i++) {
+      const angle = (Math.PI * 2 * i) / N + Math.random() * 0.3;
+      const dist  = 100 + Math.random() * 50;
+      const x = Math.cos(angle) * dist;
+      const y = Math.sin(angle) * dist;
+      const star = document.createElement('div');
+      star.className = 'star';
+      star.style.setProperty('--x', `${x}px`);
+      star.style.setProperty('--y', `${y}px`);
+      star.style.animationDelay = `${(i / N) * 0.6}s`;
+      stage.appendChild(star);
+
+      // Linha radial revelando depois
+      const line = document.createElement('div');
+      line.className = 'line';
+      line.style.transform = `translate(0, -50%) rotate(${angle}rad)`;
+      line.style.animationDelay = `${(i / N) * 0.6 + 0.1}s`;
+      stage.appendChild(line);
+    }
+  </script>
+</body>
+</html>

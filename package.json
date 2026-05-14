@@ -1,0 +1,75 @@
+{
+  "name": "galeria-contourline",
+  "version": "0.1.0",
+  "private": true,
+  "main": "electron/main.js",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "desktop:dev": "electron .",
+    "desktop:dev:full": "concurrently -k \"npm run dev\" \"wait-on http://localhost:3000 && electron .\"",
+    "desktop:build": "electron-builder",
+    "desktop:build:win": "electron-builder --win"
+  },
+  "build": {
+    "appId": "com.contourline.galeria",
+    "productName": "Contourline",
+    "directories": { "output": "dist-desktop" },
+    "files": [
+      "electron/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": ["nsis"],
+      "icon": "electron/icons/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    },
+    "mac": {
+      "target": ["dmg"],
+      "icon": "electron/icons/icon.icns",
+      "category": "public.app-category.photography"
+    },
+    "linux": {
+      "target": ["AppImage"],
+      "icon": "electron/icons/icon.png"
+    }
+  },
+  "dependencies": {
+    "@types/nodemailer": "^8.0.0",
+    "@types/qrcode": "^1.5.6",
+    "@whiskeysockets/baileys": "^7.0.0-rc10",
+    "clsx": "^2.1.1",
+    "face-api.js": "^0.22.2",
+    "framer-motion": "^12.38.0",
+    "googleapis": "^171.4.0",
+    "jszip": "^3.10.1",
+    "lucide-react": "^1.14.0",
+    "next": "16.2.6",
+    "next-auth": "^5.0.0-beta.31",
+    "nodemailer": "^7.0.13",
+    "qrcode": "^1.5.4",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "sharp": "^0.34.5"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "concurrently": "^9.0.1",
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.6",
+    "tailwindcss": "^4",
+    "typescript": "^5",
+    "wait-on": "^8.0.0"
+  }
+}
