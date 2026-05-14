@@ -61,13 +61,22 @@ async function lerIndexJson(token: string, fileId: string): Promise<{ ok: boolea
 }
 
 export async function GET() {
+  const ADMIN_EMAILS = process.env.ADMIN_EMAILS ?? "(não definido)";
+  const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? "";
+  const AUTH_SECRET = process.env.AUTH_SECRET ?? "";
+  const NEXTAUTH_URL = process.env.NEXTAUTH_URL ?? "(não definido)";
+
   const resultado: Record<string, unknown> = {
     timestamp: new Date().toISOString(),
     env: {
       DRIVE_ROOT_FOLDER_ID: ROOT,
-      GOOGLE_REFRESH_TOKEN: REFRESH ? `${REFRESH.slice(0, 20)}...` : "(vazio)",
-      GOOGLE_CLIENT_ID: CLIENT_ID ? `${CLIENT_ID.slice(0, 20)}...` : "(vazio)",
-      GOOGLE_CLIENT_SECRET: CLIENT_SECRET ? `${CLIENT_SECRET.slice(0, 8)}...` : "(vazio)",
+      GOOGLE_REFRESH_TOKEN: REFRESH ? `${REFRESH.slice(0, 20)}...` : "(VAZIO - token não definido!)",
+      GOOGLE_CLIENT_ID: CLIENT_ID ? `${CLIENT_ID.slice(0, 20)}...` : "(VAZIO!)",
+      GOOGLE_CLIENT_SECRET: CLIENT_SECRET ? `${CLIENT_SECRET.slice(0, 8)}...` : "(VAZIO!)",
+      AUTH_SECRET: AUTH_SECRET ? `${AUTH_SECRET.slice(0, 8)}...` : "(VAZIO - auth não vai funcionar!)",
+      NEXTAUTH_URL,
+      ADMIN_EMAILS,
+      ADMIN_PASSWORD: ADMIN_PASSWORD ? `${ADMIN_PASSWORD.slice(0, 3)}*** (definido)` : "(VAZIO - login local impossível!)",
     },
   };
 
