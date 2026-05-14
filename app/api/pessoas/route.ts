@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth, getAccessTokenFromEnv } from "@/auth";
 import { lerArquivoOculto, salvarArquivoOculto } from "@/lib/drive";
+import { lerDescritoresLocal } from "@/lib/storage-local";
 import type { ClusterPessoa } from "@/lib/clustering";
 
 const ROOT = process.env.DRIVE_ROOT_FOLDER_ID!;
@@ -30,7 +31,9 @@ export async function GET(req: NextRequest) {
   if (!token) return NextResponse.json({ clusters: [], indexado: false }, { status: 200 });
 
   try {
-    const data = await lerArquivoOculto<PessoasDoEvento>(ROOT, chave(eventoId), token);
+    let data = await lerArquivoOculto<PessoasDoEvento>(ROOT, chave(eventoId), token);
+    // Fallback: servidor local salva em data/descritores/ quando Drive retorna 403
+    if (!data) data = await lerDescritoresLocal<PessoasDoEvento>(eventoId, chave(eventoId));
     if (!data) return NextResponse.json({ clusters: [], indexado: false });
     return NextResponse.json({ ...data, indexado: true });
   } catch {

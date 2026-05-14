@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth, getAccessTokenFromEnv } from "@/auth";
 import { lerArquivoOculto, salvarArquivoOculto } from "@/lib/drive";
+import { lerDescritoresLocal } from "@/lib/storage-local";
 
 const ROOT = process.env.DRIVE_ROOT_FOLDER_ID!;
 
@@ -34,7 +35,9 @@ export async function GET(req: NextRequest) {
   if (!token) return NextResponse.json({ error: "Sem token" }, { status: 401 });
 
   try {
-    const dados = await lerArquivoOculto<FotoDescritores[]>(ROOT, nomeArquivo(eventoId), token);
+    let dados = await lerArquivoOculto<FotoDescritores[]>(ROOT, nomeArquivo(eventoId), token);
+    // Fallback: servidor local salva em data/descritores/ quando Drive retorna 403
+    if (!dados) dados = await lerDescritoresLocal<FotoDescritores[]>(eventoId, nomeArquivo(eventoId));
     if (!dados) return NextResponse.json({ indexado: false, dados: [] });
     return NextResponse.json({ indexado: true, total: dados.length, dados });
   } catch (e) {
