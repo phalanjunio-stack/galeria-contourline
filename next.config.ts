@@ -4,8 +4,6 @@ import path from "path";
 const nextConfig: NextConfig = {
   // Ignora erros de TypeScript no build (nao bloqueia deploy na Vercel)
   typescript: { ignoreBuildErrors: true },
-  // Ignora erros de ESLint no build
-  eslint: { ignoreDuringBuilds: true },
   serverExternalPackages: ["nodemailer"],
   // Força a raiz do workspace pra pasta do projeto (ignora package-lock.json órfão
   // em C:\Users\Contourline\ que estava confundindo o Turbopack)
