@@ -1,6 +1,9 @@
 import { auth } from "@/auth";
 import { NextResponse } from "next/server";
 
+// Força Node.js runtime — auth.ts usa fs/path que nao existem no Edge Runtime
+export const runtime = "nodejs";
+
 export default auth((req) => {
   const { pathname } = req.nextUrl;
   const session = req.auth;
