@@ -1,0 +1,42 @@
+services:
+  - type: web
+    name: galeria-contourline-app
+    runtime: node
+    plan: free
+    region: oregon
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/eventos
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "20"
+      # ── NextAuth ────────────────────────────────────────
+      - key: AUTH_SECRET
+        sync: false
+      - key: NEXTAUTH_SECRET
+        sync: false
+      - key: NEXTAUTH_URL
+        sync: false
+      # ── Google OAuth ────────────────────────────────────
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REFRESH_TOKEN
+        sync: false
+      # ── Google Drive ────────────────────────────────────
+      - key: DRIVE_ROOT_FOLDER_ID
+        sync: false
+      # ── Admin ───────────────────────────────────────────
+      - key: ADMIN_EMAILS
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      # ── Face Server ─────────────────────────────────────
+      - key: FACE_SERVER_URL
+        sync: false
+      - key: FACE_SERVER_SECRET
+        sync: false
