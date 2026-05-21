@@ -10,6 +10,7 @@ import {
 import type { EventoItem } from "@/app/api/eventos/route";
 import FotoCard from "@/app/components/FotoCard";
 import Lightbox from "@/app/components/Lightbox";
+import { AnimatePresence } from "framer-motion";
 import GaleriaLoading from "@/app/components/GaleriaLoading";
 import { baixarComoZip } from "@/lib/download-zip";
 import { lerFavoritos, salvarFavoritos } from "@/app/(public)/favoritos/page";
@@ -537,17 +538,19 @@ export default function EventoPage({ params }: { params: Promise<{ slug: string 
       </div>
 
       {/* Lightbox */}
-      {lightboxIdx !== null && (
-        <Lightbox
-          fotos={fotosFiltradas}
-          index={lightboxIdx}
-          favoritos={favoritos}
-          onClose={() => setLightboxIdx(null)}
-          onPrev={() => setLightboxIdx((i) => Math.max(0, (i ?? 1) - 1))}
-          onNext={() => setLightboxIdx((i) => Math.min(fotosFiltradas.length - 1, (i ?? 0) + 1))}
-          onToggleFav={toggleFav}
-        />
-      )}
+      <AnimatePresence>
+        {lightboxIdx !== null && (
+          <Lightbox
+            fotos={fotosFiltradas}
+            index={lightboxIdx}
+            favoritos={favoritos}
+            onClose={() => setLightboxIdx(null)}
+            onPrev={() => setLightboxIdx((i) => Math.max(0, (i ?? 1) - 1))}
+            onNext={() => setLightboxIdx((i) => Math.min(fotosFiltradas.length - 1, (i ?? 0) + 1))}
+            onToggleFav={toggleFav}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Barra de seleção fixada no rodapé */}
       {modoSelecao && (

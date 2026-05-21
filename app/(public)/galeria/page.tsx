@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Images, ChevronDown, X, ArrowRight, Heart, Download } from "lucide-react";
 import type { EventoItem } from "@/app/api/eventos/route";
 import Lightbox from "@/app/components/Lightbox";
+import { AnimatePresence } from "framer-motion";
 import GaleriaLoading from "@/app/components/GaleriaLoading";
 import GaleriaToolbar, { type ToolbarState, type ViewMode, QUALITY_PX } from "@/app/components/GaleriaToolbar";
 import { lerFavoritos, salvarFavoritos } from "@/app/(public)/favoritos/page";
@@ -329,17 +330,19 @@ export default function GaleriaPage() {
       )}
 
       {/* Lightbox */}
-      {lightboxIdx !== null && (
-        <Lightbox
-          fotos={fotosFiltradas}
-          index={lightboxIdx}
-          favoritos={favoritos}
-          onClose={() => setLightboxIdx(null)}
-          onPrev={() => setLightboxIdx(i => Math.max(0, (i ?? 0) - 1))}
-          onNext={() => setLightboxIdx(i => Math.min(fotosFiltradas.length - 1, (i ?? 0) + 1))}
-          onToggleFav={toggleFav}
-        />
-      )}
+      <AnimatePresence>
+        {lightboxIdx !== null && (
+          <Lightbox
+            fotos={fotosFiltradas}
+            index={lightboxIdx}
+            favoritos={favoritos}
+            onClose={() => setLightboxIdx(null)}
+            onPrev={() => setLightboxIdx(i => Math.max(0, (i ?? 0) - 1))}
+            onNext={() => setLightboxIdx(i => Math.min(fotosFiltradas.length - 1, (i ?? 0) + 1))}
+            onToggleFav={toggleFav}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Fecha filtro clicando fora */}
       {filtroAberto && <div className="fixed inset-0 z-20" onClick={() => setFiltroAberto(false)} />}

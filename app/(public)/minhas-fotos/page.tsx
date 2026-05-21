@@ -8,6 +8,7 @@ import {
 import { fetchMinhasFotos, ouvirAtualizacoes } from "@/lib/minhasFotos";
 import { lerFavoritos, salvarFavoritos } from "@/app/(public)/favoritos/page";
 import Lightbox from "@/app/components/Lightbox";
+import { AnimatePresence } from "framer-motion";
 import { SkeletonFotos } from "@/app/components/Skeleton";
 
 interface FotoMin { id: string; eventoId: string; eventoNome: string; }
@@ -245,17 +246,19 @@ export default function MinhasFotosPage() {
       )}
 
       {/* Lightbox */}
-      {lightboxIdx !== null && (
-        <Lightbox
-          fotos={fotosFiltradas.map(f => ({ id: f.id, name: f.id }))}
-          index={lightboxIdx}
-          favoritos={favoritos}
-          onClose={() => setLightboxIdx(null)}
-          onPrev={() => setLightboxIdx(i => Math.max(0, (i ?? 0) - 1))}
-          onNext={() => setLightboxIdx(i => Math.min(fotosFiltradas.length - 1, (i ?? 0) + 1))}
-          onToggleFav={toggleFav}
-        />
-      )}
+      <AnimatePresence>
+        {lightboxIdx !== null && (
+          <Lightbox
+            fotos={fotosFiltradas.map(f => ({ id: f.id, name: f.id }))}
+            index={lightboxIdx}
+            favoritos={favoritos}
+            onClose={() => setLightboxIdx(null)}
+            onPrev={() => setLightboxIdx(i => Math.max(0, (i ?? 0) - 1))}
+            onNext={() => setLightboxIdx(i => Math.min(fotosFiltradas.length - 1, (i ?? 0) + 1))}
+            onToggleFav={toggleFav}
+          />
+        )}
+      </AnimatePresence>
 
       {filtroAberto && <div className="fixed inset-0 z-20" onClick={() => setFiltroAberto(false)} />}
     </div>
