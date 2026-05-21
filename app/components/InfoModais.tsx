@@ -4,6 +4,7 @@ import {
   X, HelpCircle, ShieldCheck, ScanFace, Search, Users, Bell,
   Lock, Eye, EyeOff, Cpu,
 } from "lucide-react";
+import { playSwoosh } from "@/lib/sounds";
 
 type ModalKind = "como-funciona" | "privacidade" | null;
 
@@ -27,12 +28,14 @@ export default function InfoModais() {
   useEffect(() => {
     function onKey(e: KeyboardEvent) { if (e.key === "Escape") setAberto(null); }
     if (aberto) {
+      playSwoosh("open");
       window.addEventListener("keydown", onKey);
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "";
     }
     return () => {
+      if (aberto) playSwoosh("close");
       window.removeEventListener("keydown", onKey);
       document.body.style.overflow = "";
     };

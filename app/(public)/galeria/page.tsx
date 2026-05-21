@@ -7,6 +7,7 @@ import Lightbox from "@/app/components/Lightbox";
 import GaleriaLoading from "@/app/components/GaleriaLoading";
 import GaleriaToolbar, { type ToolbarState, type ViewMode, QUALITY_PX } from "@/app/components/GaleriaToolbar";
 import { lerFavoritos, salvarFavoritos } from "@/app/(public)/favoritos/page";
+import { playSwoosh } from "@/lib/sounds";
 
 const TOOLBAR_STORAGE_KEY = "galeria-toolbar";
 const DEFAULT_TOOLBAR: ToolbarState = { view: "grid", quality: "normal", size: 5 };
@@ -248,7 +249,7 @@ export default function GaleriaPage() {
         {/* Filtro por evento */}
         <div className="relative z-30">
           <button
-            onClick={() => setFiltroAberto(v => !v)}
+            onClick={() => { playSwoosh(filtroAberto ? "close" : "open"); setFiltroAberto(v => !v); }}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-[#1A4A80] font-semibold text-sm hover:bg-[#EFF5FF] transition shadow-sm">
             {eventoFiltro ? eventoSelecionado?.nome : "Todos os eventos"}
             {eventoFiltro

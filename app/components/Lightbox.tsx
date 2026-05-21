@@ -2,6 +2,7 @@
 import { useEffect, useCallback, useState } from "react";
 import { X, Download, Share2, Heart, ChevronLeft, ChevronRight, Check } from "lucide-react";
 import { compartilharFoto } from "@/lib/compartilhar";
+import { playSwoosh } from "@/lib/sounds";
 
 interface Props {
   fotos: { id: string; name: string }[];
@@ -36,9 +37,11 @@ export default function Lightbox({ fotos, index, favoritos, nomeEvento, onClose,
   }, [onClose, onPrev, onNext]);
 
   useEffect(() => {
+    playSwoosh("open");
     document.addEventListener("keydown", handleKey);
     document.body.style.overflow = "hidden";
     return () => {
+      playSwoosh("close");
       document.removeEventListener("keydown", handleKey);
       document.body.style.overflow = "";
     };

@@ -5,6 +5,7 @@ import { Search, Bell, Scan, User, Check, Camera } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useEffect, useRef, useState, useCallback } from "react";
 import ThemeToggle from "./ThemeToggle";
+import { playSwoosh } from "@/lib/sounds";
 
 interface Notificacao {
   id: string;
@@ -80,7 +81,7 @@ function SinhoNotif({ email }: { email?: string }) {
   return (
     <div ref={ref} className="relative">
       <button
-        onClick={() => { setAberto(v => !v); if (!aberto) carregar(); }}
+        onClick={() => { playSwoosh(aberto ? "close" : "open"); setAberto(v => !v); if (!aberto) carregar(); }}
         className="relative p-2 rounded-xl text-[#1A4A80] hover:bg-[#EFF5FF] transition">
         <Bell size={20} />
         {naoLidas > 0 && (
