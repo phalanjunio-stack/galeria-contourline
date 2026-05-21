@@ -6,6 +6,25 @@
   --blue-600: #2E7DD1;
   --blue-400: #5BA4E5;
   --bg-light: #EFF5FF;
+
+  /* Tokens de tema (light por padrão) */
+  --surface-page:    #ffffff;
+  --surface-card:    #ffffff;
+  --surface-muted:   #F5F7FA;
+  --surface-topbar:  rgba(255,255,255,0.97);
+  --surface-border:  #e5e7eb;
+  --text-strong:     #0D2B4E;
+  --text-soft:       #6b7280;
+}
+
+html[data-theme="dark"] {
+  --surface-page:    #0A1A2E;
+  --surface-card:    #142844;
+  --surface-muted:   #1B3357;
+  --surface-topbar:  rgba(13,28,52,0.97);
+  --surface-border:  #1F3A5F;
+  --text-strong:     #E8EEF8;
+  --text-soft:       #9CB0CC;
 }
 
 * { box-sizing: border-box; }
@@ -16,14 +35,29 @@ html {
 
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  background-color: #ffffff;
-  color: #0D2B4E;
+  background-color: var(--surface-page);
+  color: var(--text-strong);
   -webkit-font-smoothing: antialiased;
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
+
+/* Dark mode — sobrescritas pontuais nas superfícies brancas/cinzas hardcoded */
+html[data-theme="dark"] .bg-white      { background-color: var(--surface-card) !important; }
+html[data-theme="dark"] .bg-gray-50    { background-color: var(--surface-muted) !important; }
+html[data-theme="dark"] .border-gray-100,
+html[data-theme="dark"] .border-gray-200 { border-color: var(--surface-border) !important; }
+html[data-theme="dark"] .text-gray-400 { color: #7E92AE !important; }
+html[data-theme="dark"] .text-gray-500,
+html[data-theme="dark"] .text-gray-600,
+html[data-theme="dark"] .text-gray-700 { color: var(--text-soft) !important; }
+html[data-theme="dark"] .text-\[\#0D2B4E\],
+html[data-theme="dark"] .text-\[\#1A4A80\] { color: var(--text-strong) !important; }
+html[data-theme="dark"] .bg-\[\#EFF5FF\] { background-color: rgba(46,125,209,0.12) !important; }
 
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: #f1f5f9; }
 ::-webkit-scrollbar-thumb { background: #2E7DD1; border-radius: 3px; }
+html[data-theme="dark"] ::-webkit-scrollbar-track { background: #0F2540; }
 
 .gradient-primary { background: linear-gradient(135deg, #1A4A80 0%, #2E7DD1 100%); }
 .gradient-navy    { background: linear-gradient(135deg, #0D2B4E 0%, #1A4A80 100%); }
@@ -118,3 +152,58 @@ body {
   content: "...";
   animation: ellipsis 1.4s steps(1) infinite;
 }
+
+/* ─── Glow hover (azul → roxo rotacionando) para cards de Evento ─── */
+@keyframes glow-rotate {
+  to { transform: rotate(360deg); }
+}
+
+.glow-card {
+  position: relative;
+  border-radius: 1rem;
+  isolation: isolate;
+}
+
+.glow-card::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  padding: 2px;
+  background: conic-gradient(
+    from 0deg,
+    #2E7DD1, #5BA4E5, #8B5CF6, #C084FC, #2E7DD1
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.glow-card::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: inherit;
+  background: conic-gradient(
+    from 0deg,
+    #2E7DD1, #8B5CF6, #C084FC, #2E7DD1
+  );
+  filter: blur(14px);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.glow-card:hover::before,
+.glow-card:hover::after {
+  opacity: 1;
+  animation: glow-rotate 4s linear infinite;
+}
+.glow-card:hover::after { opacity: 0.55; }

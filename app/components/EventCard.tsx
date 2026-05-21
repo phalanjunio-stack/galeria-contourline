@@ -24,8 +24,8 @@ export default function EventCard({ event }: { event: EventData }) {
   const StatusIcon = st.icon;
 
   return (
-    <Link href={`/eventos/${event.slug}`} className="group block">
-      <div className="rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1 bg-white border border-gray-100">
+    <Link href={`/eventos/${event.slug}`} className="group block glow-card">
+      <div className="relative rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1 bg-white border border-gray-100 z-[2]">
         {/* Capa */}
         <div className="relative h-44 overflow-hidden">
           {event.coverUrl ? (

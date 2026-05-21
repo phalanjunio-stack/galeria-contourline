@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Search, Bell, Scan, User, Check, Camera } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useEffect, useRef, useState, useCallback } from "react";
+import ThemeToggle from "./ThemeToggle";
 
 interface Notificacao {
   id: string;
@@ -208,8 +209,9 @@ export default function Topbar() {
 
         <div className="flex-1 lg:hidden" />
 
-        {/* Ações — bell + avatar */}
+        {/* Ações — tema + bell + avatar */}
         <div className="flex items-center gap-1.5 lg:mr-8">
+          <ThemeToggle />
           {/* Sininho com dropdown */}
           <SinhoNotif email={emailNotif} />
 

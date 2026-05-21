@@ -5,7 +5,11 @@ import { Images, ChevronDown, X, ArrowRight, Heart, Download } from "lucide-reac
 import type { EventoItem } from "@/app/api/eventos/route";
 import Lightbox from "@/app/components/Lightbox";
 import GaleriaLoading from "@/app/components/GaleriaLoading";
+import GaleriaToolbar, { type ToolbarState, type ViewMode, QUALITY_PX } from "@/app/components/GaleriaToolbar";
 import { lerFavoritos, salvarFavoritos } from "@/app/(public)/favoritos/page";
+
+const TOOLBAR_STORAGE_KEY = "galeria-toolbar";
+const DEFAULT_TOOLBAR: ToolbarState = { view: "grid", quality: "normal", size: 5 };
 
 interface Foto { id: string; name: string; eventoId: string; eventoNome: string; eventoSlug: string; }
 
@@ -15,10 +19,11 @@ function slugify(nome: string) {
 
 /* Card individual da galeria — proporção natural da foto */
 function GaleriaCard({
-  foto, index, favoritada, eventoFiltro,
+  foto, index, favoritada, eventoFiltro, thumbPx, view,
   onOpenLightbox, onToggleFav, onFiltrarEvento,
 }: {
   foto: Foto; index: number; favoritada: boolean; eventoFiltro: string | null;
+  thumbPx: number; view: ViewMode;
   onOpenLightbox: () => void; onToggleFav: () => void; onFiltrarEvento: () => void;
 }) {
   const [loaded,  setLoaded]  = useState(false);
@@ -37,28 +42,39 @@ function GaleriaCard({
   }, []);
 
   const delay = `${(index % 6) * 50}ms`;
+  const isList = view === "list";
 
   return (
     <div
       ref={ref}
       style={visible ? { animationDelay: delay } : { opacity: 0 }}
-      className={`group relative break-inside-avoid mb-3 rounded-xl overflow-hidden cursor-pointer shadow hover:shadow-xl transition-all duration-300
-        ${visible ? "animate-fade-up" : ""}`}
+      className={`group relative ${isList ? "flex gap-3 items-center" : "break-inside-avoid mb-3"} rounded-xl overflow-hidden cursor-pointer shadow hover:shadow-xl transition-all duration-300
+        ${visible ? "animate-fade-up" : ""} ${isList ? "bg-white border border-gray-100 p-2" : ""}`}
       onClick={onOpenLightbox}
     >
       {/* Skeleton */}
-      {!loaded && <div className="w-full aspect-[4/3] bg-gradient-to-br from-[#1A4A80]/20 to-[#2E7DD1]/20 animate-pulse rounded-xl" />}
+      {!loaded && (
+        <div className={`${isList ? "w-24 h-24 shrink-0" : "w-full aspect-[4/3]"} bg-gradient-to-br from-[#1A4A80]/20 to-[#2E7DD1]/20 animate-pulse rounded-xl`} />
+      )}
 
       {/* Imagem com proporção natural */}
       {visible && (
         <img
-          src={`/api/thumb?id=${foto.id}&sz=600`}
+          src={`/api/thumb?id=${foto.id}&sz=${thumbPx}`}
           alt={foto.name}
           decoding="async"
           onLoad={() => setLoaded(true)}
-          className={`w-full h-auto block transition-all duration-500 group-hover:scale-[1.02]
+          className={`${isList ? "w-24 h-24 object-cover shrink-0 rounded-lg" : "w-full h-auto"} block transition-all duration-500 group-hover:scale-[1.02]
             ${loaded ? "opacity-100" : "opacity-0 absolute inset-0"}`}
         />
+      )}
+
+      {/* Info no modo lista */}
+      {isList && loaded && (
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-[#0D2B4E] truncate">{foto.eventoNome}</p>
+          <p className="text-xs text-gray-400 truncate">{foto.name}</p>
+        </div>
       )}
 
       {/* Overlay hover */}
@@ -116,12 +132,22 @@ export default function GaleriaPage() {
   const [lightboxIdx,  setLightboxIdx]  = useState<number | null>(null);
   const [favoritos,    setFavoritos]    = useState<Set<string>>(new Set());
   const [filtroAberto, setFiltroAberto] = useState(false);
+  const [toolbar,      setToolbar]      = useState<ToolbarState>(DEFAULT_TOOLBAR);
   const fotoCache = useRef<Map<string, Foto[]>>(new Map());
 
   // Carrega favoritos do localStorage na inicialização
   useEffect(() => {
     setFavoritos(new Set(lerFavoritos()));
+    try {
+      const raw = localStorage.getItem(TOOLBAR_STORAGE_KEY);
+      if (raw) setToolbar({ ...DEFAULT_TOOLBAR, ...JSON.parse(raw) });
+    } catch {}
   }, []);
+
+  function updateToolbar(next: ToolbarState) {
+    setToolbar(next);
+    try { localStorage.setItem(TOOLBAR_STORAGE_KEY, JSON.stringify(next)); } catch {}
+  }
 
   useEffect(() => {
     fetch("/api/eventos")
@@ -179,6 +205,29 @@ export default function GaleriaPage() {
 
   if (loading) return <GaleriaLoading label="Carregando galeria..." />;
 
+  // Layout dinâmico baseado em view + size
+  const thumbPx = QUALITY_PX[toolbar.quality];
+  // size 1..10 → mapeia para nº de colunas (size baixo = mais colunas/menores; size alto = menos colunas/maiores)
+  function gridClasses(): string {
+    if (toolbar.view === "mobile") return "columns-1";
+    if (toolbar.view === "list")   return "flex flex-col gap-2";
+    const s = toolbar.size;
+    if (toolbar.view === "compact") {
+      // mais densa
+      if (s <= 2) return "columns-3 sm:columns-5 lg:columns-7";
+      if (s <= 4) return "columns-3 sm:columns-4 lg:columns-6";
+      if (s <= 6) return "columns-2 sm:columns-4 lg:columns-5";
+      if (s <= 8) return "columns-2 sm:columns-3 lg:columns-4";
+      return "columns-2 sm:columns-3 lg:columns-3";
+    }
+    // grid normal
+    if (s <= 2) return "columns-2 sm:columns-4 lg:columns-6";
+    if (s <= 4) return "columns-2 sm:columns-3 lg:columns-5";
+    if (s <= 6) return "columns-2 sm:columns-3 lg:columns-4";
+    if (s <= 8) return "columns-1 sm:columns-2 lg:columns-3";
+    return "columns-1 sm:columns-2 lg:columns-2";
+  }
+
   return (
     <div className="max-w-6xl mx-auto px-4 lg:px-8 py-8">
 
@@ -231,6 +280,11 @@ export default function GaleriaPage() {
         </div>
       </div>
 
+      {/* Toolbar de visualização */}
+      <div className="mb-4">
+        <GaleriaToolbar state={toolbar} onChange={updateToolbar} />
+      </div>
+
       {/* Banner "ver evento completo" */}
       {eventoFiltro && eventoSelecionado && (
         <div className="flex items-center justify-between bg-[#EFF5FF] border border-[#2E7DD1]/20 rounded-2xl px-5 py-3 mb-6">
@@ -255,7 +309,7 @@ export default function GaleriaPage() {
           <p className="font-semibold text-[#0D2B4E]">Nenhuma foto encontrada</p>
         </div>
       ) : (
-        <div className="columns-2 sm:columns-3 lg:columns-4 gap-3">
+        <div className={`${gridClasses()} gap-3`}>
           {fotosFiltradas.map((foto, idx) => (
             <GaleriaCard
               key={foto.id}
@@ -263,6 +317,8 @@ export default function GaleriaPage() {
               index={idx}
               favoritada={favoritos.has(foto.id)}
               eventoFiltro={eventoFiltro}
+              thumbPx={thumbPx}
+              view={toolbar.view}
               onOpenLightbox={() => setLightboxIdx(idx)}
               onToggleFav={() => toggleFav(foto.id)}
               onFiltrarEvento={() => setEventoFiltro(foto.eventoId)}
