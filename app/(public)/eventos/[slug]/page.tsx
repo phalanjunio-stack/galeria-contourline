@@ -12,6 +12,7 @@ import FotoCard from "@/app/components/FotoCard";
 import Lightbox from "@/app/components/Lightbox";
 import { AnimatePresence } from "framer-motion";
 import GaleriaLoading from "@/app/components/GaleriaLoading";
+import GaleriaToolbar, { type ToolbarState, type ViewMode, QUALITY_PX } from "@/app/components/GaleriaToolbar";
 import { baixarComoZip } from "@/lib/download-zip";
 import { lerFavoritos, salvarFavoritos } from "@/app/(public)/favoritos/page";
 import { fetchMinhasFotos, lerCacheMinhasFotos, ouvirAtualizacoes } from "@/lib/minhasFotos";
@@ -51,6 +52,42 @@ export default function EventoPage({ params }: { params: Promise<{ slug: string 
   const [modoSelecao,  setModoSelecao]  = useState(false);
   const [baixando,     setBaixando]     = useState(false);
   const [lightboxIdx,  setLightboxIdx]  = useState<number | null>(null);
+
+  // Toolbar de visualização
+  const TOOLBAR_KEY = "galeria-toolbar-evento";
+  const DEFAULT_TOOLBAR: ToolbarState = { view: "grid", quality: "normal", size: 5 };
+  const [toolbar, setToolbar] = useState<ToolbarState>(DEFAULT_TOOLBAR);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(TOOLBAR_KEY);
+      if (raw) setToolbar({ ...DEFAULT_TOOLBAR, ...JSON.parse(raw) });
+    } catch {}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function updateToolbar(next: ToolbarState) {
+    setToolbar(next);
+    try { localStorage.setItem(TOOLBAR_KEY, JSON.stringify(next)); } catch {}
+  }
+
+  function gridClasses(): string {
+    if (toolbar.view === "mobile") return "columns-1";
+    if (toolbar.view === "list")   return "flex flex-col gap-2";
+    const s = toolbar.size;
+    if (toolbar.view === "compact") {
+      if (s <= 2) return "columns-3 sm:columns-5 lg:columns-7";
+      if (s <= 4) return "columns-3 sm:columns-4 lg:columns-6";
+      if (s <= 6) return "columns-2 sm:columns-4 lg:columns-5";
+      if (s <= 8) return "columns-2 sm:columns-3 lg:columns-4";
+      return "columns-2 sm:columns-3 lg:columns-3";
+    }
+    if (s <= 2) return "columns-2 sm:columns-4 lg:columns-6";
+    if (s <= 4) return "columns-2 sm:columns-3 lg:columns-5";
+    if (s <= 6) return "columns-2 sm:columns-3 lg:columns-4";
+    if (s <= 8) return "columns-1 sm:columns-2 lg:columns-3";
+    return "columns-1 sm:columns-2 lg:columns-2";
+  }
 
   // Filtro ativo — inicia em "minhas" se vier da lista com ?filtro=minhas
   const filtroInicial = (searchParams.get("filtro") as FiltroKey | null) ?? "todas";
@@ -489,11 +526,15 @@ export default function EventoPage({ params }: { params: Promise<{ slug: string 
         {/* ── GRID DE FOTOS (masonry — proporção natural) ── */}
         {!loading && fotos.length > 0 && (
           <>
-            <p className="text-gray-500 text-sm mb-4">
-              {fotosFiltradas.length === fotos.length
-                ? `${fotos.length} fotos`
-                : `${fotosFiltradas.length} de ${fotos.length} fotos`}
-            </p>
+            {/* Toolbar + contador */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+              <p className="text-gray-500 text-sm">
+                {fotosFiltradas.length === fotos.length
+                  ? `${fotos.length} fotos`
+                  : `${fotosFiltradas.length} de ${fotos.length} fotos`}
+              </p>
+              <GaleriaToolbar state={toolbar} onChange={updateToolbar} />
+            </div>
 
             {fotosFiltradas.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 gap-3 text-center">
@@ -510,14 +551,14 @@ export default function EventoPage({ params }: { params: Promise<{ slug: string 
                 }
               </div>
             ) : (
-              <div className="columns-2 sm:columns-3 lg:columns-4 gap-3">
+              <div className={`${gridClasses()} gap-3`}>
                 {fotosFiltradas.map((foto, idx) => (
                   <FotoCard
                     key={foto.id}
                     id={foto.id}
                     name={foto.name}
                     index={idx}
-                    masonry
+                    masonry={toolbar.view !== "list"}
                     selecionada={selecionadas.has(foto.id)}
                     favoritada={favoritos.has(foto.id)}
                     modoSelecao={modoSelecao}
@@ -528,7 +569,7 @@ export default function EventoPage({ params }: { params: Promise<{ slug: string 
                     onIniciarSelecao={() => { setModoSelecao(true); toggleSel(foto.id); }}
                     onOpenLightbox={() => setLightboxIdx(idx)}
                     onDefinirCapa={() => definirCapa(foto.id)}
-                    downloadUrl={`/api/download?id=${foto.id}`}
+                    downloadUrl={`/api/download?id=${foto.id}&sz=${QUALITY_PX[toolbar.quality]}`}
                   />
                 ))}
               </div>
