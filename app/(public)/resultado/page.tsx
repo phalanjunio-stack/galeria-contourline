@@ -16,6 +16,7 @@ import {
   notificarAtualizacao, lerDescriptor, lerDescriptors, menorDistancia,
 } from "@/lib/minhasFotos";
 import { fetchDescritores } from "@/lib/descritoresCache";
+import { autoIndexarEventos } from "@/lib/autoIndexar";
 import { acharClustersDoUsuario, type ClusterPessoa } from "@/lib/clustering";
 import type { MinhasFotosEvento } from "@/lib/minhasFotos";
 import { toggleFavorito, isFavorito } from "@/app/(public)/favoritos/page";
@@ -311,12 +312,29 @@ export default function ResultadoPage() {
 
       // ── Eventos com índice (vai pro fallback de descritores soltos pros que não tem cluster) ──
       const indexados: { ev: EventoItem; dados: FotoDescritores[] }[] = [];
+      const naoIndexados: EventoItem[] = [];
       for (const ev of ativos) {
         if (matchesViaClusters.has(ev.id)) continue; // já resolvido via cluster
         const idxJson = await fetchDescritores(ev.id);
         if (idxJson?.indexado && Array.isArray(idxJson.dados) && idxJson.dados.length > 0) {
           indexados.push({ ev, dados: idxJson.dados });
+        } else {
+          naoIndexados.push(ev);
         }
+      }
+
+      // ★ AUTO-INDEXAÇÃO: dispara indexação em background dos eventos sem índice.
+      // Roda em paralelo, NÃO bloqueia a busca atual. StatusDock mostra o progresso.
+      if (naoIndexados.length > 0) {
+        autoIndexarEventos(naoIndexados.map(e => ({
+          id: e.id,
+          nome: e.nome,
+          folder_id: e.folder_id,
+        }))).then((r) => {
+          if (r.disparados > 0) {
+            console.log(`[auto-indexar] ${r.disparados} eventos disparados em background`);
+          }
+        }).catch(() => {});
       }
 
       // Se TUDO foi resolvido via clusters (caminho rápido), salva e retorna
