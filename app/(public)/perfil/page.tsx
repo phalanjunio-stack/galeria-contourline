@@ -200,16 +200,12 @@ function PerfilPageContent() {
     if (!fotoRastreio) return;
     setDetectando(true); setRastreioErro("");
     try {
-      const faceapi = await import("face-api.js");
-      await Promise.all([
-        faceapi.nets.tinyFaceDetector.loadFromUri("/models"),
-        faceapi.nets.faceLandmark68TinyNet.loadFromUri("/models"),
-        faceapi.nets.faceRecognitionNet.loadFromUri("/models"),
-      ]);
+      const { loadFaceModels, detectorOptions } = await import("@/lib/faceapi-loader");
+      const faceapi = await loadFaceModels();
       const img = await faceapi.fetchImage(fotoRastreio);
       const det = await faceapi
-        .detectSingleFace(img, new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.3 }))
-        .withFaceLandmarks(true).withFaceDescriptor();
+        .detectSingleFace(img, detectorOptions(faceapi, 0.4))
+        .withFaceLandmarks(false).withFaceDescriptor();
 
       if (!det) {
         setRastreioErro("Nenhum rosto detectado. Tente outra foto.");

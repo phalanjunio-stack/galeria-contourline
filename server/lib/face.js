@@ -30,11 +30,11 @@ export async function initFaceApi() {
   await tf.ready();
   console.log("[face] Backend TF:", tf.getBackend());
 
-  await faceapi.nets.tinyFaceDetector.loadFromDisk(MODELS_DIR);
-  await faceapi.nets.faceLandmark68TinyNet.loadFromDisk(MODELS_DIR);
+  await faceapi.nets.ssdMobilenetv1.loadFromDisk(MODELS_DIR);
+  await faceapi.nets.faceLandmark68Net.loadFromDisk(MODELS_DIR);
   await faceapi.nets.faceRecognitionNet.loadFromDisk(MODELS_DIR);
   initialized = true;
-  console.log("[face] Modelos carregados");
+  console.log("[face] Modelos carregados (SsdMobilenetv1)");
 }
 
 // Detecta rostos numa imagem (Buffer de PNG/JPEG) e retorna lista de descritores
@@ -46,19 +46,20 @@ export async function detectarRostos(buffer) {
   const ctx = cnv.getContext("2d");
   ctx.drawImage(img, 0, 0);
 
-  const options = new faceapi.TinyFaceDetectorOptions({
-    inputSize: 608,
-    scoreThreshold: 0.15,
+  const options = new faceapi.SsdMobilenetv1Options({
+    minConfidence: 0.5,
+    maxResults: 50,
   });
 
   const detections = await faceapi
     .detectAllFaces(cnv, options)
-    .withFaceLandmarks(true) // tiny landmarks
+    .withFaceLandmarks(false) // full landmarks (não tiny)
     .withFaceDescriptors();
 
-  return detections.map((d) => ({
-    descriptor: Array.from(d.descriptor),
-  }));
+  // Filtra rostos muito pequenos (< 40px) — descritor seria ruim
+  return detections
+    .filter((d) => Math.min(d.detection.box.width, d.detection.box.height) >= 40)
+    .map((d) => ({ descriptor: Array.from(d.descriptor) }));
 }
 
 // Distancia euclidiana entre dois descritores (128 dimensoes)

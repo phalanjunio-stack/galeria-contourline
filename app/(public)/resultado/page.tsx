@@ -435,26 +435,20 @@ export default function ResultadoPage() {
       setFase("comparando");
       setTotal(fotos.length);
 
-      const faceapi = await import("face-api.js");
-      if (!faceapi.nets.tinyFaceDetector.isLoaded) {
-        await Promise.all([
-          faceapi.nets.tinyFaceDetector.loadFromUri("/models"),
-          faceapi.nets.faceLandmark68TinyNet.loadFromUri("/models"),
-          faceapi.nets.faceRecognitionNet.loadFromUri("/models"),
-        ]);
-      }
+      const { loadFaceModels, detectorOptions } = await import("@/lib/faceapi-loader");
+      const faceapi = await loadFaceModels();
 
-      const LIMIAR = 0.60;
+      const LIMIAR = 0.55;
       const LOTE   = 8;
 
       for (let i = 0; i < fotos.length; i += LOTE) {
         const lote = fotos.slice(i, i + LOTE);
         await Promise.all(lote.map(async (foto) => {
           try {
-            const img = await faceapi.fetchImage(`/api/thumb?id=${foto.id}&sz=300`);
+            const img = await faceapi.fetchImage(`/api/thumb?id=${foto.id}&sz=600`);
             const detections = await faceapi
-              .detectAllFaces(img, new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.25, inputSize: 224 }))
-              .withFaceLandmarks(true)
+              .detectAllFaces(img, detectorOptions(faceapi, 0.5))
+              .withFaceLandmarks(false)
               .withFaceDescriptors();
             if (!detections.length) return;
             const melhor = detections.reduce((min, det) => {

@@ -403,16 +403,10 @@ export default function ReconhecimentoPage() {
       if (!lista.length) { setFase("done"); return; }
       setTotal(lista.length);
 
-      // ── 3. Carregar modelos face-api ──────────────────────────────
+      // ── 3. Carregar modelos face-api (SsdMobilenetv1 — detector pesado e preciso) ──
       setFase("carregando_modelos");
-      const faceapi = await import("face-api.js");
-      if (!faceapi.nets.tinyFaceDetector.isLoaded) {
-        await Promise.all([
-          faceapi.nets.tinyFaceDetector.loadFromUri("/models"),
-          faceapi.nets.faceLandmark68TinyNet.loadFromUri("/models"),
-          faceapi.nets.faceRecognitionNet.loadFromUri("/models"),
-        ]);
-      }
+      const { loadFaceModels, detectorOptions } = await import("@/lib/faceapi-loader");
+      const faceapi = await loadFaceModels();
 
       // 0.55 captura "mesma pessoa em ângulo/maquiagem/expressão diferente".
       // < 0.45 era ultra-restrito e perdia muitos matches reais.
@@ -443,19 +437,23 @@ export default function ReconhecimentoPage() {
         const lote = lista.slice(i, i + LOTE);
         await Promise.all(lote.map(async (foto) => {
           try {
-            // sz=800 → 4x mais detalhe que 400. Em foto de grupo, rostos
-            // pequenos passam de ~50px pra ~100px → descritores muito melhores.
+            // sz=800 → resolução boa pra SSD detectar rostos pequenos
             const img = await faceapi.fetchImage(`/api/thumb?id=${foto.id}&sz=800`);
-            // scoreThreshold mais baixo + inputSize maior = detecta rostos menores e laterais.
             const detections = await faceapi
-              .detectAllFaces(img, new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.15, inputSize: 608 }))
-              .withFaceLandmarks(true)
+              .detectAllFaces(img, detectorOptions(faceapi, 0.5))
+              .withFaceLandmarks(/* useTinyModel */ false)
               .withFaceDescriptors();
             if (!detections.length) return;
-            indexFotos.push({ fotoId: foto.id, rostos: detections.map(d => ({ descriptor: Array.from(d.descriptor) })) });
+            // Filtra rostos muito pequenos (< 40px) — descritor seria ruim
+            const validos = detections.filter(d => {
+              const box = d.detection.box;
+              return Math.min(box.width, box.height) >= 40;
+            });
+            if (!validos.length) return;
+            indexFotos.push({ fotoId: foto.id, rostos: validos.map(d => ({ descriptor: Array.from(d.descriptor) })) });
             setFotosIndex(prev => prev + 1);
             if (matcher) {
-              for (const det of detections) {
+              for (const det of validos) {
                 const best = matcher.findBestMatch(det.descriptor);
                 if (best.label === "unknown") continue;
                 const perfil = perfisValidos.find(p => p.email === best.label);

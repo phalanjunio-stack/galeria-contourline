@@ -305,19 +305,14 @@ export default function CadastrarRostoPage() {
     if (!src) return;
     try {
       setStatus("loading-models");
-      const faceapi   = await import("face-api.js");
-      const MODEL_URL = "/models";
-      await Promise.all([
-        faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
-        faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL),
-        faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
-      ]);
+      const { loadFaceModels, detectorOptions } = await import("@/lib/faceapi-loader");
+      const faceapi = await loadFaceModels();
       setStatus("detecting");
 
       const img       = await faceapi.fetchImage(src);
       const detection = await faceapi
-        .detectSingleFace(img, new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.25, inputSize: 416 }))
-        .withFaceLandmarks(true)
+        .detectSingleFace(img, detectorOptions(faceapi, 0.4))
+        .withFaceLandmarks(false)
         .withFaceDescriptor();
 
       if (!detection) {

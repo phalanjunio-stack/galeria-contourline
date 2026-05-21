@@ -89,12 +89,8 @@ function FotosConteudo() {
       const { fotos: todasFotos }: { fotos: { id: string }[] } = await fotosRes.json();
       if (!todasFotos?.length) { setFotos([]); setEstado("ok"); return; }
 
-      const faceapi = await import("face-api.js");
-      await Promise.all([
-        faceapi.nets.tinyFaceDetector.loadFromUri("/models"),
-        faceapi.nets.faceLandmark68TinyNet.loadFromUri("/models"),
-        faceapi.nets.faceRecognitionNet.loadFromUri("/models"),
-      ]);
+      const { loadFaceModels, detectorOptions } = await import("@/lib/faceapi-loader");
+      const faceapi = await loadFaceModels();
 
       const matches: FotoMatch[] = [];
       const lote = 5;
@@ -102,15 +98,15 @@ function FotosConteudo() {
         const batch = todasFotos.slice(i, i + lote);
         await Promise.all(batch.map(async (foto) => {
           try {
-            const img = await faceapi.fetchImage(`/api/thumb?id=${foto.id}&sz=400`);
+            const img = await faceapi.fetchImage(`/api/thumb?id=${foto.id}&sz=600`);
             const dets = await faceapi
-              .detectAllFaces(img, new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.2, inputSize: 416 }))
-              .withFaceLandmarks(true)
+              .detectAllFaces(img, detectorOptions(faceapi, 0.5))
+              .withFaceLandmarks(false)
               .withFaceDescriptors();
 
             for (const det of dets) {
               const dist = faceapi.euclideanDistance(meuDesc, det.descriptor);
-              if (dist < 0.60) matches.push({ id: foto.id, distancia: dist });
+              if (dist < 0.55) matches.push({ id: foto.id, distancia: dist });
             }
           } catch { /* foto com problema, ignora */ }
         }));
