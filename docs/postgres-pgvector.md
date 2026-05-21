@@ -8,12 +8,15 @@ evento.
 
 1. Crie um servico PostgreSQL com `pgvector` habilitado. Uma imagem baseada em
    `pgvector/pgvector` ja traz a extensao `vector`.
-2. Crie o banco e execute `db/face-index.sql`.
-3. Configure a mesma `DATABASE_URL` no app Next.js e no face server.
-4. Reindexe os eventos que precisam entrar na busca vetorial.
+2. Configure a mesma `DATABASE_URL` no app Next.js e no face server.
+3. Reindexe os eventos que precisam entrar na busca vetorial.
 
 Sem `DATABASE_URL`, o app continua usando os JSONs de descritores e clusters
 salvos no Drive ou em `data/descritores`.
+
+O app e o face server criam a extensao `vector`, tabelas e indices na primeira
+conexao com o banco. `db/face-index.sql` continua disponivel para instalacao
+manual ou auditoria.
 
 ## Dados gravados
 

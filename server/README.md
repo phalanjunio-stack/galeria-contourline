@@ -22,9 +22,10 @@ Roda no Render (free tier) e é chamado pelo site Next.js.
 Auth: header `X-Server-Secret` deve bater com env `SERVER_SECRET`.
 
 Se `DATABASE_URL` estiver configurada, cada indexacao tambem grava rostos e
-clusters no PostgreSQL + pgvector. Execute `../db/face-index.sql` no banco antes
-de reindexar eventos. Sem essa variavel, o servidor mantem o fluxo antigo por
-JSON no Drive/local.
+clusters no PostgreSQL + pgvector. O servidor prepara a extensao, tabelas e
+indices na primeira gravacao; `../db/face-index.sql` fica disponivel para
+instalacao manual ou auditoria. Sem essa variavel, o servidor mantem o fluxo
+antigo por JSON no Drive/local.
 
 ## Body do POST /indexar
 
