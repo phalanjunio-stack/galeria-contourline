@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
   typescript: { ignoreBuildErrors: true },
   // Standalone: bundle mínimo para Docker (inclui server.js)
   output: "standalone",
-  serverExternalPackages: ["nodemailer"],
+  serverExternalPackages: ["nodemailer", "pg"],
   // Permite acesso ao dev server vindo de IPs da rede local (celular no mesmo WiFi).
   allowedDevOrigins: [
     "localhost",

@@ -37,8 +37,7 @@ export async function initFaceApi() {
   console.log("[face] Modelos carregados (SsdMobilenetv1)");
 }
 
-// Detecta rostos numa imagem (Buffer de PNG/JPEG) e retorna lista de descritores
-// Cada descritor: Array<128 numeros>
+// Detecta rostos numa imagem (Buffer de PNG/JPEG) e retorna descriptor + area do rosto.
 export async function detectarRostos(buffer) {
   await initFaceApi();
   const img = await loadImage(buffer);
@@ -59,7 +58,16 @@ export async function detectarRostos(buffer) {
   // Filtra rostos muito pequenos (< 40px) — descritor seria ruim
   return detections
     .filter((d) => Math.min(d.detection.box.width, d.detection.box.height) >= 40)
-    .map((d) => ({ descriptor: Array.from(d.descriptor) }));
+    .map((d) => ({
+      descriptor: Array.from(d.descriptor),
+      box: {
+        x: d.detection.box.x,
+        y: d.detection.box.y,
+        width: d.detection.box.width,
+        height: d.detection.box.height,
+      },
+      score: d.detection.score,
+    }));
 }
 
 // Distancia euclidiana entre dois descritores (128 dimensoes)

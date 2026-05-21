@@ -17,6 +17,7 @@
     "@tensorflow/tfjs-backend-wasm": "^4.22.0",
     "@vladmandic/face-api": "^1.7.14",
     "canvas": "^3.1.0",
-    "express": "^4.21.2"
+    "express": "^4.21.2",
+    "pg": "^8.21.0"
   }
 }

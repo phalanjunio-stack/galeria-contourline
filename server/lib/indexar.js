@@ -2,6 +2,7 @@
 import { listarFotosPasta, baixarThumb } from "./drive.js";
 import { lerArquivo, salvarArquivo } from "./storage.js";
 import { detectarRostos, distanceEuclidean } from "./face.js";
+import { substituirIndiceEvento } from "./face-index-db.js";
 
 // Parametros (mesmos do client-side)
 const THRESHOLD_MATCH = 0.55;
@@ -195,6 +196,19 @@ export async function indexarEvento(jobId, perfis) {
       processadoEm: new Date().toISOString(),
       threshold: CLUSTER_THRESHOLD,
       clusters,
+    });
+
+    // PostgreSQL e o indice de busca novo; JSON fica como fallback compativel.
+    job.fase = "salvando_pgvector";
+    await substituirIndiceEvento({
+      eventoId: job.eventoId,
+      eventoNome: job.eventoNome,
+      folderId: job.folderId,
+      descriptors,
+      clusters,
+      totalFotos: fotos.length,
+      fotosComRosto: job.fotosComRosto,
+      rostosDetectados: job.rostosDetectados,
     });
 
     job.fase = "concluido";

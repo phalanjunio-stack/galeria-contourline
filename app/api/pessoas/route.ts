@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth, getAccessTokenFromEnv } from "@/auth";
 import { lerArquivoOculto, salvarArquivoOculto } from "@/lib/drive";
 import { lerDescritoresLocal } from "@/lib/storage-local";
+import { lerClustersDoEventoDb } from "@/lib/face-index-db";
 import type { ClusterPessoa } from "@/lib/clustering";
 
 const ROOT = process.env.DRIVE_ROOT_FOLDER_ID!;
@@ -25,6 +26,22 @@ function chave(eventoId: string) {
 export async function GET(req: NextRequest) {
   const eventoId = req.nextUrl.searchParams.get("eventoId");
   if (!eventoId) return NextResponse.json({ error: "eventoId obrigatório" }, { status: 400 });
+
+  try {
+    const clustersDb = await lerClustersDoEventoDb(eventoId);
+    if (clustersDb?.length) {
+      return NextResponse.json({
+        eventoId,
+        processadoEm: new Date().toISOString(),
+        threshold: 0.50,
+        clusters: clustersDb,
+        indexado: true,
+        source: "pgvector",
+      });
+    }
+  } catch (err) {
+    console.warn("[pessoas] leitura pgvector falhou, usando fallback:", err);
+  }
 
   const session = await auth();
   const token   = (await getAccessTokenFromEnv()) ?? session?.accessToken;

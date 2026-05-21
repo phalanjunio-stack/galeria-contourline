@@ -64,6 +64,7 @@ const FASE_LABEL: Record<string, string> = {
   fazendo_matches: "Procurando usuários nas fotos",
   salvando_matches: "Salvando resultados",
   clusterizando: "Agrupando pessoas",
+  salvando_pgvector: "Atualizando busca vetorial",
   concluido: "Concluído",
 };
 

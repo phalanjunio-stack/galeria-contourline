@@ -290,24 +290,52 @@ export default function ResultadoPage() {
       const ativos = lista.filter(e => e.folder_id);
       if (!ativos.length) { setFase("done"); return; }
 
-      // ★ NOVO: tenta clusters primeiro (rápido) ★
+      // Tenta pgvector primeiro; se ele nao estiver configurado, usa clusters JSON.
       const descriptorsArr = descriptors.map(f => Array.from(f));
       const LIMIAR_CLUSTER = 0.65;
       const matchesViaClusters = new Map<string, { ev: EventoItem; fotos: Set<string>; melhorDist: number }>();
+      let buscaPgvectorAtiva = false;
 
-      for (const ev of ativos) {
-        const r = await fetch(`/api/pessoas?eventoId=${ev.id}`).catch(() => null);
-        const data = r?.ok ? await r.json() : null;
-        if (!data?.indexado || !Array.isArray(data.clusters)) continue;
-        const meus = acharClustersDoUsuario(data.clusters as ClusterPessoa[], descriptorsArr, LIMIAR_CLUSTER);
-        if (meus.length === 0) continue;
-        const fotos = new Set<string>();
-        let melhorDist = Infinity;
-        for (const c of meus) {
-          for (const id of c.fotos) fotos.add(id);
+      try {
+        const buscaRes = await fetch("/api/pessoas/buscar", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            eventoIds: ativos.map(e => e.id),
+            descriptors: descriptorsArr,
+          }),
+        });
+        const buscaData = buscaRes.ok ? await buscaRes.json() : null;
+        buscaPgvectorAtiva = !!buscaData?.enabled;
+        if (Array.isArray(buscaData?.matches)) {
+          for (const match of buscaData.matches as { eventoId: string; dist: number; cluster: ClusterPessoa }[]) {
+            const ev = ativos.find(e => e.id === match.eventoId);
+            if (!ev || !Array.isArray(match.cluster?.fotos)) continue;
+            const anterior = matchesViaClusters.get(ev.id);
+            const fotos = anterior?.fotos ?? new Set<string>();
+            for (const id of match.cluster.fotos) fotos.add(id);
+            matchesViaClusters.set(ev.id, {
+              ev,
+              fotos,
+              melhorDist: Math.min(anterior?.melhorDist ?? Infinity, Number(match.dist) || Infinity),
+            });
+          }
         }
-        // melhorDist será calculado abaixo se precisar; aqui só agregamos
-        matchesViaClusters.set(ev.id, { ev, fotos, melhorDist });
+      } catch { /* fallback abaixo */ }
+
+      if (!buscaPgvectorAtiva) {
+        for (const ev of ativos) {
+          const r = await fetch(`/api/pessoas?eventoId=${ev.id}`).catch(() => null);
+          const data = r?.ok ? await r.json() : null;
+          if (!data?.indexado || !Array.isArray(data.clusters)) continue;
+          const meus = acharClustersDoUsuario(data.clusters as ClusterPessoa[], descriptorsArr, LIMIAR_CLUSTER);
+          if (meus.length === 0) continue;
+          const fotos = new Set<string>();
+          for (const c of meus) {
+            for (const id of c.fotos) fotos.add(id);
+          }
+          matchesViaClusters.set(ev.id, { ev, fotos, melhorDist: Infinity });
+        }
       }
 
       // ── Eventos com índice (vai pro fallback de descritores soltos pros que não tem cluster) ──
