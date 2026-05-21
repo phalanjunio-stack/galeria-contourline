@@ -77,7 +77,9 @@ export async function getAccessTokenFromEnv(): Promise<string | null> {
 }
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
-  // Secret explícito — fallback hardcoded para quando env var nao chega na Vercel
+  // Confia no Host vindo do proxy (Traefik/Nginx)
+  trustHost: true,
+  // Secret explícito — fallback hardcoded para quando env var nao chega
   secret: process.env.AUTH_SECRET
     ?? process.env.NEXTAUTH_SECRET
     ?? "56d99d13400fccc48be2b47222619a787cf86521bc956b7f75b752f157787f50",
