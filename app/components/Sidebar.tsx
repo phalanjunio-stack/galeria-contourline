@@ -13,6 +13,9 @@ import { abrirInfoModal } from "./InfoModais";
 import { playSound } from "@/lib/sounds";
 
 const COLLAPSED_KEY = "galeria-sidebar-collapsed";
+const COLLAPSED_EVENT = "galeria-sidebar-collapsed-changed";
+const SIDEBAR_OPEN_PX = 240;
+const SIDEBAR_CLOSED_PX = 68;
 
 function getNotifCount() {
   try { return parseInt(localStorage.getItem("notif_novas_fotos") ?? "0"); } catch { return 0; }
@@ -40,19 +43,34 @@ export default function Sidebar() {
   const lastPlay  = useRef(0);
   const unlocked  = useRef(false);
 
+  // Aplica CSS var --sidebar-w no root pra outros componentes reagirem instantaneamente
+  function aplicarSidebarVar(next: boolean) {
+    if (typeof document === "undefined") return;
+    document.documentElement.style.setProperty(
+      "--sidebar-w",
+      `${next ? SIDEBAR_CLOSED_PX : SIDEBAR_OPEN_PX}px`
+    );
+  }
+
   // Persistir estado de colapso
   useEffect(() => {
-    try {
-      const v = localStorage.getItem(COLLAPSED_KEY);
-      if (v === "1") setCollapsed(true);
-    } catch {}
+    let v: string | null = null;
+    try { v = localStorage.getItem(COLLAPSED_KEY); } catch {}
+    const isCollapsed = v === "1";
+    setCollapsed(isCollapsed);
+    aplicarSidebarVar(isCollapsed);
   }, []);
 
   function toggleCollapsed() {
     const next = !collapsed;
     setCollapsed(next);
+    aplicarSidebarVar(next);
     playSound(next ? "close" : "open");
     try { localStorage.setItem(COLLAPSED_KEY, next ? "1" : "0"); } catch {}
+    // Dispara evento custom — MainContent/Topbar escutam pra reagir instantâneo
+    try {
+      window.dispatchEvent(new CustomEvent(COLLAPSED_EVENT, { detail: { collapsed: next } }));
+    } catch {}
   }
 
   useEffect(() => {

@@ -8,6 +8,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import ThemeToggle from "./ThemeToggle";
 import { playSound } from "@/lib/sounds";
 
+const COLLAPSED_KEY   = "galeria-sidebar-collapsed";
+const COLLAPSED_EVENT = "galeria-sidebar-collapsed-changed";
+const SIDEBAR_OPEN_PX   = 240;
+const SIDEBAR_CLOSED_PX = 68;
+
 interface Notificacao {
   id: string;
   titulo: string;
@@ -40,7 +45,6 @@ function SinhoNotif({ email }: { email?: string }) {
     return () => clearInterval(timer);
   }, [carregar]);
 
-  // Fecha ao clicar fora
   useEffect(() => {
     function onClick(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) {
@@ -93,10 +97,8 @@ function SinhoNotif({ email }: { email?: string }) {
       <motion.button
         whileTap={{ scale: 0.92 }}
         onClick={toggleAberto}
-        className={`relative p-2 rounded-xl transition-all duration-150
-          ${aberto
-            ? "bg-[#EFF5FF] text-[#2E7DD1] shadow-[0_0_12px_rgba(46,125,209,0.2)]"
-            : "text-[#1A4A80] hover:bg-[#EFF5FF]"}`}>
+        className={`tb-icon-btn relative p-2 rounded-xl transition-all duration-150
+          ${aberto ? "is-active" : ""}`}>
         <Bell size={20} />
         {naoLidas > 0 && (
           <motion.span
@@ -109,7 +111,6 @@ function SinhoNotif({ email }: { email?: string }) {
         )}
       </motion.button>
 
-      {/* Dropdown com animação */}
       <AnimatePresence>
         {aberto && (
           <motion.div
@@ -117,17 +118,10 @@ function SinhoNotif({ email }: { email?: string }) {
             animate={{ opacity: 1, y: 0,  scale: 1    }}
             exit={{    opacity: 0, y: -8, scale: 0.97 }}
             transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
-            className="absolute right-0 top-full mt-2 w-80 rounded-2xl shadow-xl z-50 overflow-hidden"
-            style={{
-              background: "rgba(255,255,255,0.97)",
-              backdropFilter: "blur(12px)",
-              border: "1px solid rgba(46,125,209,0.15)",
-              boxShadow: "0 8px 32px rgba(13,43,78,0.12), 0 0 0 1px rgba(46,125,209,0.1)",
-            }}
+            className="tb-notif-dropdown absolute right-0 top-full mt-2 w-80 rounded-2xl shadow-xl z-50 overflow-hidden"
           >
-            {/* Header */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-50">
-              <span className="font-bold text-[#0D2B4E] text-sm">Notificações</span>
+            <div className="flex items-center justify-between px-4 py-3 border-b tb-notif-header">
+              <span className="font-bold text-sm">Notificações</span>
               {naoLidas > 0 && (
                 <button onClick={marcarTodasLidas}
                   className="text-xs text-[#2E7DD1] font-semibold hover:underline flex items-center gap-1">
@@ -136,20 +130,18 @@ function SinhoNotif({ email }: { email?: string }) {
               )}
             </div>
 
-            {/* Lista */}
             <div className="max-h-80 overflow-y-auto">
               {notifs.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-10 text-center px-4">
-                  <Bell size={28} className="text-gray-200 mb-2" />
-                  <p className="text-gray-400 text-sm">Sem notificações</p>
-                  <p className="text-gray-300 text-xs mt-1">Você será avisado quando aparecer em novas fotos</p>
+                  <Bell size={28} className="text-gray-300 mb-2 opacity-40" />
+                  <p className="text-sm opacity-60">Sem notificações</p>
+                  <p className="text-xs mt-1 opacity-40">Você será avisado quando aparecer em novas fotos</p>
                 </div>
               ) : (
                 notifs.map(n => (
-                  <motion.div
+                  <div
                     key={n.id}
-                    whileHover={{ backgroundColor: "rgba(239,245,255,0.8)" }}
-                    className={`flex gap-3 px-4 py-3 border-b border-gray-50 transition cursor-pointer ${!n.lida ? "bg-blue-50/40" : ""}`}
+                    className={`tb-notif-row flex gap-3 px-4 py-3 border-b cursor-pointer transition ${!n.lida ? "is-unread" : ""}`}
                     onClick={() => { playSound("tap"); marcarLida(n.id); if (n.link) window.location.href = n.link; }}>
 
                     <div className="shrink-0">
@@ -161,18 +153,17 @@ function SinhoNotif({ email }: { email?: string }) {
                     </div>
 
                     <div className="flex-1 min-w-0">
-                      <p className={`text-sm leading-tight ${!n.lida ? "font-bold text-[#0D2B4E]" : "font-medium text-gray-600"}`}>
+                      <p className={`text-sm leading-tight ${!n.lida ? "font-bold" : "font-medium opacity-70"}`}>
                         {n.titulo}
                       </p>
-                      <p className="text-gray-400 text-xs mt-0.5 line-clamp-1">{n.mensagem}</p>
-                      <p className="text-gray-300 text-[11px] mt-1">{tempo(n.criada_em)}</p>
+                      <p className="text-xs mt-0.5 line-clamp-1 opacity-50">{n.mensagem}</p>
+                      <p className="text-[11px] mt-1 opacity-40">{tempo(n.criada_em)}</p>
                     </div>
 
                     {!n.lida && (
-                      <div className="w-2 h-2 rounded-full bg-[#2E7DD1] shrink-0 mt-2
-                        shadow-[0_0_6px_rgba(46,125,209,0.5)]" />
+                      <div className="w-2 h-2 rounded-full bg-[#2E7DD1] shrink-0 mt-2 shadow-[0_0_6px_rgba(46,125,209,0.5)]" />
                     )}
-                  </motion.div>
+                  </div>
                 ))
               )}
             </div>
@@ -188,6 +179,7 @@ export default function Topbar() {
   const [usuarioSimples, setUsuarioSimples] = useState<{ nome: string; email: string } | null>(null);
   const [fotoSimples,    setFotoSimples]    = useState<string | null>(null);
   const [searchFocused,  setSearchFocused]  = useState(false);
+  const [collapsed,      setCollapsed]      = useState(false);
 
   function carregarLocalStorage() {
     try {
@@ -204,68 +196,69 @@ export default function Topbar() {
     return () => window.removeEventListener("profile-updated", carregarLocalStorage);
   }, []);
 
+  // Escuta colapso da sidebar pra ajustar 'left'
+  useEffect(() => {
+    try { setCollapsed(localStorage.getItem(COLLAPSED_KEY) === "1"); } catch {}
+    function onCustom(e: Event) {
+      const ev = e as CustomEvent<{ collapsed: boolean }>;
+      setCollapsed(!!ev.detail?.collapsed);
+    }
+    window.addEventListener(COLLAPSED_EVENT, onCustom as EventListener);
+    return () => window.removeEventListener(COLLAPSED_EVENT, onCustom as EventListener);
+  }, []);
+
   const emailNotif     = session?.user?.email ?? usuarioSimples?.email;
   const nomeSimples    = usuarioSimples?.nome ?? "";
   const inicialSimples = nomeSimples.trim()[0]?.toUpperCase() ?? "?";
 
+  // Em telas <lg, left=0; em lg+, left = largura atual da sidebar
+  const lgLeft = collapsed ? SIDEBAR_CLOSED_PX : SIDEBAR_OPEN_PX;
+
   return (
     <header
-      className="fixed top-0 right-0 left-0 lg:left-60 z-20 transition-all duration-300"
+      className="topbar-shell fixed top-0 right-0 left-0 z-20"
       style={{
-        background: "rgba(255,255,255,0.85)",
-        backdropFilter: "blur(16px)",
-        WebkitBackdropFilter: "blur(16px)",
-        borderBottom: "1px solid rgba(229,231,235,0.8)",
-        boxShadow: "0 1px 20px rgba(13,43,78,0.06)",
+        // Custom property pra media query pegar
+        ["--tb-lg-left" as never]: `${lgLeft}px`,
+        transition: "left 0.3s cubic-bezier(0.22, 1, 0.36, 1)",
       }}
     >
       <div className="flex items-center gap-3 px-4 lg:px-6 h-16">
 
-        {/* Mobile: logo */}
         <Link href="/" className="flex items-center lg:hidden">
           <Image src="/logos/logo.png" alt="Contourline" width={120} height={32} priority />
         </Link>
 
-        {/* Desktop: busca com glow */}
+        {/* Busca */}
         <div className="hidden lg:flex w-80 relative">
           <Search size={15} className={`absolute left-3 top-1/2 -translate-y-1/2 transition-colors duration-200
-            ${searchFocused ? "text-[#2E7DD1]" : "text-gray-400"}`} />
+            ${searchFocused ? "text-[#2E7DD1]" : "tb-search-icon"}`} />
           <input
             type="text"
             placeholder="Buscar fotos, eventos ou pessoas..."
             onFocus={() => setSearchFocused(true)}
             onBlur={() => setSearchFocused(false)}
-            className="w-full pl-9 pr-4 py-2.5 rounded-xl border text-sm text-[#0D2B4E] placeholder-gray-400
-              focus:outline-none transition-all duration-200"
-            style={{
-              background: searchFocused ? "#fff" : "#F5F7FA",
-              borderColor: searchFocused ? "#2E7DD1" : "#e5e7eb",
-              boxShadow: searchFocused
-                ? "0 0 0 3px rgba(46,125,209,0.15), 0 2px 8px rgba(46,125,209,0.1)"
-                : "none",
-            }}
+            className={`tb-search-input w-full pl-9 pr-4 py-2.5 rounded-xl border text-sm
+              focus:outline-none transition-all duration-200
+              ${searchFocused ? "is-focused" : ""}`}
           />
         </div>
 
         <div className="flex-1" />
 
-        {/* Botão facial (desktop) */}
         <Link href="/cadastrar-rosto"
-          className="hidden lg:flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold
-            whitespace-nowrap transition-all duration-200 hover:shadow-[0_0_14px_rgba(46,125,209,0.25)]"
-          style={{ border: "1px solid rgba(46,125,209,0.3)", background: "#EFF5FF", color: "#1A4A80" }}
+          className="tb-facial-btn hidden lg:flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold
+            whitespace-nowrap transition-all duration-200"
           onMouseEnter={() => playSound("tap")}>
           <Scan size={15} /> Busca por reconhecimento facial
         </Link>
 
         <div className="flex-1 lg:hidden" />
 
-        {/* Ações */}
         <div className="flex items-center gap-1.5 lg:mr-8">
           <ThemeToggle />
           <SinhoNotif email={emailNotif} />
 
-          {/* Avatar */}
           {session?.user ? (
             <Link href="/perfil" className="flex items-center gap-2 pl-1" title={session.user.name ?? ""}>
               {session.user.image
