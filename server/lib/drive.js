@@ -137,20 +137,28 @@ export async function baixarFoto(fileId) {
 }
 
 // Baixa thumbnail compacto (mais rapido, suficiente pra deteccao)
-export async function baixarThumb(fileId, size = 800) {
+// Se thumbnailLink já foi obtido na listagem, passar pra evitar 1 fetch de meta.
+export async function baixarThumb(fileId, size = 640, thumbnailLink = null) {
+  // Caminho rápido: temos o link, baixa direto
+  if (thumbnailLink) {
+    const thumbUrl = thumbnailLink.replace(/=s\d+$/, `=s${size}`);
+    const imgRes = await fetch(thumbUrl);
+    if (imgRes.ok) {
+      const arrayBuffer = await imgRes.arrayBuffer();
+      return Buffer.from(arrayBuffer);
+    }
+    // Cai pro fallback abaixo
+  }
+
+  // Caminho legado: pega link via meta + baixa
   const token = await getAccessToken();
-  // Pega thumbnailLink dinamicamente
   const metaRes = await fetch(
     `${DRIVE_API}/files/${fileId}?fields=thumbnailLink&supportsAllDrives=true`,
     { headers: { Authorization: `Bearer ${token}` } }
   );
   if (!metaRes.ok) throw new Error(`Drive meta ${fileId}: ${metaRes.status}`);
   const meta = await metaRes.json();
-  if (!meta.thumbnailLink) {
-    // Fallback: baixa original
-    return baixarFoto(fileId);
-  }
-  // Ajusta size na URL (=s220 → =s{size})
+  if (!meta.thumbnailLink) return baixarFoto(fileId);
   const thumbUrl = meta.thumbnailLink.replace(/=s\d+$/, `=s${size}`);
   const imgRes = await fetch(thumbUrl);
   if (!imgRes.ok) throw new Error(`Drive thumb ${fileId}: ${imgRes.status}`);

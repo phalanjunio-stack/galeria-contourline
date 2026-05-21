@@ -6,7 +6,9 @@ import { detectarRostos, distanceEuclidean } from "./face.js";
 // Parametros (mesmos do client-side)
 const THRESHOLD_MATCH = 0.55;
 const CLUSTER_THRESHOLD = 0.50;
-const LOTE = 2; // Render Free CPU eh fraca, processa de 2 em 2
+// Concurrencia configuravel — Render Free CPU = 2-3, plano pago = 6-8, local = 8-12
+const LOTE = Number(process.env.INDEX_BATCH_SIZE || 4);
+const THUMB_SIZE = Number(process.env.INDEX_THUMB_SIZE || 640);
 const SAVE_A_CADA = 16; // Salva parcial a cada 16 fotos
 
 // Jobs em memoria (chave: jobId)
@@ -65,25 +67,57 @@ export async function indexarEvento(jobId, perfis) {
     );
 
     // ─── Fase 3: Detectar rostos ──────────────────────────────────
+    // PIPELINE: enquanto o lote N está sendo DETECTADO, já BAIXA o lote N+1
     job.fase = "detectando_rostos";
-    for (let i = 0; i < fotosParaProcessar.length; i += LOTE) {
-      const lote = fotosParaProcessar.slice(i, i + LOTE);
-      const resultados = await Promise.all(
+    console.log(`[job ${jobId}] LOTE=${LOTE} THUMB=${THUMB_SIZE}px`);
+    const tBaseline = Date.now();
+
+    // Helper: baixa buffers de um lote em paralelo (passa thumbnailLink direto)
+    const baixarLote = (lote) =>
+      Promise.all(
         lote.map(async (foto) => {
           try {
-            const buf = await baixarThumb(foto.id, 800);
+            const buf = await baixarThumb(foto.id, THUMB_SIZE, foto.thumbnailLink);
+            return { foto, buf, err: null };
+          } catch (err) {
+            return { foto, buf: null, err };
+          }
+        })
+      );
+
+    // Helper: detecta rostos de um lote já baixado
+    const detectarLote = (loteBaixado) =>
+      Promise.all(
+        loteBaixado.map(async ({ foto, buf, err }) => {
+          if (err || !buf) {
+            console.warn(`[job ${jobId}] foto ${foto.id} download falhou:`, err?.message);
+            return { fotoId: foto.id, rostos: [] };
+          }
+          try {
             const rostos = await detectarRostos(buf);
             return { fotoId: foto.id, rostos };
-          } catch (err) {
-            console.warn(`[job ${jobId}] foto ${foto.id} falhou:`, err.message);
+          } catch (err2) {
+            console.warn(`[job ${jobId}] foto ${foto.id} detect falhou:`, err2.message);
             return { fotoId: foto.id, rostos: [] };
           }
         })
       );
-      descriptors.push(...resultados);
-      job.fotosProcessadas += lote.length;
 
-      // Salvamento parcial periodico
+    // Inicia primeiro lote
+    let proxLoteBaixado = baixarLote(fotosParaProcessar.slice(0, LOTE));
+
+    for (let i = 0; i < fotosParaProcessar.length; i += LOTE) {
+      const loteBaixado = await proxLoteBaixado;
+      // Já dispara o download do próximo enquanto detecta o atual
+      proxLoteBaixado = i + LOTE < fotosParaProcessar.length
+        ? baixarLote(fotosParaProcessar.slice(i + LOTE, i + 2 * LOTE))
+        : Promise.resolve([]);
+
+      const resultados = await detectarLote(loteBaixado);
+      descriptors.push(...resultados);
+      job.fotosProcessadas += loteBaixado.length;
+
+      // Salvamento parcial periódico
       const desdeUltimoSave = job.fotosProcessadas % SAVE_A_CADA;
       if (desdeUltimoSave < LOTE) {
         await salvarArquivo(
@@ -91,7 +125,9 @@ export async function indexarEvento(jobId, perfis) {
           `_desc_${job.eventoId}.json`,
           descriptors
         );
-        console.log(`[job ${jobId}] Salvo parcial (${job.fotosProcessadas}/${fotos.length})`);
+        const dt = ((Date.now() - tBaseline) / 1000).toFixed(1);
+        const rate = (job.fotosProcessadas / Math.max(1, parseFloat(dt))).toFixed(2);
+        console.log(`[job ${jobId}] ${job.fotosProcessadas}/${fotos.length} (${dt}s, ${rate} fotos/s)`);
       }
     }
 
