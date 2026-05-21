@@ -174,13 +174,12 @@ export default function Lightbox({ fotos, index, favoritos, nomeEvento, onClose,
               animate={{ opacity: 1, x: 0,        scale: 1    }}
               exit={{    opacity: 0, x: dir * -60, scale: 0.96 }}
               transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-              className="relative flex items-center justify-center"
+              className="glow-active relative flex items-center justify-center rounded-2xl"
             >
               <img
                 src={fullUrl(foto.id)}
                 alt={foto.name}
-                className="max-h-full max-w-full rounded-2xl object-contain shadow-2xl select-none
-                  ring-1 ring-white/10"
+                className="max-h-full max-w-full rounded-2xl object-contain shadow-2xl select-none"
                 style={{ maxHeight: "calc(100vh - 160px)" }}
               />
               {/* Marca d'água */}

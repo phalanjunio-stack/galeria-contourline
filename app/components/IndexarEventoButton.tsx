@@ -73,6 +73,7 @@ export default function IndexarEventoButton({ eventoId, eventoNome, folderId, to
 
   return (
     <div className="relative">
+      <div className={jaIndexando ? "glow-active rounded-xl inline-block" : "inline-block"}>
       <motion.button
         whileHover={!disabled ? { y: -1 } : undefined}
         whileTap={!disabled ? { scale: 0.97 } : undefined}
@@ -114,6 +115,7 @@ export default function IndexarEventoButton({ eventoId, eventoNome, folderId, to
           />
         )}
       </motion.button>
+      </div>
 
       {/* Toast inline */}
       {mensagem && (

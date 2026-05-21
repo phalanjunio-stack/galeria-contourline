@@ -49,7 +49,7 @@ export default function InfoModais() {
       onClick={() => setAberto(null)}
     >
       <div
-        className="relative bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl"
+        className="glow-active relative bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl"
         onClick={e => e.stopPropagation()}
       >
         <button
