@@ -7,8 +7,9 @@ WORKDIR /app
 RUN apk add --no-cache libc6-compat python3 make g++
 
 # Copia manifests e instala deps
+# Usa npm install (não ci) para tolerar lock desatualizado
 COPY package.json package-lock.json* ./
-RUN npm ci --prefer-offline
+RUN npm install --no-audit --no-fund
 
 # Copia o código e faz o build
 COPY . .
