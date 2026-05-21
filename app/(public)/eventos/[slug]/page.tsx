@@ -12,7 +12,8 @@ import FotoCard from "@/app/components/FotoCard";
 import Lightbox from "@/app/components/Lightbox";
 import { AnimatePresence } from "framer-motion";
 import GaleriaLoading from "@/app/components/GaleriaLoading";
-import GaleriaToolbar, { type ToolbarState, type ViewMode, QUALITY_PX } from "@/app/components/GaleriaToolbar";
+import GaleriaToolbar, { type ToolbarState, QUALITY_PX } from "@/app/components/GaleriaToolbar";
+import IndexarEventoButton from "@/app/components/IndexarEventoButton";
 import { baixarComoZip } from "@/lib/download-zip";
 import { lerFavoritos, salvarFavoritos } from "@/app/(public)/favoritos/page";
 import { fetchMinhasFotos, lerCacheMinhasFotos, ouvirAtualizacoes } from "@/lib/minhasFotos";
@@ -362,6 +363,16 @@ export default function EventoPage({ params }: { params: Promise<{ slug: string 
             <button className="flex items-center gap-2 px-5 py-3 rounded-xl border border-gray-200 text-[#1A4A80] font-semibold text-sm hover:bg-[#EFF5FF] transition">
               <Share2 size={16} /> Compartilhar evento
             </button>
+
+            {/* Botão Indexar — público */}
+            {evento?.folder_id && fotos.length > 0 && (
+              <IndexarEventoButton
+                eventoId={evento.id}
+                eventoNome={evento.nome}
+                folderId={evento.folder_id}
+                totalFotos={fotos.length}
+              />
+            )}
           </div>
         )}
 

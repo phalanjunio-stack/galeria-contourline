@@ -5,6 +5,7 @@ import ScrollToTop from "../components/ScrollToTop";
 import Footer from "../components/Footer";
 import InfoModais from "../components/InfoModais";
 import MainContent from "../components/MainContent";
+import StatusDock from "../components/StatusDock";
 import { ToastProvider } from "../components/ToastProvider";
 
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
@@ -36,6 +37,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
         <BottomBar />
         <ScrollToTop />
         <InfoModais />
+        <StatusDock />
       </div>
     </ToastProvider>
   );
