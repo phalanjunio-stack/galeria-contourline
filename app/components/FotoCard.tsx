@@ -13,6 +13,8 @@ interface Props {
   isCapa?: boolean;
   isAdmin?: boolean;
   masonry?: boolean;
+  /** No mobile (tela pequena), exibe portrait crop 3:4 em vez da proporção natural */
+  mobilePortrait?: boolean;
   onToggleSel: () => void;
   onToggleFav: () => void;
   onIniciarSelecao: () => void;
@@ -29,7 +31,7 @@ function thumbUrl(id: string, size: number) {
 
 export default function FotoCard({
   id, name, index = 0, selecionada, favoritada, modoSelecao,
-  isCapa, isAdmin, masonry = false,
+  isCapa, isAdmin, masonry = false, mobilePortrait = false,
   onToggleSel, onToggleFav, onIniciarSelecao, onOpenLightbox, onDefinirCapa, downloadUrl,
   thumbSize = 400,
 }: Props) {
@@ -89,13 +91,13 @@ export default function FotoCard({
         ${selecionada ? "ring-[3px] ring-[#2E7DD1] ring-offset-2 scale-[0.97]" : "hover:shadow-xl hover:-translate-y-0.5"}`}
     >
       {/* Inner — fica acima da borda glow */}
-      <div className="relative w-full h-full rounded-xl overflow-hidden z-[2]
-        bg-gradient-to-br from-[#1A4A80]/10 to-[#2E7DD1]/10">
+      <div className={`relative rounded-xl overflow-hidden z-[2] bg-gradient-to-br from-[#1A4A80]/10 to-[#2E7DD1]/10
+        ${masonry && mobilePortrait ? "aspect-[3/4] sm:aspect-auto w-full" : "w-full h-full"}`}>
 
         {/* Skeleton */}
         {!loaded && (
           <div className={`bg-gradient-to-br from-[#1A4A80]/30 to-[#2E7DD1]/30 animate-pulse
-            ${masonry ? "w-full aspect-[4/3]" : "absolute inset-0"}`} />
+            ${masonry && !mobilePortrait ? "w-full aspect-[4/3]" : masonry ? "w-full aspect-[3/4] sm:aspect-auto" : "absolute inset-0"}`} />
         )}
 
         {/* Blur placeholder */}
@@ -104,7 +106,7 @@ export default function FotoCard({
             src={thumbUrl(id, 40)}
             alt=""
             aria-hidden
-            className={`absolute inset-0 w-full h-full object-cover scale-110 blur-lg transition-opacity duration-300
+            className={`${masonry && mobilePortrait ? "absolute inset-0 w-full h-full" : "absolute inset-0 w-full h-full"} object-cover scale-110 blur-lg transition-opacity duration-300
               ${loaded ? "opacity-0" : "opacity-100"}`}
           />
         )}
@@ -117,9 +119,14 @@ export default function FotoCard({
             decoding="async"
             onLoad={() => setLoaded(true)}
             className={`transition-all duration-500 group-hover:scale-[1.03]
-              ${masonry
-                ? `w-full h-auto block ${loaded ? "opacity-100" : "opacity-0"}`
-                : `absolute inset-0 w-full h-full object-cover ${loaded ? "opacity-100" : "opacity-0"}`
+              ${masonry && mobilePortrait
+                // Mobile: portrait crop 3:4; sm+ preserva proporção natural
+                ? `w-full block sm:h-auto sm:relative sm:inset-auto
+                   h-full absolute inset-0 object-cover
+                   ${loaded ? "opacity-100" : "opacity-0"}`
+                : masonry
+                  ? `w-full h-auto block ${loaded ? "opacity-100" : "opacity-0"}`
+                  : `absolute inset-0 w-full h-full object-cover ${loaded ? "opacity-100" : "opacity-0"}`
               }`}
           />
         )}

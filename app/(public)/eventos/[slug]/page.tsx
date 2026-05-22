@@ -1,5 +1,5 @@
 "use client";
-import { use, useEffect, useState, useCallback, useMemo } from "react";
+import { use, useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -72,6 +72,8 @@ export default function EventoPage({ params }: { params: Promise<{ slug: string 
   const [favoritos,    setFavoritos]    = useState<Set<string>>(new Set());
   const [selecionadas, setSelecionadas] = useState<Set<string>>(new Set());
   const [modoSelecao,  setModoSelecao]  = useState(false);
+  const [visiveis,     setVisiveis]     = useState(60); // paginação
+  const sentinelRef = useRef<HTMLDivElement>(null);
   const [baixando,     setBaixando]     = useState(false);
   const [lightboxIdx,  setLightboxIdx]  = useState<number | null>(null);
 
@@ -305,6 +307,20 @@ export default function EventoPage({ params }: { params: Promise<{ slug: string 
   function toggleSel(id: string) {
     setSelecionadas(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
   }
+
+  // Reset paginação ao mudar filtro ou fotos
+  useEffect(() => { setVisiveis(60); }, [filtroAtivo, fotos]);
+
+  // Sentinel — carrega mais ao chegar no fim
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(([e]) => {
+      if (e.isIntersecting) setVisiveis(v => v + 60);
+    }, { rootMargin: "400px" });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [fotosFiltradas?.length]);
 
   // Fotos filtradas conforme filtro ativo
   const fotosFiltradas = useMemo(() => {
@@ -649,29 +665,41 @@ export default function EventoPage({ params }: { params: Promise<{ slug: string 
                 }
               </div>
             ) : (
-              <div className={`${gridClasses()} gap-3`}>
-                {fotosFiltradas.map((foto, idx) => (
-                  <FotoCard
-                    key={foto.id}
-                    id={foto.id}
-                    name={foto.name}
-                    index={idx}
-                    masonry={toolbar.view !== "list"}
-                    selecionada={selecionadas.has(foto.id)}
-                    favoritada={favoritos.has(foto.id)}
-                    modoSelecao={modoSelecao}
-                    isCapa={foto.id === evento?.capa_id}
-                    isAdmin={isAdmin}
-                    onToggleSel={() => toggleSel(foto.id)}
-                    onToggleFav={() => toggleFav(foto.id)}
-                    onIniciarSelecao={() => { setModoSelecao(true); toggleSel(foto.id); }}
-                    onOpenLightbox={() => setLightboxIdx(idx)}
-                    onDefinirCapa={() => definirCapa(foto.id)}
-                    thumbSize={QUALITY_PX[toolbar.quality]}
-                    downloadUrl={`/api/download?id=${foto.id}&sz=${QUALITY_PX[toolbar.quality]}`}
-                  />
-                ))}
-              </div>
+              <>
+                <div className={`${gridClasses()} gap-3`}>
+                  {fotosFiltradas.slice(0, visiveis).map((foto, idx) => (
+                    <FotoCard
+                      key={foto.id}
+                      id={foto.id}
+                      name={foto.name}
+                      index={idx}
+                      masonry={toolbar.view !== "list"}
+                      mobilePortrait={toolbar.view !== "list" && toolbar.view !== "mobile"}
+                      selecionada={selecionadas.has(foto.id)}
+                      favoritada={favoritos.has(foto.id)}
+                      modoSelecao={modoSelecao}
+                      isCapa={foto.id === evento?.capa_id}
+                      isAdmin={isAdmin}
+                      onToggleSel={() => toggleSel(foto.id)}
+                      onToggleFav={() => toggleFav(foto.id)}
+                      onIniciarSelecao={() => { setModoSelecao(true); toggleSel(foto.id); }}
+                      onOpenLightbox={() => setLightboxIdx(idx)}
+                      onDefinirCapa={() => definirCapa(foto.id)}
+                      thumbSize={QUALITY_PX[toolbar.quality]}
+                      downloadUrl={`/api/download?id=${foto.id}&sz=${QUALITY_PX[toolbar.quality]}`}
+                    />
+                  ))}
+                </div>
+                {/* Sentinel de paginação */}
+                {visiveis < fotosFiltradas.length && (
+                  <div ref={sentinelRef} className="flex justify-center py-8">
+                    <div className="flex items-center gap-2 text-sm text-gray-400">
+                      <Loader2 size={16} className="animate-spin text-[#2E7DD1]" />
+                      Carregando mais fotos… ({visiveis} de {fotosFiltradas.length})
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </>
         )}
