@@ -3,9 +3,34 @@
 
 let cache = { token: null, expiresAt: 0 };
 
+async function obterTokenDaGaleria() {
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "");
+  const secret = process.env.SERVER_SECRET;
+  if (!siteUrl || !secret) return null;
+
+  const res = await fetch(`${siteUrl}/api/indexar/token`, {
+    headers: { "X-Server-Secret": secret },
+  });
+  if (!res.ok) {
+    throw new Error(`Galeria nao entregou token Drive: HTTP ${res.status}`);
+  }
+
+  const data = await res.json();
+  return typeof data?.accessToken === "string" ? data.accessToken : null;
+}
+
 export async function getAccessToken() {
   const agora = Math.floor(Date.now() / 1000);
   if (cache.token && cache.expiresAt > agora + 60) {
+    return cache.token;
+  }
+
+  const tokenGaleria = await obterTokenDaGaleria();
+  if (tokenGaleria) {
+    cache = {
+      token: tokenGaleria,
+      expiresAt: agora + 50 * 60,
+    };
     return cache.token;
   }
 

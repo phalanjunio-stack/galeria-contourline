@@ -42,6 +42,11 @@ Com essas variaveis o face server busca eventos e perfis no endpoint interno
 `/api/indexar/catalogo`, compara o Drive com os descritores ja salvos e indexa
 somente eventos com fotos pendentes.
 
+Com `NEXT_PUBLIC_SITE_URL` e `SERVER_SECRET`, o face server tambem pede a
+galeria um access token Drive por `/api/indexar/token`. Nesse modo ele nao
+precisa manter uma segunda copia de `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`
+e `GOOGLE_REFRESH_TOKEN`.
+
 ## Body do POST /indexar
 
 ```json
