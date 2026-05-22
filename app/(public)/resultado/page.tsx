@@ -713,6 +713,10 @@ export default function ResultadoPage() {
     );
   }
 
+  if (confirmando || confirmado) return (
+    <GaleriaLoading label={confirmado ? "Carregando suas fotos..." : "Salvando suas fotos..."} />
+  );
+
   if (fase === "sem-rosto") return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center px-4">
       <ScanFace size={48} className="text-gray-300" />
