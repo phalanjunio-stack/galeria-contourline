@@ -364,7 +364,7 @@ export default function EventoPage({ params }: { params: Promise<{ slug: string 
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 lg:px-8 py-8">
+      <div className="w-full mx-auto px-4 lg:px-8 py-8">
 
         {/* Ações principais */}
         {!modoSelecao && (
@@ -600,6 +600,7 @@ export default function EventoPage({ params }: { params: Promise<{ slug: string 
                     onIniciarSelecao={() => { setModoSelecao(true); toggleSel(foto.id); }}
                     onOpenLightbox={() => setLightboxIdx(idx)}
                     onDefinirCapa={() => definirCapa(foto.id)}
+                    thumbSize={QUALITY_PX[toolbar.quality]}
                     downloadUrl={`/api/download?id=${foto.id}&sz=${QUALITY_PX[toolbar.quality]}`}
                   />
                 ))}

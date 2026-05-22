@@ -116,6 +116,7 @@ export default function Lightbox({ fotos, index, favoritos, nomeEvento, onClose,
             <motion.button
               whileTap={{ scale: 0.85 }}
               onClick={handleFav}
+              aria-label={fav ? "Remover dos favoritos" : "Adicionar aos favoritos"}
               className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-150
                 ${fav
                   ? "bg-red-500 text-white shadow-[0_0_14px_rgba(239,68,68,0.5)]"
@@ -127,6 +128,7 @@ export default function Lightbox({ fotos, index, favoritos, nomeEvento, onClose,
             <motion.button
               whileTap={{ scale: 0.9 }}
               onClick={compartilhar}
+              aria-label="Compartilhar foto"
               className="w-9 h-9 rounded-xl bg-white/10 text-white/70 hover:bg-white/20 hover:text-white flex items-center justify-center transition">
               <Share2 size={17} />
             </motion.button>
@@ -137,6 +139,7 @@ export default function Lightbox({ fotos, index, favoritos, nomeEvento, onClose,
               href={downloadUrl(foto.id)}
               target="_blank"
               rel="noopener noreferrer"
+              aria-label="Baixar foto"
               onClick={() => playSound("tap")}
               className="w-9 h-9 rounded-xl bg-white/10 text-white/70 hover:bg-[#2E7DD1]/60 hover:text-white flex items-center justify-center transition">
               <Download size={17} />
@@ -146,6 +149,7 @@ export default function Lightbox({ fotos, index, favoritos, nomeEvento, onClose,
             <motion.button
               whileTap={{ scale: 0.9 }}
               onClick={handleClose}
+              aria-label="Fechar"
               className="w-9 h-9 rounded-xl bg-white/10 text-white/70 hover:bg-red-500 hover:text-white flex items-center justify-center transition">
               <X size={17} />
             </motion.button>
@@ -160,6 +164,7 @@ export default function Lightbox({ fotos, index, favoritos, nomeEvento, onClose,
               whileHover={{ scale: 1.08, x: -2 }}
               whileTap={{ scale: 0.95 }}
               onClick={handlePrev}
+              aria-label="Foto anterior"
               className="absolute left-0 z-10 w-11 h-11 rounded-xl bg-white/10 hover:bg-[#2E7DD1]/60
                 hover:shadow-[0_0_16px_rgba(46,125,209,0.4)] text-white flex items-center justify-center transition-all duration-150 shadow-lg">
               <ChevronLeft size={22} />
@@ -199,6 +204,7 @@ export default function Lightbox({ fotos, index, favoritos, nomeEvento, onClose,
               whileHover={{ scale: 1.08, x: 2 }}
               whileTap={{ scale: 0.95 }}
               onClick={handleNext}
+              aria-label="Próxima foto"
               className="absolute right-0 z-10 w-11 h-11 rounded-xl bg-white/10 hover:bg-[#2E7DD1]/60
                 hover:shadow-[0_0_16px_rgba(46,125,209,0.4)] text-white flex items-center justify-center transition-all duration-150 shadow-lg">
               <ChevronRight size={22} />

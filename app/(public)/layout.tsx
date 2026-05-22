@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Sidebar from "../components/Sidebar";
 import Topbar from "../components/Topbar";
 import BottomBar from "../components/BottomBar";
@@ -7,6 +8,19 @@ import InfoModais from "../components/InfoModais";
 import MainContent from "../components/MainContent";
 import StatusDock from "../components/StatusDock";
 import { ToastProvider } from "../components/ToastProvider";
+
+export const metadata: Metadata = {
+  title: {
+    template: "%s — Galeria Contourline",
+    default: "Galeria Contourline",
+  },
+  description: "Encontre suas fotos nos eventos da Contourline com reconhecimento facial.",
+  openGraph: {
+    siteName: "Galeria Contourline",
+    locale: "pt_BR",
+    type: "website",
+  },
+};
 
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
   return (

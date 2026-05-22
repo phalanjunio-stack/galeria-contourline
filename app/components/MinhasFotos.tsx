@@ -188,7 +188,8 @@ export default function MinhasFotos() {
     aplicarDados(userEmail, porEvento);
   }
 
-  if (!email || fase === "vazio" || fechado) return null;
+  // Esconde enquanto não há dados nem está buscando (evita flash de "0 fotos suas")
+  if (!email || fase === "vazio" || fase === "idle" || fechado) return null;
 
   return (
     <section

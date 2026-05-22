@@ -558,10 +558,14 @@ export default function ResultadoPage() {
       });
     }
 
-    // Persiste no Drive (fonte de verdade) — MERGE com fotos já confirmadas
+    // Persiste no Drive (fonte de verdade) — MERGE com fotos já confirmadas.
+    // IMPORTANTE: PUTs precisam ser SEQUENCIAIS — o endpoint faz read-modify-write
+    // no mesmo arquivo _mf_{email}.json. Em paralelo os writes se sobrescrevem
+    // (lost-update) e o usuário perde fotos.
     if (email) {
       const processadoEm = new Date().toISOString();
-      const resultados = await Promise.all(novoPorEvento.map(async ev => {
+      const resultados: { ok: boolean; evento: string; status?: number; erro?: string }[] = [];
+      for (const ev of novoPorEvento) {
         try {
           const res = await fetch("/api/meu/fotos", {
             method: "PUT",
@@ -577,13 +581,14 @@ export default function ResultadoPage() {
           });
           if (!res.ok) {
             const txt = await res.text().catch(() => res.statusText);
-            return { ok: false, evento: ev.eventoNome, status: res.status, erro: txt };
+            resultados.push({ ok: false, evento: ev.eventoNome, status: res.status, erro: txt });
+          } else {
+            resultados.push({ ok: true, evento: ev.eventoNome });
           }
-          return { ok: true, evento: ev.eventoNome };
         } catch (e) {
-          return { ok: false, evento: ev.eventoNome, erro: String(e) };
+          resultados.push({ ok: false, evento: ev.eventoNome, erro: String(e) });
         }
-      }));
+      }
       const falhas = resultados.filter(r => !r.ok);
       if (falhas.length > 0) {
         console.error("[São minhas] PUT falhou para alguns eventos:", falhas);
@@ -708,6 +713,10 @@ export default function ResultadoPage() {
     );
   }
 
+  if (confirmando || confirmado) return (
+    <GaleriaLoading label={confirmado ? "Carregando suas fotos..." : "Salvando suas fotos..."} />
+  );
+
   if (fase === "sem-rosto") return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center px-4">
       <ScanFace size={48} className="text-gray-300" />
@@ -779,8 +788,10 @@ export default function ResultadoPage() {
       {alta.length > 0 && (
         <section className="mb-10">
           <div className="flex items-center gap-2 mb-4">
-            <div className="w-3 h-3 rounded-full bg-emerald-500" />
-            <h2 className="font-bold text-[#0D2B4E] text-base">Você aparece nestas fotos</h2>
+            <div className="w-3 h-3 rounded-full bg-emerald-500" aria-hidden />
+            <h2 className="font-bold text-[#0D2B4E] text-base">
+              Alta confiança — Você aparece nestas fotos
+            </h2>
             <span className="text-gray-400 text-sm">({alta.length})</span>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -798,8 +809,8 @@ export default function ResultadoPage() {
       {talvez.length > 0 && (
         <section className="mb-10">
           <div className="flex items-center gap-2 mb-4">
-            <div className="w-3 h-3 rounded-full bg-amber-400" />
-            <h2 className="font-bold text-[#0D2B4E] text-base">Talvez você apareça nestas</h2>
+            <div className="w-3 h-3 rounded-full bg-amber-400" aria-hidden />
+            <h2 className="font-bold text-[#0D2B4E] text-base">Possível match — Talvez você apareça nestas</h2>
             <span className="text-gray-400 text-sm">({talvez.length})</span>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
