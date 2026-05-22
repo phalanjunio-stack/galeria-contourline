@@ -33,12 +33,6 @@ function normalizarFiltro(value?: string) {
     .toLowerCase();
 }
 
-const statusConfig: Record<string, { label: string; dot: string; bg: string }> = {
-  aberto:    { label: "Aberto",    dot: "bg-white", bg: "from-[#2E7DD1] to-[#7a3cff]" },
-  privado:   { label: "Privado",   dot: "bg-amber-400",   bg: "from-amber-700 to-amber-500"     },
-  encerrado: { label: "Encerrado", dot: "bg-slate-400",   bg: "from-slate-700 to-slate-500"     },
-};
-
 interface FotoDesc { fotoId: string; rostos: { descriptor: number[] }[] }
 
 interface MatchEvento {
@@ -319,9 +313,8 @@ export default function EventosPage() {
       {!loading && filtrados.length > 0 && (
         <>
           <p className="text-gray-500 text-sm mb-5">{filtrados.length} eventos encontrados</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-5">
             {filtrados.map((e) => {
-              const st = statusConfig[e.status] ?? statusConfig.encerrado;
               const encontrado = matches.some(m => m.evento.id === e.id);
               const isMultiDia = (e.dias?.length ?? 0) > 1;
 

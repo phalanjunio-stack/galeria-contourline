@@ -1,9 +1,9 @@
 "use client";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import {
-  ChevronRight, ChevronDown, ScanFace, Calendar, Images, Camera,
+  ChevronRight, ChevronDown, ScanFace, Calendar, Images,
   Sparkles, ArrowRight, HelpCircle, ShieldCheck, Heart, Search,
 } from "lucide-react";
 import MinhasFotos from "@/app/components/MinhasFotos";
@@ -31,7 +31,10 @@ function Hero({ eventos }: { eventos: EventoItem[] }) {
   }, [comCapa.length]);
 
   useEffect(() => {
-    if (comCapa.length > 0) setIdx(Math.floor(Math.random() * comCapa.length));
+    const id = window.setTimeout(() => {
+      if (comCapa.length > 0) setIdx(Math.floor(Math.random() * comCapa.length));
+    }, 0);
+    return () => window.clearTimeout(id);
   }, [comCapa.length]);
 
   function scrollProBaixo() {
@@ -346,21 +349,23 @@ export default function HomePage() {
   const [eventos,  setEventos]  = useState<EventoItem[]>([]);
   const [loading,  setLoading]  = useState(true);
   const [stats,    setStats]    = useState({ eventos: 0, fotos: 0, favoritas: 0 });
-  const scrollRef = useRef<HTMLDivElement>(null);
 
   // Email + nome derivados
   const [email, setEmail] = useState("");
   const [nome,  setNome]  = useState("");
   useEffect(() => {
-    if (session?.user?.email) {
-      setEmail(session.user.email);
-      setNome(session.user.name ?? "");
-      return;
-    }
-    try {
-      const u = JSON.parse(localStorage.getItem("usuario_simples") ?? "null");
-      if (u?.email) { setEmail(u.email); setNome(u.nome ?? ""); }
-    } catch {}
+    const id = window.setTimeout(() => {
+      if (session?.user?.email) {
+        setEmail(session.user.email);
+        setNome(session.user.name ?? "");
+        return;
+      }
+      try {
+        const u = JSON.parse(localStorage.getItem("usuario_simples") ?? "null");
+        if (u?.email) { setEmail(u.email); setNome(u.nome ?? ""); }
+      } catch {}
+    }, 0);
+    return () => window.clearTimeout(id);
   }, [session]);
 
   // Eventos
@@ -429,7 +434,7 @@ export default function HomePage() {
               Nenhum evento disponível ainda
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-5">
               {eventos.slice(0, 8).map(ev => {
                 const isMultiDia = (ev.dias?.length ?? 0) > 1;
                 if (isMultiDia) return <MultiDayEventCard key={ev.id} evento={ev} slug={ev.id} />;

@@ -230,13 +230,13 @@ export default function EditarEventoPage({ params }: { params: Promise<{ id: str
               fotoId={evento.capa_id}
               value={form.capa_position}
               onChange={(v) => setForm({ ...form, capa_position: v })}
-              aspect="16/10"
+              aspect="4/3"
             />
             <div>
               <p className="text-xs font-bold text-[#1A4A80] uppercase tracking-wider mb-2">
                 Como vai aparecer no card
               </p>
-              <div className="relative aspect-[16/10] rounded-xl overflow-hidden border border-gray-200 bg-[#07182f]">
+              <div className="relative aspect-[4/3] rounded-xl overflow-hidden border border-gray-200 bg-[#07182f]">
                 <img
                   src={`/api/thumb?id=${evento.capa_id}&sz=600`}
                   alt=""

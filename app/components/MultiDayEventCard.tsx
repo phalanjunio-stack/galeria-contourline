@@ -23,7 +23,7 @@ export default function MultiDayEventCard({ evento, slug }: Props) {
   return (
     <article className="group relative bg-white dark:bg-[#0a1a2f]/80 border border-[#2E7DD1]/15 dark:border-[#5BA4E5]/15 rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5">
       {/* Capa clicável */}
-      <Link href={`/eventos/${slug}`} className="block relative aspect-[16/10] bg-[#07182f] overflow-hidden">
+      <Link href={`/eventos/${slug}`} className="block relative aspect-[4/3] bg-[#07182f] overflow-hidden">
         {evento.capa_id ? (
           <img src={`/api/thumb?id=${evento.capa_id}&sz=600`} alt={evento.nome}
             style={{ objectPosition: evento.capa_position ?? "center" }}
