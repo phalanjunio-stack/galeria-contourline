@@ -26,6 +26,7 @@ export default function MultiDayEventCard({ evento, slug }: Props) {
       <Link href={`/eventos/${slug}`} className="block relative aspect-[16/10] bg-[#07182f] overflow-hidden">
         {evento.capa_id ? (
           <img src={`/api/thumb?id=${evento.capa_id}&sz=600`} alt={evento.nome}
+            style={{ objectPosition: evento.capa_position ?? "center" }}
             className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
         ) : (
           <div className="absolute inset-0 grid grid-cols-2 grid-rows-2 gap-1 p-1">

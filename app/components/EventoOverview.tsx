@@ -96,6 +96,7 @@ function DiaCard({ dia, ordem, slug, minhas }: { dia: EventoDia; ordem: number; 
           <img
             src={`/api/thumb?id=${dia.capa_id}&sz=600`}
             alt={dia.titulo}
+            style={{ objectPosition: dia.capa_position ?? "center" }}
             className="absolute inset-0 h-full w-full object-cover group-hover:scale-105 transition-transform duration-500"
           />
         )}

@@ -18,6 +18,7 @@ import {
   Layers,
 } from "lucide-react";
 import type { EventoItem, EventoDia } from "@/app/api/eventos/route";
+import FocalPointPicker from "@/app/components/FocalPointPicker";
 
 const CATEGORIAS_EVENTO = [
   "Evento",
@@ -48,6 +49,7 @@ export default function EditarEventoPage({ params }: { params: Promise<{ id: str
     descricao: "",
     status: "aberto",
     folder_id: "",
+    capa_position: "center",
     reconhecimento_facial: true,
     download_liberado: true,
   });
@@ -74,6 +76,7 @@ export default function EditarEventoPage({ params }: { params: Promise<{ id: str
             descricao: atual.descricao ?? "",
             status: atual.status ?? "aberto",
             folder_id: atual.folder_id ?? "",
+            capa_position: atual.capa_position ?? "center",
             reconhecimento_facial: atual.reconhecimento_facial ?? true,
             download_liberado: atual.download_liberado ?? true,
           });
@@ -107,6 +110,7 @@ export default function EditarEventoPage({ params }: { params: Promise<{ id: str
           descricao: form.descricao,
           status: form.status,
           folder_id: extrairFolderId(form.folder_id),
+          capa_position: form.capa_position,
           reconhecimento_facial: form.reconhecimento_facial,
           download_liberado: form.download_liberado,
           dias: dias.length > 0
@@ -213,6 +217,41 @@ export default function EditarEventoPage({ params }: { params: Promise<{ id: str
           <textarea rows={3} value={form.descricao} onChange={(e) => setForm({ ...form, descricao: e.target.value })} className="admin-event-input resize-none" />
         </Field>
       </section>
+
+      {/* ── Ponto de foco da capa ──────────────────────────────── */}
+      {evento.capa_id && (
+        <section className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+          <h2 className="mb-3 flex items-center gap-2 font-bold text-[#0D2B4E]">
+            <Camera size={17} className="text-[#2E7DD1]" />
+            Capa do evento
+          </h2>
+          <div className="grid gap-5 md:grid-cols-2">
+            <FocalPointPicker
+              fotoId={evento.capa_id}
+              value={form.capa_position}
+              onChange={(v) => setForm({ ...form, capa_position: v })}
+              aspect="16/10"
+            />
+            <div>
+              <p className="text-xs font-bold text-[#1A4A80] uppercase tracking-wider mb-2">
+                Como vai aparecer no card
+              </p>
+              <div className="relative aspect-[16/10] rounded-xl overflow-hidden border border-gray-200 bg-[#07182f]">
+                <img
+                  src={`/api/thumb?id=${evento.capa_id}&sz=600`}
+                  alt=""
+                  className="absolute inset-0 w-full h-full object-cover"
+                  style={{ objectPosition: form.capa_position }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0D2B4E]/60 via-transparent to-transparent" />
+              </div>
+              <p className="text-[11px] text-gray-500 mt-2">
+                Preview do que aparece nos cards de evento e da página inicial.
+              </p>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ── Dias do evento (multi-dia) ─────────────────────────── */}
       <section className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">

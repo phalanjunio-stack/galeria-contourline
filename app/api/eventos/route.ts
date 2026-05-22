@@ -13,6 +13,8 @@ export interface EventoDia {
   folder_id: string;           // pasta separada no Drive
   total_fotos?: number;
   capa_id?: string;
+  /** Foco da capa no card: "top left", "top", "center", etc. (CSS object-position). Default: "center" */
+  capa_position?: string;
   status?: "disponivel" | "processando" | "fechado";
 }
 
@@ -32,6 +34,8 @@ export interface EventoItem {
   folder_id: string;
   total_fotos: number;
   capa_id?: string;
+  /** Foco da capa no card: "top left", "top", "center", etc. (CSS object-position). Default: "center" */
+  capa_position?: string;
   /** Dias internos — se vazio/undefined, evento é tratado como 1 dia (usa folder_id). */
   dias?: EventoDia[];
   criado_em: string;
