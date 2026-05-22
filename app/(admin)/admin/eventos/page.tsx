@@ -1,7 +1,7 @@
 "use client";
-import { Fragment, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Plus, Camera, Calendar, Settings, Trash2, Eye, Globe, Lock, CheckCircle, Loader2, Database, Layers, HardDrive } from "lucide-react";
+import { Plus, Camera, Calendar, Settings, Trash2, Eye, Globe, Lock, CheckCircle, Loader2, Database } from "lucide-react";
 import type { EventoItem } from "@/app/api/eventos/route";
 
 const statusBadge: Record<string, string> = {
@@ -18,8 +18,6 @@ const StatusIcon: Record<string, React.ReactNode> = {
 export default function AdminEventosPage() {
   const [eventos, setEventos] = useState<EventoItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [erro, setErro] = useState("");
-  const [removendo, setRemovendo] = useState("");
 
   useEffect(() => {
     fetch("/api/eventos")
@@ -31,18 +29,8 @@ export default function AdminEventosPage() {
 
   async function remover(id: string) {
     if (!confirm("Remover este evento?")) return;
-    setErro("");
-    setRemovendo(id);
-    try {
-      const res = await fetch(`/api/eventos?id=${id}`, { method: "DELETE" });
-      const data = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(data?.error ?? "Nao foi possivel excluir o evento.");
-      setEventos((ev) => ev.filter((e) => e.id !== id));
-    } catch (err) {
-      setErro(err instanceof Error ? err.message : "Nao foi possivel excluir o evento.");
-    } finally {
-      setRemovendo("");
-    }
+    await fetch(`/api/eventos?id=${id}`, { method: "DELETE" });
+    setEventos((ev) => ev.filter((e) => e.id !== id));
   }
 
   return (
@@ -65,12 +53,6 @@ export default function AdminEventosPage() {
           </Link>
         </div>
       </div>
-
-      {erro && (
-        <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
-          {erro}
-        </div>
-      )}
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         {loading ? (
@@ -103,8 +85,7 @@ export default function AdminEventosPage() {
             </thead>
             <tbody className="divide-y divide-gray-50">
               {eventos.map((e) => (
-                <Fragment key={e.id}>
-                <tr className="hover:bg-[#EFF5FF]/50 transition">
+                <tr key={e.id} className="hover:bg-[#EFF5FF]/50 transition">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 gradient-primary rounded-xl flex items-center justify-center shrink-0 shadow">
@@ -113,11 +94,6 @@ export default function AdminEventosPage() {
                       <div className="min-w-0">
                         <span className="block truncate font-semibold text-[#0D2B4E] text-sm">{e.nome}</span>
                         <div className="mt-1 flex flex-wrap gap-1">
-                          {(e.dias?.length ?? 0) > 0 && (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold text-violet-700">
-                              <Layers size={10} /> {e.dias!.length} subgaleria{e.dias!.length !== 1 ? "s" : ""}
-                            </span>
-                          )}
                           {e.categoria && (
                             <span className="rounded-full bg-[#EFF5FF] px-2 py-0.5 text-[10px] font-semibold text-[#1A4A80]">
                               {e.categoria}
@@ -148,7 +124,7 @@ export default function AdminEventosPage() {
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center justify-end gap-2">
-                      {(e.folder_id || (e.dias?.length ?? 0) > 0) && (
+                      {e.folder_id && (
                         <Link href={`/eventos/${e.id}`}
                           className="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-[#EFF5FF] hover:text-[#2E7DD1] transition">
                           <Eye size={14} />
@@ -160,35 +136,12 @@ export default function AdminEventosPage() {
                       </Link>
                       <button
                         onClick={() => remover(e.id)}
-                        disabled={removendo === e.id}
                         className="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition">
-                        {removendo === e.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                        <Trash2 size={14} />
                       </button>
                     </div>
                   </td>
                 </tr>
-                {(e.dias?.length ?? 0) > 0 && (
-                  <tr className="bg-[#EFF5FF]/45">
-                    <td colSpan={5} className="px-6 pb-4 pt-0">
-                      <div className="ml-12 grid gap-2 pt-2 sm:grid-cols-2 xl:grid-cols-3">
-                        {e.dias!.map((dia, index) => (
-                          <div key={dia.id} className="min-w-0 rounded-xl border border-[#2E7DD1]/10 bg-white px-3 py-2 shadow-sm">
-                            <div className="flex items-center justify-between gap-2">
-                              <p className="truncate text-xs font-bold text-[#0D2B4E]">Dia {index + 1}: {dia.titulo}</p>
-                              <Link href={`/eventos/${e.id}?dia=${dia.id}`} className="shrink-0 text-[#2E7DD1]" aria-label={`Abrir ${dia.titulo}`}>
-                                <Eye size={13} />
-                              </Link>
-                            </div>
-                            <p className="mt-1 flex min-w-0 items-center gap-1 truncate text-[11px] text-gray-500">
-                              <HardDrive size={11} /> {dia.folder_id || "Pasta Drive nao configurada"}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    </td>
-                  </tr>
-                )}
-                </Fragment>
               ))}
             </tbody>
           </table>

@@ -14,7 +14,6 @@ import EventoOverview from "@/app/components/EventoOverview";
 import { AnimatePresence } from "framer-motion";
 import GaleriaLoading from "@/app/components/GaleriaLoading";
 import GaleriaToolbar, { type ToolbarState, QUALITY_PX } from "@/app/components/GaleriaToolbar";
-import IndexarEventoButton from "@/app/components/IndexarEventoButton";
 import { baixarComoZip } from "@/lib/download-zip";
 import { lerFavoritos, salvarFavoritos } from "@/app/(public)/favoritos/page";
 import {
@@ -470,15 +469,6 @@ export default function EventoPage({ params }: { params: Promise<{ slug: string 
               <Share2 size={16} /> Compartilhar evento
             </button>
 
-            {/* Botão Indexar — público */}
-            {folderIdAtivo && fotos.length > 0 && (
-              <IndexarEventoButton
-                eventoId={evento.id}
-                eventoNome={evento.nome}
-                folderId={folderIdAtivo}
-                totalFotos={fotos.length}
-              />
-            )}
           </div>
         )}
 
@@ -542,9 +532,9 @@ export default function EventoPage({ params }: { params: Promise<{ slug: string 
         {/* Espaço reservado para não sobrepor conteúdo quando barra estiver fixada */}
         {modoSelecao && <div className="h-20 mb-2" />}
 
-        {/* Filtros */}
+        {/* Filtros + Toolbar */}
         {!modoSelecao && (
-          <div className="flex items-center gap-3 mb-6 flex-wrap">
+          <div className="flex items-center justify-between gap-3 mb-6 flex-wrap">
             <div className="flex gap-2 flex-wrap">
 
               {/* Todas */}
@@ -597,12 +587,12 @@ export default function EventoPage({ params }: { params: Promise<{ slug: string 
                   </span>
                 )}
               </button>
+              {/* Aviso quando filtro não tem resultado */}
+              {fotosFiltradas.length === 0 && filtroAtivo !== "todas" && (
+                <span className="text-xs text-gray-400 ml-1">Nenhuma foto neste filtro</span>
+              )}
             </div>
-
-            {/* Aviso quando filtro não tem resultado */}
-            {fotosFiltradas.length === 0 && filtroAtivo !== "todas" && (
-              <span className="text-xs text-gray-400 ml-1">Nenhuma foto neste filtro</span>
-            )}
+            <GaleriaToolbar state={toolbar} onChange={updateToolbar} />
           </div>
         )}
 
@@ -643,15 +633,6 @@ export default function EventoPage({ params }: { params: Promise<{ slug: string 
         {/* ── GRID DE FOTOS (masonry — proporção natural) ── */}
         {!loading && fotos.length > 0 && (
           <>
-            {/* Toolbar + contador */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-              <p className="text-gray-500 text-sm">
-                {fotosFiltradas.length === fotos.length
-                  ? `${fotos.length} fotos`
-                  : `${fotosFiltradas.length} de ${fotos.length} fotos`}
-              </p>
-              <GaleriaToolbar state={toolbar} onChange={updateToolbar} />
-            </div>
 
             {fotosFiltradas.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 gap-3 text-center">

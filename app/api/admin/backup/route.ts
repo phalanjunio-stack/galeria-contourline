@@ -60,7 +60,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "JSON inválido" }, { status: 400 });
   }
 
-  // Aceita { eventos: [...] } ou direto [...]
   const lista: EventoItem[] = Array.isArray(body)
     ? body
     : Array.isArray((body as Record<string, unknown>).eventos)
@@ -71,10 +70,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Nenhum evento encontrado no payload" }, { status: 400 });
   }
 
-  // Salva local (sempre)
   salvarEventosLocal(lista);
 
-  // Salva no Drive
   const token = session.accessToken ?? await getAccessTokenFromEnv();
   let savedDrive = false;
   if (token) {
