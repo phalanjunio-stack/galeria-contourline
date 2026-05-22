@@ -34,16 +34,13 @@ export default function GaleriaToolbar({ state, onChange, onFullscreen }: Props)
   return (
     <div
       className="inline-flex flex-wrap items-center gap-0.5 px-1.5 py-1.5 rounded-2xl
-        border backdrop-blur-md select-none"
-      style={{
-        background: "rgba(13,43,78,0.88)",
-        borderColor: "rgba(46,125,209,0.25)",
-        boxShadow: "0 4px 24px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.06)",
-      }}
+        border backdrop-blur-md select-none
+        bg-white/90 dark:bg-[#0D2B4E]/90
+        border-gray-200 dark:border-[#2E7DD1]/25
+        shadow-md dark:shadow-[0_4px_24px_rgba(0,0,0,0.25)]"
     >
       {/* ── Grupo: View modes ── */}
-      <div className="flex items-center gap-0.5 pr-2 border-r"
-        style={{ borderColor: "rgba(255,255,255,0.08)" }}>
+      <div className="flex items-center gap-0.5 pr-2 border-r border-gray-200 dark:border-white/8">
         {(
           [
             { mode: "grid",    Icon: LayoutGrid, label: "Grade normal"    },
@@ -60,14 +57,13 @@ export default function GaleriaToolbar({ state, onChange, onFullscreen }: Props)
               onClick={() => set({ view: mode })}
               title={label}
               aria-label={label}
-              className="relative p-2 rounded-xl transition-all duration-150 flex items-center justify-center"
               style={{
-                color: active ? "#fff" : "rgba(255,255,255,0.45)",
                 background: active
                   ? "linear-gradient(135deg, #2E7DD1 0%, #5BA4E5 100%)"
                   : "transparent",
                 boxShadow: active ? "0 2px 8px rgba(46,125,209,0.4)" : "none",
               }}
+              className={`relative p-2 rounded-xl transition-all duration-150 flex items-center justify-center ${active ? "text-white" : "text-gray-400 dark:text-white/45"}`}
             >
               <Icon size={15} />
             </motion.button>
@@ -76,8 +72,7 @@ export default function GaleriaToolbar({ state, onChange, onFullscreen }: Props)
       </div>
 
       {/* ── Grupo: Quality ── */}
-      <div className="flex items-center gap-0.5 px-2 border-r"
-        style={{ borderColor: "rgba(255,255,255,0.08)" }}>
+      <div className="flex items-center gap-0.5 px-2 border-r border-gray-200 dark:border-white/8">
         {(
           [
             { q: "rapido", Icon: Zap,       label: "Rápido" },
@@ -91,10 +86,9 @@ export default function GaleriaToolbar({ state, onChange, onFullscreen }: Props)
               key={q}
               whileTap={{ scale: 0.9 }}
               onClick={() => set({ quality: q })}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold
-                transition-all duration-150 whitespace-nowrap"
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold
+                transition-all duration-150 whitespace-nowrap ${active ? "text-white" : "text-gray-500 dark:text-white/50"}`}
               style={{
-                color: active ? "#fff" : "rgba(255,255,255,0.5)",
                 background: active
                   ? "linear-gradient(135deg, #2E7DD1 0%, #5BA4E5 100%)"
                   : "transparent",
@@ -136,11 +130,8 @@ export default function GaleriaToolbar({ state, onChange, onFullscreen }: Props)
         <motion.button
           whileTap={{ scale: 0.88 }}
           onClick={() => { playSound("open"); onFullscreen(); }}
-          className="p-2 rounded-xl transition-all duration-150 ml-0.5"
+          className="p-2 rounded-xl transition-all duration-150 ml-0.5 text-gray-400 dark:text-white/40 hover:text-gray-700 dark:hover:text-white"
           title="Expandir"
-          style={{ color: "rgba(255,255,255,0.4)" }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = "#fff")}
-          onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.4)")}
         >
           <Maximize2 size={14} />
         </motion.button>
