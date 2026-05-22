@@ -30,6 +30,20 @@ interface EventoItem {
   folder_id?: string;
   total_fotos: number;
   status: string;
+  dias?: {
+    id: string;
+    titulo: string;
+    folder_id?: string;
+    total_fotos?: number;
+  }[];
+}
+
+interface IndexTarget {
+  id: string;
+  eventoId: string;
+  nome: string;
+  folderId: string;
+  totalFotos: number;
 }
 
 interface JobStatus {
@@ -205,6 +219,30 @@ function fmtUptime(seconds?: number | null) {
   return `${Math.floor(minutos / 60)}h ${minutos % 60}min online`;
 }
 
+function listarAlvosIndexacao(eventos: EventoItem[]): IndexTarget[] {
+  return eventos.flatMap((evento) => {
+    const alvoPrincipal = evento.folder_id
+      ? [{
+          id: evento.id,
+          eventoId: evento.id,
+          nome: evento.nome,
+          folderId: evento.folder_id,
+          totalFotos: evento.total_fotos,
+        }]
+      : [];
+    const alvosDias = (evento.dias ?? [])
+      .filter((dia) => dia.folder_id)
+      .map((dia, index) => ({
+        id: `${evento.id}::${dia.id}`,
+        eventoId: evento.id,
+        nome: `${evento.nome} / ${dia.titulo || `Dia ${index + 1}`}`,
+        folderId: dia.folder_id!,
+        totalFotos: dia.total_fotos ?? 0,
+      }));
+    return [...alvoPrincipal, ...alvosDias];
+  });
+}
+
 export default function ReconhecimentoServidor() {
   const [eventos, setEventos] = useState<EventoItem[]>([]);
   const [eventoSel, setEventoSel] = useState("");
@@ -223,11 +261,17 @@ export default function ReconhecimentoServidor() {
     () => eventos.find((evento) => evento.id === eventoSel) ?? null,
     [eventos, eventoSel]
   );
+  const alvosIndexacao = useMemo(() => listarAlvosIndexacao(eventos), [eventos]);
+  const alvoAtual = useMemo(
+    () => alvosIndexacao.find((alvo) => alvo.id === eventoSel) ?? null,
+    [alvosIndexacao, eventoSel]
+  );
+  const eventoAtualId = alvoAtual?.eventoId ?? eventoAtual?.id ?? "";
 
   const carregarHistorico = useCallback(async (lista: EventoItem[]) => {
     const registros = await Promise.all(
       lista
-        .filter((evento) => evento.folder_id)
+        .filter((evento) => evento.folder_id || evento.dias?.some((dia) => dia.folder_id))
         .map(async (evento) => {
           const res = await fetch(`/api/matches?eventoId=${encodeURIComponent(evento.id)}`).catch(() => null);
           if (!res?.ok) return null;
@@ -256,9 +300,9 @@ export default function ReconhecimentoServidor() {
       const lista = Array.isArray(eventosData) ? eventosData : eventosData?.eventos ?? [];
       setEventos(lista);
       setEventoSel((atual) =>
-        atual && lista.some((evento: EventoItem) => evento.id === atual)
+        atual && listarAlvosIndexacao(lista).some((alvo) => alvo.id === atual)
           ? atual
-          : lista.find((evento: EventoItem) => evento.folder_id)?.id ?? ""
+          : listarAlvosIndexacao(lista)[0]?.id ?? ""
       );
       setMotor(motorRes.ok ? await motorRes.json() : null);
       await carregarHistorico(lista);
@@ -304,10 +348,10 @@ export default function ReconhecimentoServidor() {
 
   useEffect(() => {
     const id = window.setTimeout(() => {
-      void carregarEvento(eventoSel);
+      void carregarEvento(eventoAtualId);
     }, 0);
     return () => window.clearTimeout(id);
-  }, [carregarEvento, eventoSel]);
+  }, [carregarEvento, eventoAtualId]);
 
   const fetchStatus = useCallback(async (eventoId: string, jobId: string) => {
     try {
@@ -344,7 +388,7 @@ export default function ReconhecimentoServidor() {
   }, [fetchStatus]);
 
   async function iniciar() {
-    if (!eventoAtual?.folder_id) {
+    if (!alvoAtual?.folderId) {
       setErro("Escolha um evento com pasta no Drive.");
       return;
     }
@@ -356,15 +400,15 @@ export default function ReconhecimentoServidor() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          eventoId: eventoAtual.id,
-          eventoNome: eventoAtual.nome,
-          folderId: eventoAtual.folder_id,
+          eventoId: alvoAtual.eventoId,
+          eventoNome: alvoAtual.nome,
+          folderId: alvoAtual.folderId,
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Falha ao iniciar indexacao.");
-      salvarJobLocal(eventoAtual.id, data.jobId);
-      await fetchStatus(eventoAtual.id, data.jobId);
+      salvarJobLocal(alvoAtual.id, data.jobId);
+      await fetchStatus(alvoAtual.id, data.jobId);
     } catch (err) {
       setErro(err instanceof Error ? err.message : String(err));
     } finally {
@@ -428,8 +472,8 @@ export default function ReconhecimentoServidor() {
     },
     {
       label: "Evento selecionado com pasta",
-      ok: Boolean(eventoAtual?.folder_id),
-      detail: eventoAtual ? `${eventoAtual.total_fotos} foto(s) cadastradas` : "Selecione um evento",
+      ok: Boolean(alvoAtual?.folderId),
+      detail: alvoAtual ? `${alvoAtual.totalFotos} foto(s) cadastradas` : "Selecione um evento",
     },
     {
       label: "Indice do evento selecionado",
@@ -604,16 +648,16 @@ export default function ReconhecimentoServidor() {
                 className="h-12 w-full rounded-xl border border-gray-200 bg-[#F7FAFD] px-3 text-sm font-semibold text-[#0D2B4E] outline-none transition focus:border-[#2E7DD1]"
               >
                 <option value="">Selecionar evento</option>
-                {eventos.filter((evento) => evento.folder_id).map((evento) => (
-                  <option key={evento.id} value={evento.id}>
-                    {evento.nome} ({evento.total_fotos} fotos)
+                {alvosIndexacao.map((alvo) => (
+                  <option key={alvo.id} value={alvo.id}>
+                    {alvo.nome} ({alvo.totalFotos} fotos)
                   </option>
                 ))}
               </select>
             </label>
             <button
               onClick={iniciar}
-              disabled={!eventoAtual?.folder_id || iniciando || jobs[eventoSel]?.status === "running"}
+              disabled={!alvoAtual?.folderId || iniciando || jobs[eventoSel]?.status === "running"}
               className="mt-auto inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-[#2167AE] px-4 text-sm font-bold text-white shadow transition hover:bg-[#19558F] disabled:cursor-not-allowed disabled:bg-gray-300"
             >
               {iniciando ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} />}
@@ -621,7 +665,7 @@ export default function ReconhecimentoServidor() {
             </button>
           </div>
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <IndexStat label="Fotos do evento" value={String(eventoAtual?.total_fotos ?? 0)} icon={<Images size={15} />} />
+            <IndexStat label="Fotos do evento" value={String(alvoAtual?.totalFotos ?? 0)} icon={<Images size={15} />} />
             <IndexStat label="Fotos com rosto" value={String(preview?.fotosComRosto ?? 0)} icon={<ScanFace size={15} />} />
             <IndexStat label="Rostos salvos" value={String(preview?.rostosDetectados ?? 0)} icon={<Database size={15} />} />
             <IndexStat label="Pessoas achadas" value={String(matches?.usuarios.length ?? 0)} icon={<Users size={15} />} />
@@ -688,8 +732,8 @@ export default function ReconhecimentoServidor() {
               </div>
             </div>
             <button
-              onClick={() => carregarEvento(eventoSel)}
-              disabled={!eventoSel || carregandoEvento}
+              onClick={() => carregarEvento(eventoAtualId)}
+              disabled={!eventoAtualId || carregandoEvento}
               className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 text-[#2E7DD1] transition hover:bg-[#EFF5FF] disabled:opacity-40"
               title="Atualizar amostra"
             >
