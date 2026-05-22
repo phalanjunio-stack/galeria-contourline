@@ -97,10 +97,11 @@ function criarPreviewDescritores(
 
 async function lerPreviewFaceServer(eventoId: string, folderId?: string) {
   const serverUrl = process.env.FACE_SERVER_URL;
-  if (!serverUrl || !folderId) return null;
+  if (!serverUrl) return null;
 
   const serverSecret = process.env.FACE_SERVER_SECRET;
-  const params = new URLSearchParams({ folderId });
+  const params = new URLSearchParams();
+  if (folderId) params.set("folderId", folderId);
   const res = await fetch(`${serverUrl}/preview/${encodeURIComponent(eventoId)}?${params}`, {
     headers: serverSecret ? { "X-Server-Secret": serverSecret } : {},
     cache: "no-store",

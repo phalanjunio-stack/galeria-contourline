@@ -138,13 +138,14 @@ app.get("/status/:jobId", exigirSecret, (req, res) => {
 app.get("/preview/:eventoId", exigirSecret, async (req, res) => {
   const folderId = String(req.query.folderId || "");
   const eventoId = req.params.eventoId;
-  if (!folderId) return res.status(400).json({ error: "Falta folderId" });
 
   try {
+    const vectorPreview = await lerPreviewIndiceEvento(eventoId);
+    if (vectorPreview) return res.json({ found: true, source: "pgvector", ...vectorPreview });
+    if (!folderId) return res.json({ found: false, totalFotos: 0, fotos: [] });
+
     const descriptors = await lerArquivo(folderId, `_desc_${eventoId}.json`);
     if (!Array.isArray(descriptors) || descriptors.length === 0) {
-      const vectorPreview = await lerPreviewIndiceEvento(eventoId);
-      if (vectorPreview) return res.json({ found: true, source: "pgvector", ...vectorPreview });
       return res.json({ found: false, totalFotos: 0, fotos: [] });
     }
 
