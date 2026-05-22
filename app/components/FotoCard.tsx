@@ -142,6 +142,7 @@ export default function FotoCard({
             opacity-0 group-hover:opacity-100 transition-opacity duration-200
             flex items-end justify-between p-2 z-10">
             <button
+              aria-label={favoritada ? "Remover dos favoritos" : "Adicionar aos favoritos"}
               onClick={handleFav}
               className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-150
                 ${favoritada
@@ -152,6 +153,7 @@ export default function FotoCard({
             <div className="flex gap-1">
               {isAdmin && onDefinirCapa && !isCapa && (
                 <button
+                  aria-label="Definir como capa do evento"
                   title="Definir como capa do evento"
                   onClick={(e) => { e.stopPropagation(); onDefinirCapa(); }}
                   className="w-8 h-8 rounded-full bg-white/20 hover:bg-[#2E7DD1] hover:scale-110 flex items-center justify-center transition-all duration-150">
@@ -162,11 +164,13 @@ export default function FotoCard({
                 href={downloadUrl}
                 target="_blank"
                 rel="noopener noreferrer"
+                aria-label="Baixar foto"
                 onClick={handleDownload}
                 className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/40 hover:scale-110 flex items-center justify-center transition-all duration-150">
                 <Download size={14} className="text-white" />
               </a>
               <button
+                aria-label="Selecionar foto"
                 onClick={handleIniciarSelecao}
                 className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/40 hover:scale-110 flex items-center justify-center transition-all duration-150">
                 <CheckSquare size={14} className="text-white" />

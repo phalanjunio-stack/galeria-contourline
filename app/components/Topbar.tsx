@@ -233,8 +233,10 @@ export default function Topbar() {
         <div className="hidden lg:flex w-80 relative">
           <Search size={15} className={`absolute left-3 top-1/2 -translate-y-1/2 transition-colors duration-200
             ${searchFocused ? "text-[#2E7DD1]" : "tb-search-icon"}`} />
+          <label htmlFor="topbar-search" className="sr-only">Buscar fotos, eventos ou pessoas</label>
           <input
-            type="text"
+            id="topbar-search"
+            type="search"
             placeholder="Buscar fotos, eventos ou pessoas..."
             onFocus={() => setSearchFocused(true)}
             onBlur={() => setSearchFocused(false)}

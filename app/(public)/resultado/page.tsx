@@ -779,8 +779,10 @@ export default function ResultadoPage() {
       {alta.length > 0 && (
         <section className="mb-10">
           <div className="flex items-center gap-2 mb-4">
-            <div className="w-3 h-3 rounded-full bg-emerald-500" />
-            <h2 className="font-bold text-[#0D2B4E] text-base">Você aparece nestas fotos</h2>
+            <div className="w-3 h-3 rounded-full bg-emerald-500" aria-hidden />
+            <h2 className="font-bold text-[#0D2B4E] text-base">
+              Alta confiança — Você aparece nestas fotos
+            </h2>
             <span className="text-gray-400 text-sm">({alta.length})</span>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -798,8 +800,8 @@ export default function ResultadoPage() {
       {talvez.length > 0 && (
         <section className="mb-10">
           <div className="flex items-center gap-2 mb-4">
-            <div className="w-3 h-3 rounded-full bg-amber-400" />
-            <h2 className="font-bold text-[#0D2B4E] text-base">Talvez você apareça nestas</h2>
+            <div className="w-3 h-3 rounded-full bg-amber-400" aria-hidden />
+            <h2 className="font-bold text-[#0D2B4E] text-base">Possível match — Talvez você apareça nestas</h2>
             <span className="text-gray-400 text-sm">({talvez.length})</span>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">

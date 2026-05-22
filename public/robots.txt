@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /api/
+Disallow: /resultado
+
+Sitemap: https://galeria.iacontourline.com/sitemap.xml

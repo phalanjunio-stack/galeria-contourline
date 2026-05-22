@@ -19,8 +19,8 @@ app.use((req, res, next) => {
   ].filter(Boolean);
   if (permitidas.includes(origem) || permitidas.some((p) => origem.startsWith(p))) {
     res.setHeader("Access-Control-Allow-Origin", origem);
-  } else {
-    res.setHeader("Access-Control-Allow-Origin", "*");
+  } else if (origem) {
+    return res.status(403).json({ error: "Origem nao permitida" });
   }
   res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, X-Server-Secret");
@@ -31,7 +31,9 @@ app.use((req, res, next) => {
 // Auth simples: header X-Server-Secret == SERVER_SECRET
 function exigirSecret(req, res, next) {
   const secret = process.env.SERVER_SECRET;
-  if (!secret) return next(); // sem secret configurado → libera (dev)
+  if (!secret) {
+    return res.status(503).json({ error: "SERVER_SECRET nao configurado" });
+  }
   if (req.headers["x-server-secret"] !== secret) {
     return res.status(401).json({ error: "Nao autorizado" });
   }
