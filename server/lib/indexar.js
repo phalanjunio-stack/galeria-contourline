@@ -22,13 +22,14 @@ export function getJob(jobId) {
   return jobs.get(jobId) || null;
 }
 
-export function novoJob(eventoId, eventoNome, folderId) {
+export function novoJob(eventoId, eventoNome, folderId, folderIds = [folderId]) {
   const jobId = `${eventoId}_${Date.now()}`;
   const job = {
     jobId,
     eventoId,
     eventoNome,
     folderId,
+    folderIds: [...new Set((folderIds || [folderId]).filter(Boolean))],
     status: "running", // running | done | error
     fase: "iniciando",
     iniciadoEm: new Date().toISOString(),
@@ -52,7 +53,7 @@ export async function indexarEvento(jobId, perfis) {
   try {
     // ─── Fase 1: Listar fotos ─────────────────────────────────────
     job.fase = "listando_fotos";
-    const fotos = await listarFotosPasta(job.folderId);
+    const fotos = await listarFotosJob(job);
     job.fotosTotal = fotos.length;
     job.usuariosCadastrados = perfis.length;
     console.log(`[job ${jobId}] ${fotos.length} fotos, ${perfis.length} perfis`);
@@ -228,6 +229,12 @@ export async function indexarEvento(jobId, perfis) {
     job.erro = err.message;
     job.terminadoEm = new Date().toISOString();
   }
+}
+
+async function listarFotosJob(job) {
+  const folderIds = job.folderIds?.length ? job.folderIds : [job.folderId];
+  const fotos = (await Promise.all(folderIds.map((folderId) => listarFotosPasta(folderId)))).flat();
+  return [...new Map(fotos.map((foto) => [foto.id, foto])).values()];
 }
 
 async function notificarMatches(job, totalFotos, usuarios) {

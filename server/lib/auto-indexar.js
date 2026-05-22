@@ -85,8 +85,9 @@ async function precisaIndexar(evento) {
   if (!evento.folder_id) return { precisa: false, motivo: "sem folder_id" };
 
   try {
+    const folderIds = pastasDoEvento(evento);
     const [fotosDrive, descritores] = await Promise.all([
-      listarFotosPasta(evento.folder_id),
+      listarFotosPastas(folderIds),
       lerArquivo(evento.folder_id, `_desc_${evento.id}.json`),
     ]);
 
@@ -112,6 +113,18 @@ async function precisaIndexar(evento) {
   } catch (err) {
     return { precisa: false, motivo: `erro: ${err.message}` };
   }
+}
+
+function pastasDoEvento(evento) {
+  return [...new Set([
+    ...(Array.isArray(evento.folder_ids) ? evento.folder_ids : []),
+    evento.folder_id,
+  ].filter(Boolean))];
+}
+
+async function listarFotosPastas(folderIds) {
+  const fotos = (await Promise.all(folderIds.map((folderId) => listarFotosPasta(folderId)))).flat();
+  return [...new Map(fotos.map((foto) => [foto.id, foto])).values()];
 }
 
 function perfisComDescritores(perfis) {
@@ -185,7 +198,7 @@ async function tick() {
         continue;
       }
 
-      const job = novoJob(evento.id, evento.nome, evento.folder_id);
+      const job = novoJob(evento.id, evento.nome, evento.folder_id, pastasDoEvento(evento));
       const registro = statusEvento(evento, "indexando", motivo, { jobId: job.jobId });
       ciclo.eventos.push(registro);
       console.log(`[auto] Indexando ${evento.nome} (job ${job.jobId})`);

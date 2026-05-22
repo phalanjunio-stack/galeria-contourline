@@ -66,7 +66,21 @@ export async function GET(req: NextRequest) {
     }));
 
   return NextResponse.json({
-    eventos: eventos.filter((e) => e.folder_id && e.status !== "encerrado"),
+    eventos: eventos
+      .filter((e) => e.status !== "encerrado")
+      .map((e) => {
+        const folderIds = [...new Set([
+          e.folder_id,
+          ...(e.dias ?? []).map((dia) => dia.folder_id),
+        ].filter(Boolean))] as string[];
+        if (!folderIds.length) return null;
+        return {
+          ...e,
+          folder_id: e.folder_id || folderIds[0],
+          folder_ids: folderIds,
+        };
+      })
+      .filter(Boolean),
     perfis: perfisComDesc,
   });
 }
