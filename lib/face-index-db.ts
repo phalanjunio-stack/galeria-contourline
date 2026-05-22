@@ -13,10 +13,57 @@ type DbClusterRow = {
   distance?: number | string;
 };
 
+type DbIndexedFaceRow = {
+  id: string | number;
+  evento_id: string;
+  evento_nome: string;
+  foto_id: string;
+  face_ordem: number;
+  box_x: number | null;
+  box_y: number | null;
+  box_width: number | null;
+  box_height: number | null;
+  detection_score: number | null;
+  total_fotos: number;
+  fotos_com_rosto: number;
+  rostos_detectados: number;
+  indexed_at: Date | string;
+};
+
+type DbFaceCropRow = {
+  id: string | number;
+  foto_id: string;
+  box_x: number | null;
+  box_y: number | null;
+  box_width: number | null;
+  box_height: number | null;
+};
+
 export interface ClusterMatchDb {
   eventoId: string;
   cluster: ClusterPessoa;
   dist: number;
+}
+
+export interface FaceIndexPreviewFace {
+  id: string;
+  ordem: number;
+  score: number | null;
+}
+
+export interface FaceIndexPreviewPhoto {
+  fotoId: string;
+  rostos: FaceIndexPreviewFace[];
+}
+
+export interface FaceIndexPreview {
+  eventoId: string;
+  eventoNome: string;
+  totalFotos: number;
+  fotosComRosto: number;
+  rostosDetectados: number;
+  indexedAt: string;
+  fotos: FaceIndexPreviewPhoto[];
 }
 
 const globalForFaceIndex = globalThis as typeof globalThis & {
@@ -134,6 +181,93 @@ export async function lerClustersDoEventoDb(eventoId: string) {
     [eventoId]
   );
   return result.rows.map(toCluster);
+}
+
+export async function lerAmostraRostosIndexadosDb(eventoId: string, limit = 12) {
+  const pool = getPool();
+  if (!pool) return null;
+  await ensureSchema();
+
+  const result = await pool.query<DbIndexedFaceRow>(
+    `WITH fotos_amostra AS (
+       SELECT foto_id, min(id) AS first_face_id
+         FROM face_index_faces
+        WHERE evento_id = $1
+        GROUP BY foto_id
+        ORDER BY min(id) DESC
+        LIMIT $2
+     )
+     SELECT f.id,
+            f.evento_id,
+            e.evento_nome,
+            f.foto_id,
+            f.face_ordem,
+            f.box_x,
+            f.box_y,
+            f.box_width,
+            f.box_height,
+            f.detection_score,
+            e.total_fotos,
+            e.fotos_com_rosto,
+            e.rostos_detectados,
+            e.indexed_at
+       FROM fotos_amostra a
+       JOIN face_index_faces f
+         ON f.evento_id = $1 AND f.foto_id = a.foto_id
+       JOIN face_index_events e
+         ON e.evento_id = f.evento_id
+      ORDER BY a.first_face_id DESC, f.face_ordem ASC`,
+    [eventoId, Math.max(1, Math.min(limit, 30))]
+  );
+  if (result.rows.length === 0) return null;
+
+  const primeira = result.rows[0];
+  const fotos = new Map<string, FaceIndexPreviewPhoto>();
+  for (const row of result.rows) {
+    const foto = fotos.get(row.foto_id) ?? { fotoId: row.foto_id, rostos: [] };
+    foto.rostos.push({
+      id: String(row.id),
+      ordem: Number(row.face_ordem),
+      score: row.detection_score === null ? null : Number(row.detection_score),
+    });
+    fotos.set(row.foto_id, foto);
+  }
+
+  return {
+    eventoId: primeira.evento_id,
+    eventoNome: primeira.evento_nome,
+    totalFotos: Number(primeira.total_fotos) || 0,
+    fotosComRosto: Number(primeira.fotos_com_rosto) || 0,
+    rostosDetectados: Number(primeira.rostos_detectados) || 0,
+    indexedAt: new Date(primeira.indexed_at).toISOString(),
+    fotos: [...fotos.values()],
+  } satisfies FaceIndexPreview;
+}
+
+export async function lerRostoIndexadoDb(faceId: string) {
+  const pool = getPool();
+  if (!pool) return null;
+  await ensureSchema();
+
+  const result = await pool.query<DbFaceCropRow>(
+    `SELECT id, foto_id, box_x, box_y, box_width, box_height
+       FROM face_index_faces
+      WHERE id = $1
+      LIMIT 1`,
+    [faceId]
+  );
+  const row = result.rows[0];
+  if (!row) return null;
+  return {
+    id: String(row.id),
+    fotoId: row.foto_id,
+    box: {
+      x: row.box_x === null ? null : Number(row.box_x),
+      y: row.box_y === null ? null : Number(row.box_y),
+      width: row.box_width === null ? null : Number(row.box_width),
+      height: row.box_height === null ? null : Number(row.box_height),
+    },
+  };
 }
 
 export async function buscarClustersDb({

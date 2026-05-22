@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import {
   ScanFace, Play, CheckCircle, Users, Loader2,
   AlertCircle, Camera, Bell, RefreshCw, Database, Zap, Images,
@@ -19,6 +20,24 @@ interface FotoDescritores {
 interface ResultadoSalvo {
   processadoEm: string; totalFotos: number; fotosComRosto: number;
   usuarios: { email: string; nome: string; fotosIds: string[]; thumbUrl?: string }[];
+}
+interface PreviewRosto {
+  id: string;
+  ordem: number;
+  score: number | null;
+}
+interface PreviewFoto {
+  fotoId: string;
+  rostos: PreviewRosto[];
+}
+interface PreviewIndice {
+  eventoId: string;
+  eventoNome: string;
+  totalFotos: number;
+  fotosComRosto: number;
+  rostosDetectados: number;
+  indexedAt: string;
+  fotos: PreviewFoto[];
 }
 
 interface PerfilComDesc {
@@ -72,6 +91,10 @@ export default function ReconhecimentoPage() {
   const [perfisCarregados, setPerfisCarregados] = useState(0);
   const [resultadoSalvo, setResultadoSalvo] = useState<ResultadoSalvo | null>(null);
   const [totalPerfis, setTotalPerfis] = useState<number | null>(null);
+  const [previewIndice, setPreviewIndice] = useState<PreviewIndice | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewEnabled, setPreviewEnabled] = useState(true);
+  const [previewReload, setPreviewReload] = useState(0);
 
   // Status de indexação por evento
   const [statusIndex, setStatusIndex] = useState<Record<string, boolean>>({});
@@ -241,6 +264,27 @@ export default function ReconhecimentoPage() {
       .then(data => { if (data) setResultadoSalvo(data); })
       .catch(() => {});
   }, [eventoId]);
+
+  useEffect(() => {
+    if (!eventoId) return;
+
+    let ativo = true;
+    fetch(`/api/indexacao/rostos?eventoId=${encodeURIComponent(eventoId)}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!ativo) return;
+        setPreviewEnabled(data?.enabled !== false);
+        setPreviewIndice(data?.preview ?? null);
+      })
+      .catch(() => {
+        if (ativo) setPreviewIndice(null);
+      })
+      .finally(() => {
+        if (ativo) setPreviewLoading(false);
+      });
+
+    return () => { ativo = false; };
+  }, [eventoId, previewReload]);
 
   const evento  = eventos.find((e) => e.id === eventoId);
   const ocupado = FASES_OCUPADAS.includes(fase);
@@ -764,7 +808,11 @@ export default function ReconhecimentoPage() {
         </label>
         <select
           value={eventoId}
-          onChange={(e) => setEventoId(e.target.value)}
+          onChange={(e) => {
+            setEventoId(e.target.value);
+            setPreviewIndice(null);
+            setPreviewLoading(Boolean(e.target.value));
+          }}
           disabled={ocupado}
           className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm text-[#0D2B4E] bg-[#F5F7FA] focus:outline-none focus:border-[#2E7DD1] transition disabled:opacity-50"
         >
@@ -900,6 +948,106 @@ export default function ReconhecimentoPage() {
           </div>
         )}
       </div>
+
+      {eventoId && (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mb-5">
+          <div className="flex items-start justify-between gap-3 mb-4">
+            <div>
+              <h2 className="text-sm font-bold text-[#0D2B4E] flex items-center gap-2">
+                <ScanFace size={15} className="text-[#2E7DD1]" /> Rostos indexados neste evento
+              </h2>
+              <p className="text-xs text-gray-500 mt-1">
+                Estes recortes sao os rostos que o motor compara quando alguem cadastra a selfie.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setPreviewLoading(true);
+                setPreviewReload((n) => n + 1);
+              }}
+              disabled={previewLoading}
+              title="Atualizar amostra"
+              className="w-9 h-9 rounded-xl border border-gray-200 text-[#2E7DD1] hover:bg-[#EFF5FF] disabled:opacity-50 flex items-center justify-center shrink-0"
+            >
+              <RefreshCw size={15} className={previewLoading ? "animate-spin" : ""} />
+            </button>
+          </div>
+
+          {!previewEnabled && (
+            <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+              Ative o Postgres com pgvector para ver os rostos indexados aqui.
+            </p>
+          )}
+
+          {previewEnabled && previewLoading && (
+            <div className="flex items-center gap-2 text-xs text-gray-500 py-3">
+              <Loader2 size={14} className="animate-spin text-[#2E7DD1]" /> Carregando amostra do indice...
+            </div>
+          )}
+
+          {previewEnabled && !previewLoading && !previewIndice && (
+            <p className="text-xs text-gray-500 bg-[#F5F7FA] border border-gray-100 rounded-xl px-3 py-3">
+              Ainda nao ha rostos salvos no pgvector para este evento. Quando a indexacao do servidor terminar, a amostra aparece aqui.
+            </p>
+          )}
+
+          {previewIndice && (
+            <>
+              <div className="grid grid-cols-3 gap-2 mb-4">
+                <IndiceStat label="Fotos" value={String(previewIndice.totalFotos)} />
+                <IndiceStat label="Com rosto" value={String(previewIndice.fotosComRosto)} />
+                <IndiceStat label="Rostos" value={String(previewIndice.rostosDetectados)} />
+              </div>
+              <div className="space-y-3 max-h-[38rem] overflow-y-auto pr-1">
+                {previewIndice.fotos.map((foto) => (
+                  <div key={foto.fotoId} className="rounded-2xl border border-gray-100 bg-[#F8FAFD] p-3">
+                    <div className="grid grid-cols-[112px_minmax(0,1fr)] gap-3">
+                      <div className="relative h-28 overflow-hidden rounded-xl bg-gray-100">
+                        <Image
+                          src={`/api/thumb?id=${encodeURIComponent(foto.fotoId)}&sz=400`}
+                          alt="Foto processada"
+                          fill
+                          unoptimized
+                          sizes="112px"
+                          className="object-cover"
+                        />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <p className="text-xs font-bold text-[#0D2B4E]">
+                            {foto.rostos.length} rosto{foto.rostos.length !== 1 ? "s" : ""} detectado{foto.rostos.length !== 1 ? "s" : ""}
+                          </p>
+                          <span className="text-[10px] text-gray-400">foto processada</span>
+                        </div>
+                        <div className="flex gap-2 overflow-x-auto pb-1">
+                          {foto.rostos.map((rosto) => (
+                            <div key={rosto.id} className="w-20 shrink-0">
+                              <div className="relative h-20 overflow-hidden rounded-xl border border-white bg-gray-100 shadow-sm">
+                                <Image
+                                  src={`/api/indexacao/rostos/crop?id=${encodeURIComponent(rosto.id)}`}
+                                  alt={`Rosto ${rosto.ordem + 1}`}
+                                  fill
+                                  unoptimized
+                                  sizes="80px"
+                                  className="object-cover"
+                                />
+                              </div>
+                              <p className="mt-1 text-[10px] text-gray-500 text-center">
+                                Rosto {rosto.ordem + 1}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Barra de progresso */}
       {(fase === "processando" || fase === "salvando_index") && (
@@ -1233,6 +1381,15 @@ export default function ReconhecimentoPage() {
         </div>
       )}
 
+    </div>
+  );
+}
+
+function IndiceStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-gray-100 bg-[#F5F7FA] px-3 py-2 text-center">
+      <p className="text-base font-black text-[#0D2B4E]">{value}</p>
+      <p className="text-[10px] text-gray-500">{label}</p>
     </div>
   );
 }
