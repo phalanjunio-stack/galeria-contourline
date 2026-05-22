@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth, getAccessTokenFromEnv } from "@/auth";
 import { lerArquivoOculto, salvarArquivoOculto } from "@/lib/drive";
 import { lerEventosLocal, salvarEventosLocal } from "@/lib/eventos-cache";
+import { registrarAtividade } from "@/lib/atividade";
 
 const ROOT_FOLDER = process.env.DRIVE_ROOT_FOLDER_ID!;
 
@@ -115,6 +116,12 @@ export async function POST(req: NextRequest) {
     if (!salvo) {
       return NextResponse.json({ error: "Nao foi possivel salvar o indice de eventos no Drive." }, { status: 502 });
     }
+    await registrarAtividade({
+      tipo: "evento.criado",
+      email: session.user.email ?? undefined,
+      nome: session.user.name ?? undefined,
+      detalhes: { evento: novo.nome, eventoId: novo.id },
+    });
     return NextResponse.json(novo);
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 500 });
@@ -134,11 +141,18 @@ export async function PATCH(req: NextRequest) {
     const index = await lerEventos(session.accessToken);
     const idx   = index.findIndex((e) => e.id === id);
     if (idx === -1) return NextResponse.json({ error: "Evento não encontrado" }, { status: 404 });
+    const anterior = index[idx];
     index[idx] = { ...index[idx], ...body };
     const salvo = await salvarEventos(index, session.accessToken);
     if (!salvo) {
       return NextResponse.json({ error: "Nao foi possivel salvar o indice de eventos no Drive." }, { status: 502 });
     }
+    await registrarAtividade({
+      tipo: "evento.editado",
+      email: session.user.email ?? undefined,
+      nome: session.user.name ?? undefined,
+      detalhes: { evento: index[idx].nome, eventoId: id, statusAnterior: anterior.status, statusNovo: index[idx].status },
+    });
     return NextResponse.json(index[idx]);
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 500 });
@@ -155,11 +169,18 @@ export async function DELETE(req: NextRequest) {
 
   try {
     const index = await lerEventos(session.accessToken);
+    const removido = index.find((e) => e.id === id);
     const novo  = index.filter((e) => e.id !== id);
     const salvo = await salvarEventos(novo, session.accessToken);
     if (!salvo) {
       return NextResponse.json({ error: "Nao foi possivel remover o evento do indice no Drive." }, { status: 502 });
     }
+    await registrarAtividade({
+      tipo: "evento.removido",
+      email: session.user.email ?? undefined,
+      nome: session.user.name ?? undefined,
+      detalhes: { evento: removido?.nome ?? id, eventoId: id },
+    });
     return NextResponse.json({ ok: true });
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 500 });

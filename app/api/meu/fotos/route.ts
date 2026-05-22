@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth, getAccessTokenFromEnv } from "@/auth";
 import { lerArquivoOculto, salvarArquivoOculto, deletarArquivoOculto } from "@/lib/drive";
+import { registrarAtividade } from "@/lib/atividade";
 
 const ROOT = process.env.DRIVE_ROOT_FOLDER_ID!;
 
@@ -94,6 +95,13 @@ export async function PUT(req: NextRequest) {
     };
 
     await salvarArquivoOculto(ROOT, key, data, token);
+    if (fotoIdsFinais.length > 0) {
+      await registrarAtividade({
+        tipo: "foto.confirmada",
+        email,
+        detalhes: { evento: eventoNome, eventoId, fotos: fotoIdsFinais.length, merge: Boolean(merge) },
+      });
+    }
     return NextResponse.json({ ok: true, totalFotos: data.totalFotos });
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, Calendar, Image as ImgIcon,
-  HardDrive, Users, Settings, LogOut, ScanFace,
+  HardDrive, Users, Settings, LogOut, ScanFace, Activity, Server,
 } from "lucide-react";
 
 const navItems = [
@@ -14,6 +14,8 @@ const navItems = [
   { href: "/admin/drive",            label: "Google Drive",      icon: HardDrive },
   { href: "/admin/reconhecimento-servidor", label: "Reconhecimento IA", icon: ScanFace },
   { href: "/admin/usuarios",         label: "Usuários",          icon: Users },
+  { href: "/admin/atividade",        label: "Atividade",         icon: Activity },
+  { href: "/admin/sistema",          label: "Sistema",           icon: Server },
   { href: "/admin/config",           label: "Configurações",     icon: Settings },
 ];
 

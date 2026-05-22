@@ -7,6 +7,7 @@ import { lerArquivoOculto } from "@/lib/drive";
 import fs from "node:fs/promises";
 import path from "node:path";
 import type { PerfilUsuario } from "@/app/api/perfil/route";
+import { registrarAtividade } from "@/lib/atividade";
 
 const ROOT = process.env.DRIVE_ROOT_FOLDER_ID!;
 const PERFIS_PATH = path.join(process.cwd(), "data", "perfis.json");
@@ -100,6 +101,12 @@ export async function POST(req: NextRequest) {
   }
 
   const data = await res.json();
+  await registrarAtividade({
+    tipo: "indexacao.iniciada",
+    email: session.user.email ?? undefined,
+    nome: session.user.name ?? undefined,
+    detalhes: { evento: eventoNome || eventoId, eventoId, jobId: data.jobId, perfis: perfisComDesc.length },
+  });
   return NextResponse.json({
     jobId: data.jobId,
     status: data.status,

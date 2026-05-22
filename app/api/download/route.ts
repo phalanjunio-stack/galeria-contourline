@@ -3,6 +3,7 @@ import { auth, getAccessTokenFromEnv } from "@/auth";
 import sharp from "sharp";
 import path from "path";
 import fs from "fs";
+import { registrarAtividade } from "@/lib/atividade";
 
 // Prepara logo com fundo transparente e cor branca para uso como watermark
 async function gerarLogoWatermark(larguraFoto: number): Promise<Buffer> {
@@ -86,6 +87,12 @@ export async function GET(req: NextRequest) {
       { headers: { Authorization: `Bearer ${accessToken}` } }
     ).then(r => r.ok ? r.json() : null).catch(() => null);
     const nomeArquivo = nomeMeta?.name ?? `foto-contourline.jpg`;
+    registrarAtividade({
+      tipo: "foto.baixada",
+      email: session?.user?.email ?? undefined,
+      nome: session?.user?.name ?? undefined,
+      detalhes: { fotoId: id, arquivo: nomeArquivo },
+    }).catch(() => {});
 
     return new NextResponse(resultado, {
       headers: {

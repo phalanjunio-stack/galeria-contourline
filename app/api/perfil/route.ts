@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth, getAccessTokenFromEnv } from "@/auth";
 import { lerArquivoOculto, salvarArquivoOculto } from "@/lib/drive";
+import { registrarAtividade } from "@/lib/atividade";
 import fs from "fs";
 import path from "path";
 
@@ -173,5 +174,13 @@ export async function POST(req: NextRequest) {
 
   if (idx >= 0) perfis[idx] = novo; else perfis.push(novo);
   await salvarPerfis(perfis, ident.token);
+  if (idx === -1 || (!anterior?.descriptor && !anterior?.descriptors?.length && (novo.descriptor || novo.descriptors?.length))) {
+    await registrarAtividade({
+      tipo: "perfil.cadastrado",
+      email: novo.email,
+      nome: novo.nome,
+      detalhes: { referencias: novo.descriptors?.length ?? (novo.descriptor ? 1 : 0) },
+    });
+  }
   return NextResponse.json(novo);
 }

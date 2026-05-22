@@ -20,6 +20,12 @@ interface AutomacaoConfig {
 interface ReindexFlag {
   eventoId: string; eventoNome: string; novas: number; detectadoEm: string;
 }
+interface AdminStats {
+  downloads: number;
+  fotosConfirmadas: number;
+  atividades: number;
+  faceIndex?: { eventosIndexados?: number; rostosIndexados?: number };
+}
 
 function tempoRelativo(iso: string | null | undefined): string {
   if (!iso) return "Nunca";
@@ -51,25 +57,31 @@ export default function AdminDashboard() {
   const [usuarios,  setUsuarios]  = useState<UsuarioItem[]>([]);
   const [automacao, setAutomacao] = useState<AutomacaoConfig | null>(null);
   const [flags,     setFlags]     = useState<ReindexFlag[]>([]);
+  const [painelStats, setPainelStats] = useState<AdminStats | null>(null);
   const [loading,   setLoading]   = useState(true);
   const [executando, setExecutando] = useState(false);
   const [cronResult, setCronResult] = useState<"ok" | "erro" | null>(null);
 
   async function carregar() {
-    const [ev, us, aut, fl] = await Promise.all([
+    const [ev, us, aut, fl, st] = await Promise.all([
       fetch("/api/eventos").then(r => r.ok ? r.json() : []).catch(() => []),
       fetch("/api/usuarios").then(r => r.ok ? r.json() : []).catch(() => []),
       fetch("/api/automacao").then(r => r.ok ? r.json() : null).catch(() => null),
       fetch("/api/indexacao/flags").then(r => r.ok ? r.json() : []).catch(() => []),
+      fetch("/api/admin/stats").then(r => r.ok ? r.json() : null).catch(() => null),
     ]);
     setEventos(Array.isArray(ev) ? ev : []);
     setUsuarios(Array.isArray(us) ? us : []);
     setAutomacao(aut);
     setFlags(Array.isArray(fl) ? fl : []);
+    setPainelStats(st);
     setLoading(false);
   }
 
-  useEffect(() => { carregar(); }, []);
+  useEffect(() => {
+    const id = window.setTimeout(carregar, 0);
+    return () => window.clearTimeout(id);
+  }, []);
 
   async function executarCron() {
     setExecutando(true);
@@ -314,6 +326,17 @@ export default function AdminDashboard() {
                 <p className="text-gray-400 text-[10px] mt-1">
                   {eventosIA.length} de {eventos.length} eventos indexados
                 </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="rounded-xl bg-violet-50 p-3">
+                  <p className="text-[10px] font-bold uppercase text-violet-500">Downloads</p>
+                  <p className="text-lg font-black text-violet-700">{fmt(painelStats?.downloads ?? 0)}</p>
+                </div>
+                <div className="rounded-xl bg-emerald-50 p-3">
+                  <p className="text-[10px] font-bold uppercase text-emerald-500">Confirmadas</p>
+                  <p className="text-lg font-black text-emerald-700">{fmt(painelStats?.fotosConfirmadas ?? 0)}</p>
+                </div>
               </div>
 
               {/* Último log do cron */}
