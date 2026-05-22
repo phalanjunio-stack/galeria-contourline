@@ -170,3 +170,63 @@ export async function substituirIndiceEvento({
     client.release();
   }
 }
+
+export async function lerPreviewIndiceEvento(eventoId, limit = 12) {
+  const db = getPool();
+  if (!db) return null;
+  await ensureSchema();
+
+  const result = await db.query(
+    `WITH fotos_amostra AS (
+       SELECT foto_id, min(id) AS first_face_id
+         FROM face_index_faces
+        WHERE evento_id = $1
+        GROUP BY foto_id
+        ORDER BY min(id) DESC
+        LIMIT $2
+     )
+     SELECT f.id,
+            f.foto_id,
+            f.face_ordem,
+            f.box_x,
+            f.box_y,
+            f.box_width,
+            f.box_height,
+            f.detection_score,
+            e.total_fotos,
+            e.fotos_com_rosto,
+            e.rostos_detectados
+       FROM fotos_amostra a
+       JOIN face_index_faces f
+         ON f.evento_id = $1 AND f.foto_id = a.foto_id
+       JOIN face_index_events e
+         ON e.evento_id = f.evento_id
+      ORDER BY a.first_face_id DESC, f.face_ordem ASC`,
+    [eventoId, Math.max(1, Math.min(Number(limit) || 12, 30))]
+  );
+  if (result.rows.length === 0) return null;
+
+  const fotos = new Map();
+  for (const row of result.rows) {
+    const foto = fotos.get(row.foto_id) || { fotoId: row.foto_id, rostos: [] };
+    foto.rostos.push({
+      ordem: Number(row.face_ordem),
+      score: row.detection_score === null ? null : Number(row.detection_score),
+      box: {
+        x: row.box_x === null ? null : Number(row.box_x),
+        y: row.box_y === null ? null : Number(row.box_y),
+        width: row.box_width === null ? null : Number(row.box_width),
+        height: row.box_height === null ? null : Number(row.box_height),
+      },
+    });
+    fotos.set(row.foto_id, foto);
+  }
+
+  const primeira = result.rows[0];
+  return {
+    totalFotos: Number(primeira.total_fotos) || 0,
+    fotosComRosto: Number(primeira.fotos_com_rosto) || 0,
+    rostosDetectados: Number(primeira.rostos_detectados) || 0,
+    fotos: [...fotos.values()],
+  };
+}

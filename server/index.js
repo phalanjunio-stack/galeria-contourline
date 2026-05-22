@@ -3,6 +3,8 @@ import express from "express";
 import { initFaceApi } from "./lib/face.js";
 import { novoJob, getJob, indexarEvento } from "./lib/indexar.js";
 import { iniciarAutoIndexacao } from "./lib/auto-indexar.js";
+import { lerArquivo } from "./lib/storage.js";
+import { lerPreviewIndiceEvento } from "./lib/face-index-db.js";
 
 const app = express();
 app.use(express.json({ limit: "10mb" }));
@@ -130,6 +132,52 @@ app.get("/status/:jobId", exigirSecret, (req, res) => {
   const job = getJob(req.params.jobId);
   if (!job) return res.status(404).json({ error: "Job nao encontrado" });
   res.json(job);
+});
+
+// Amostra dos rostos que o proprio face-server ja salvou no indice de descritores.
+app.get("/preview/:eventoId", exigirSecret, async (req, res) => {
+  const folderId = String(req.query.folderId || "");
+  const eventoId = req.params.eventoId;
+  if (!folderId) return res.status(400).json({ error: "Falta folderId" });
+
+  try {
+    const descriptors = await lerArquivo(folderId, `_desc_${eventoId}.json`);
+    if (!Array.isArray(descriptors) || descriptors.length === 0) {
+      const vectorPreview = await lerPreviewIndiceEvento(eventoId);
+      if (vectorPreview) return res.json({ found: true, source: "pgvector", ...vectorPreview });
+      return res.json({ found: false, totalFotos: 0, fotos: [] });
+    }
+
+    const fotosComRosto = descriptors.filter((foto) => (foto.rostos?.length || 0) > 0);
+    const fotos = fotosComRosto
+      .slice(-12)
+      .reverse()
+      .map((foto) => ({
+        fotoId: foto.fotoId,
+        rostos: (foto.rostos || [])
+          .map((rosto, ordem) => ({
+            ordem,
+            score: typeof rosto.score === "number" ? rosto.score : null,
+            box: rosto.box || null,
+          }))
+          .filter((rosto) =>
+            rosto.box &&
+            ["x", "y", "width", "height"].every((key) => Number.isFinite(rosto.box[key]))
+          ),
+      }))
+      .filter((foto) => foto.rostos.length > 0);
+
+    res.json({
+      found: true,
+      source: "descritores",
+      totalFotos: descriptors.length,
+      fotosComRosto: fotosComRosto.length,
+      rostosDetectados: descriptors.reduce((total, foto) => total + (foto.rostos?.length || 0), 0),
+      fotos,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Lista todos os jobs (debug)
