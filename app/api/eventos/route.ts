@@ -12,6 +12,7 @@ export interface EventoDia {
   descricao?: string;
   folder_id: string;           // pasta separada no Drive
   total_fotos?: number;
+  capa_id?: string;
   status?: "disponivel" | "processando" | "fechado";
 }
 

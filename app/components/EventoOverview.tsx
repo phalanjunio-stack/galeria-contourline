@@ -91,7 +91,15 @@ function DiaCard({ dia, ordem, slug, minhas }: { dia: EventoDia; ordem: number; 
   return (
     <article className="bg-white dark:bg-[#0a1a2f]/80 border border-[#2E7DD1]/15 dark:border-[#5BA4E5]/15 rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5">
       <div className="h-32 relative bg-gradient-to-br from-[#2E7DD1] to-[#7a3cff] flex items-center justify-center overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0D2B4E]/70 to-transparent" />
+        {dia.capa_id && (
+          <img
+            src={`/api/thumb?id=${dia.capa_id}&sz=600`}
+            alt=""
+            aria-hidden
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0D2B4E]/85 via-[#0D2B4E]/35 to-[#0D2B4E]/10" />
         <div className="relative z-10 text-center">
           <div className="text-white/70 text-xs font-bold uppercase tracking-widest">Dia</div>
           <div className="text-white text-5xl font-black leading-none">{ordem}</div>

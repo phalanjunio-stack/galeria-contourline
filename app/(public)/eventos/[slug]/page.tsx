@@ -41,7 +41,7 @@ async function carregarTotaisDias(ev: EventoItem) {
       const res = await fetch(`/api/fotos?folderId=${encodeURIComponent(dia.folder_id)}`);
       const data = await res.json();
       if (!res.ok || !Array.isArray(data?.fotos)) return dia;
-      return { ...dia, total_fotos: data.fotos.length };
+      return { ...dia, total_fotos: data.fotos.length, capa_id: dia.capa_id ?? data.fotos[0]?.id };
     } catch {
       return dia;
     }
