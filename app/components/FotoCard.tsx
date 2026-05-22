@@ -19,6 +19,8 @@ interface Props {
   onOpenLightbox: () => void;
   onDefinirCapa?: () => void;
   downloadUrl: string;
+  /** Tamanho do thumb em px (vem do filtro Rápido/Normal/HD). Default 400. */
+  thumbSize?: number;
 }
 
 function thumbUrl(id: string, size: number) {
@@ -29,6 +31,7 @@ export default function FotoCard({
   id, name, index = 0, selecionada, favoritada, modoSelecao,
   isCapa, isAdmin, masonry = false,
   onToggleSel, onToggleFav, onIniciarSelecao, onOpenLightbox, onDefinirCapa, downloadUrl,
+  thumbSize = 400,
 }: Props) {
   const [loaded,  setLoaded]  = useState(false);
   const [visible, setVisible] = useState(false);
@@ -109,7 +112,7 @@ export default function FotoCard({
         {/* Thumbnail real */}
         {visible && (
           <img
-            src={thumbUrl(id, 400)}
+            src={thumbUrl(id, thumbSize)}
             alt={name}
             decoding="async"
             onLoad={() => setLoaded(true)}
