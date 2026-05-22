@@ -266,7 +266,8 @@ export default function ReconhecimentoServidor() {
     () => alvosIndexacao.find((alvo) => alvo.id === eventoSel) ?? null,
     [alvosIndexacao, eventoSel]
   );
-  const eventoAtualId = alvoAtual?.eventoId ?? eventoAtual?.id ?? "";
+  // Para multi-dia: usa o ID do alvo selecionado (pode ser composto) para carregar preview do índice correto
+  const eventoAtualId = alvoAtual?.id ?? eventoAtual?.id ?? "";
 
   const carregarHistorico = useCallback(async (lista: EventoItem[]) => {
     const registros = await Promise.all(
@@ -313,17 +314,20 @@ export default function ReconhecimentoServidor() {
     }
   }, [carregarHistorico]);
 
-  const carregarEvento = useCallback(async (eventoId: string) => {
-    if (!eventoId) {
+  const carregarEvento = useCallback(async (chave: string) => {
+    if (!chave) {
       setPreview(null);
       setMatches(null);
       return;
     }
+    // Para multi-dia a chave é "eventoId::diaId"; matches sempre pelo eventoId pai
+    const [eventoId, diaId] = chave.split("::");
+    const indexId = diaId ? `${eventoId}::${diaId}` : eventoId;
 
     setCarregandoEvento(true);
     try {
       const [previewRes, matchesRes] = await Promise.all([
-        fetch(`/api/indexacao/rostos?eventoId=${encodeURIComponent(eventoId)}`),
+        fetch(`/api/indexacao/rostos?eventoId=${encodeURIComponent(indexId)}`),
         fetch(`/api/matches?eventoId=${encodeURIComponent(eventoId)}`),
       ]);
       const previewData = previewRes.ok ? await previewRes.json() : null;
@@ -353,28 +357,32 @@ export default function ReconhecimentoServidor() {
     return () => window.clearTimeout(id);
   }, [carregarEvento, eventoAtualId]);
 
-  const fetchStatus = useCallback(async (eventoId: string, jobId: string) => {
+  // Extrai o eventoId real de uma chave composta "eventoId::diaId" ou simples "eventoId"
+  const parentEventoId = useCallback((chave: string) => chave.split("::")[0], []);
+
+  const fetchStatus = useCallback(async (chave: string, jobId: string) => {
     try {
       const res = await fetch(`/api/indexar-remoto/status?jobId=${encodeURIComponent(jobId)}`);
       if (res.status === 404) {
-        removerJobLocal(eventoId);
+        removerJobLocal(chave);
         setJobs((atual) => {
           const proximo = { ...atual };
-          delete proximo[eventoId];
+          delete proximo[chave];
           return proximo;
         });
         return;
       }
       if (!res.ok) return;
       const status: JobStatus = await res.json();
-      setJobs((atual) => ({ ...atual, [eventoId]: status }));
+      setJobs((atual) => ({ ...atual, [chave]: status }));
       if (status.status === "done") {
-        void carregarEvento(eventoId);
+        // usa o eventoId real (pai), não a chave composta
+        void carregarEvento(parentEventoId(chave));
       }
     } catch (err) {
       console.warn("[motor-ia] poll falhou", err);
     }
-  }, [carregarEvento]);
+  }, [carregarEvento, parentEventoId]);
 
   useEffect(() => {
     const tick = async () => {
@@ -840,7 +848,12 @@ export default function ReconhecimentoServidor() {
             {historico.map((item) => (
               <button
                 key={`${item.eventoId}:${item.processadoEm}`}
-                onClick={() => setEventoSel(item.eventoId)}
+                onClick={() => {
+                  // tenta selecionar o alvo exato; se não achar, seleciona o primeiro alvo deste evento
+                  const alvo = alvosIndexacao.find(a => a.id === item.eventoId)
+                    ?? alvosIndexacao.find(a => a.eventoId === item.eventoId);
+                  if (alvo) setEventoSel(alvo.id);
+                }}
                 className={`flex items-center justify-between gap-3 rounded-xl border px-3 py-3 text-left transition ${
                   item.eventoId === eventoSel
                     ? "border-[#2E7DD1]/35 bg-[#EFF5FF]"
