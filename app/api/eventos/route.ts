@@ -20,16 +20,12 @@ export interface EventoItem {
   criado_em: string;
 }
 
-// Resolve o melhor token disponível: sessão → env refresh → null
-async function resolverToken(sessionToken?: string): Promise<string | null> {
-  if (sessionToken) return sessionToken;
-  return await getAccessTokenFromEnv();
-}
-
 // Tenta ler do Drive; se falhar usa cache local
 async function lerEventos(sessionToken?: string): Promise<EventoItem[]> {
-  const token = await resolverToken(sessionToken);
-  if (token) {
+  const serviceToken = await getAccessTokenFromEnv();
+  const tokens = [...new Set([sessionToken, serviceToken].filter(Boolean))] as string[];
+
+  for (const token of tokens) {
     try {
       const fromDrive = await lerArquivoOculto<EventoItem[]>(ROOT_FOLDER, "_index.json", token);
       if (fromDrive && fromDrive.length > 0) {
@@ -45,7 +41,7 @@ async function lerEventos(sessionToken?: string): Promise<EventoItem[]> {
 // Salva no Drive E no cache local
 async function salvarEventos(eventos: EventoItem[], sessionToken?: string) {
   salvarEventosLocal(eventos); // salva local primeiro (nunca falha)
-  const token = await resolverToken(sessionToken);
+  const token = sessionToken ?? await getAccessTokenFromEnv();
   if (token) {
     try {
       await salvarArquivoOculto(ROOT_FOLDER, "_index.json", eventos, token);
