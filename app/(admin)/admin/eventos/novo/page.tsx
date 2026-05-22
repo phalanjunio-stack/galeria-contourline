@@ -81,13 +81,15 @@ export default function NovoEventoPage() {
       }
 
       // Salva também na lista local de eventos (API interna)
-      await fetch("/api/eventos", {
+      const eventoRes = await fetch("/api/eventos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(metadata),
       });
+      const evento = await eventoRes.json().catch(() => null);
+      if (!eventoRes.ok) throw new Error(evento?.error ?? "Erro ao criar evento.");
 
-      window.location.href = "/admin/eventos";
+      window.location.href = `/admin/eventos/${evento.id}`;
     } catch (e: unknown) {
       setErro(e instanceof Error ? e.message : "Erro ao criar evento. Tente novamente.");
     } finally {
@@ -104,7 +106,7 @@ export default function NovoEventoPage() {
         </Link>
         <div>
           <h1 className="text-2xl font-bold text-[#0D2B4E]">Novo evento</h1>
-          <p className="text-gray-500 text-sm">Preencha as informações do evento</p>
+          <p className="text-gray-500 text-sm">Depois de criar, configure dias e subgalerias do Drive.</p>
         </div>
       </div>
 
