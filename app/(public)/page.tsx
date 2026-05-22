@@ -11,11 +11,9 @@ import { abrirInfoModal } from "@/app/components/InfoModais";
 import { fetchMinhasFotos, ouvirAtualizacoes } from "@/lib/minhasFotos";
 import { lerFavoritos } from "@/app/(public)/favoritos/page";
 import { SkeletonEventos } from "@/app/components/Skeleton";
-
-interface EventoItem {
-  id: string; nome: string; data: string; status: string;
-  folder_id: string; total_fotos: number; capa_id?: string;
-}
+import MultiDayEventCard from "@/app/components/MultiDayEventCard";
+import SingleEventCard from "@/app/components/SingleEventCard";
+import type { EventoItem } from "@/app/api/eventos/route";
 
 function slugify(nome: string) {
   return nome.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
@@ -301,37 +299,6 @@ function StatsCard({ eventos, fotos, favoritas, nome }: { eventos: number; fotos
   );
 }
 
-/* ── Card de evento ──────────────────────────────────────── */
-function EventoCard({ evento }: { evento: EventoItem }) {
-  const slug = `${evento.id}-${slugify(evento.nome)}`;
-  return (
-    <Link href={`/eventos/${slug}`}
-      className="group relative rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1 block">
-      <div className="aspect-[4/5]" style={{ background: "linear-gradient(135deg,#1A4A80,#2E7DD1)" }}>
-        {evento.capa_id
-          ? <img src={`/api/thumb?id=${evento.capa_id}&sz=400`} alt={evento.nome}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-          : <div className="w-full h-full flex items-center justify-center">
-              <Camera size={32} className="text-white/30" />
-            </div>
-        }
-      </div>
-      <div className="absolute inset-0 bg-gradient-to-t from-[#0D2B4E]/95 via-[#0D2B4E]/20 to-transparent" />
-      <div className="absolute bottom-0 left-0 right-0 p-3">
-        <p className="text-white font-bold text-sm leading-tight line-clamp-2">{evento.nome}</p>
-        <p className="text-white/70 text-[11px] mt-0.5 flex items-center gap-1">
-          <Calendar size={10} />
-          {new Date(evento.data).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}
-          {evento.total_fotos > 0 && (
-            <span className="ml-auto flex items-center gap-1">
-              <Camera size={10} /> {evento.total_fotos}
-            </span>
-          )}
-        </p>
-      </div>
-    </Link>
-  );
-}
 
 /* ── Bloco "Como funciona" resumido ──────────────────────── */
 function ComoFuncionaResumo() {
@@ -459,7 +426,11 @@ export default function HomePage() {
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-              {eventos.slice(0, 8).map(ev => <EventoCard key={ev.id} evento={ev} />)}
+              {eventos.slice(0, 8).map(ev => {
+                const isMultiDia = (ev.dias?.length ?? 0) > 1;
+                if (isMultiDia) return <MultiDayEventCard key={ev.id} evento={ev} slug={ev.id} />;
+                return <SingleEventCard key={ev.id} evento={ev} slug={ev.id} />;
+              })}
             </div>
           )}
         </section>
