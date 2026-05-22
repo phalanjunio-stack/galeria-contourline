@@ -38,13 +38,25 @@ export async function GET(req: NextRequest) {
   }
 
   const faceId = req.nextUrl.searchParams.get("id");
-  if (!faceId) {
-    return new NextResponse("id obrigatorio", { status: 400 });
-  }
-
-  const rosto = await lerRostoIndexadoDb(faceId);
+  const fotoId = req.nextUrl.searchParams.get("fotoId");
+  const rosto = faceId
+    ? await lerRostoIndexadoDb(faceId)
+    : fotoId
+    ? {
+        fotoId,
+        box: {
+          x: Number(req.nextUrl.searchParams.get("x")),
+          y: Number(req.nextUrl.searchParams.get("y")),
+          width: Number(req.nextUrl.searchParams.get("width")),
+          height: Number(req.nextUrl.searchParams.get("height")),
+        },
+      }
+    : null;
   if (!rosto) {
     return new NextResponse("Rosto nao encontrado", { status: 404 });
+  }
+  if (Object.values(rosto.box).some((n) => !Number.isFinite(n))) {
+    return new NextResponse("Recorte invalido", { status: 400 });
   }
 
   const accessToken = (await getAccessTokenFromEnv()) ?? session.accessToken;

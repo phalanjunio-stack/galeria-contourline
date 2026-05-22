@@ -25,6 +25,7 @@ interface PreviewRosto {
   id: string;
   ordem: number;
   score: number | null;
+  cropUrl: string;
 }
 interface PreviewFoto {
   fotoId: string;
@@ -1025,7 +1026,7 @@ export default function ReconhecimentoPage() {
                             <div key={rosto.id} className="w-20 shrink-0">
                               <div className="relative h-20 overflow-hidden rounded-xl border border-white bg-gray-100 shadow-sm">
                                 <Image
-                                  src={`/api/indexacao/rostos/crop?id=${encodeURIComponent(rosto.id)}`}
+                                  src={rosto.cropUrl}
                                   alt={`Rosto ${rosto.ordem + 1}`}
                                   fill
                                   unoptimized

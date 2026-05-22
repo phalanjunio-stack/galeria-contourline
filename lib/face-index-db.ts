@@ -49,6 +49,7 @@ export interface FaceIndexPreviewFace {
   id: string;
   ordem: number;
   score: number | null;
+  cropUrl: string;
 }
 
 export interface FaceIndexPreviewPhoto {
@@ -229,6 +230,7 @@ export async function lerAmostraRostosIndexadosDb(eventoId: string, limit = 12) 
       id: String(row.id),
       ordem: Number(row.face_ordem),
       score: row.detection_score === null ? null : Number(row.detection_score),
+      cropUrl: `/api/indexacao/rostos/crop?id=${encodeURIComponent(String(row.id))}`,
     });
     fotos.set(row.foto_id, foto);
   }
