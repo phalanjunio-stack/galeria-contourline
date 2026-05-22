@@ -63,9 +63,10 @@ async function salvarEventos(eventos: EventoItem[], sessionToken?: string) {
   for (const token of tokens) {
     try {
       await salvarArquivoOculto(ROOT_FOLDER, "_index.json", eventos, token);
-      return;
+      return true;
     } catch { /**/ }
   }
+  return false;
 }
 
 // GET /api/eventos — público, sem necessidade de login
@@ -105,7 +106,10 @@ export async function POST(req: NextRequest) {
     };
 
     index.unshift(novo);
-    await salvarEventos(index, session.accessToken);
+    const salvo = await salvarEventos(index, session.accessToken);
+    if (!salvo) {
+      return NextResponse.json({ error: "Nao foi possivel salvar o indice de eventos no Drive." }, { status: 502 });
+    }
     return NextResponse.json(novo);
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 500 });
@@ -126,7 +130,10 @@ export async function PATCH(req: NextRequest) {
     const idx   = index.findIndex((e) => e.id === id);
     if (idx === -1) return NextResponse.json({ error: "Evento não encontrado" }, { status: 404 });
     index[idx] = { ...index[idx], ...body };
-    await salvarEventos(index, session.accessToken);
+    const salvo = await salvarEventos(index, session.accessToken);
+    if (!salvo) {
+      return NextResponse.json({ error: "Nao foi possivel salvar o indice de eventos no Drive." }, { status: 502 });
+    }
     return NextResponse.json(index[idx]);
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 500 });
@@ -144,7 +151,10 @@ export async function DELETE(req: NextRequest) {
   try {
     const index = await lerEventos(session.accessToken);
     const novo  = index.filter((e) => e.id !== id);
-    await salvarEventos(novo, session.accessToken);
+    const salvo = await salvarEventos(novo, session.accessToken);
+    if (!salvo) {
+      return NextResponse.json({ error: "Nao foi possivel remover o evento do indice no Drive." }, { status: 502 });
+    }
     return NextResponse.json({ ok: true });
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 500 });

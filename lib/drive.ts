@@ -90,6 +90,9 @@ export async function salvarArquivoOculto(
   const searchRes = await fetch(`${DRIVE_API}/files?${params}`, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
+  if (!searchRes.ok) {
+    throw new Error(`Drive API error: ${searchRes.status}`);
+  }
   const searchData = await searchRes.json();
   const existingId = searchData.files?.[0]?.id;
 
@@ -98,7 +101,7 @@ export async function salvarArquivoOculto(
 
   if (existingId) {
     // Atualiza
-    await fetch(`https://www.googleapis.com/upload/drive/v3/files/${existingId}?uploadType=media`, {
+    const updateRes = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${existingId}?uploadType=media`, {
       method: "PATCH",
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -106,6 +109,9 @@ export async function salvarArquivoOculto(
       },
       body: content,
     });
+    if (!updateRes.ok) {
+      throw new Error(`Drive upload error: ${updateRes.status}`);
+    }
   } else {
     // Cria novo (oculto = nome começa com _)
     const meta = JSON.stringify({ name: fileName, parents: [folderId] });
@@ -113,11 +119,14 @@ export async function salvarArquivoOculto(
     formData.append("metadata", new Blob([meta], { type: "application/json" }));
     formData.append("file", blob);
 
-    await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", {
+    const createRes = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", {
       method: "POST",
       headers: { Authorization: `Bearer ${accessToken}` },
       body: formData,
     });
+    if (!createRes.ok) {
+      throw new Error(`Drive upload error: ${createRes.status}`);
+    }
   }
 }
 
