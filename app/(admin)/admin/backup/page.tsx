@@ -20,12 +20,8 @@ export default function BackupPage() {
     setLoading(true);
     try {
       const r = await fetch(`/api/admin/backup?source=${source}`);
-      const data = await r.json();
-      if (!r.ok) throw new Error(data.error ?? "Erro ao exportar backup");
+      const data: BackupInfo = await r.json();
       setInfo(data);
-      setRestoreStatus(null);
-    } catch (err) {
-      setRestoreStatus({ ok: false, msg: err instanceof Error ? err.message : "Erro ao exportar backup" });
     } finally {
       setLoading(false);
     }
