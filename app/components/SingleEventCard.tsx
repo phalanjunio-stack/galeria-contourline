@@ -4,9 +4,9 @@ import { Calendar, ScanFace } from "lucide-react";
 import type { EventoItem } from "@/app/api/eventos/route";
 
 const statusConfig: Record<string, { bg: string; dot: string; label: string }> = {
-  aberto:    { bg: "from-emerald-500 to-emerald-400", dot: "bg-white",        label: "Aberto"     },
-  privado:   { bg: "from-amber-500 to-amber-400",    dot: "bg-white",        label: "Privado"    },
-  encerrado: { bg: "from-gray-500 to-gray-400",       dot: "bg-gray-200",     label: "Encerrado"  },
+  aberto:    { bg: "from-[#2E7DD1] to-[#7a3cff]", dot: "bg-white", label: "Aberto"    },
+  privado:   { bg: "from-amber-500 to-amber-400",  dot: "bg-white", label: "Privado"   },
+  encerrado: { bg: "from-gray-500 to-gray-400",    dot: "bg-gray-200", label: "Encerrado" },
 };
 
 interface Props {
