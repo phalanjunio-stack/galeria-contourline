@@ -59,18 +59,13 @@ async function salvarEventos(eventos: EventoItem[], sessionToken?: string) {
   salvarEventosLocal(eventos); // salva local primeiro (nunca falha)
   const serviceToken = await getAccessTokenFromEnv();
   const tokens = [...new Set([sessionToken, serviceToken].filter(Boolean))] as string[];
-  let lastError: unknown = null;
 
   for (const token of tokens) {
     try {
       await salvarArquivoOculto(ROOT_FOLDER, "_index.json", eventos, token);
-      return { savedLocal: true, savedDrive: true };
-    } catch (err) {
-      lastError = err;
-    }
+      return;
+    } catch { /**/ }
   }
-
-  return { savedLocal: true, savedDrive: false, error: lastError };
 }
 
 // GET /api/eventos — público, sem necessidade de login
@@ -110,10 +105,7 @@ export async function POST(req: NextRequest) {
     };
 
     index.unshift(novo);
-    const saved = await salvarEventos(index, session.accessToken);
-    if (!saved.savedDrive) {
-      return NextResponse.json({ error: "Evento salvo no cache local, mas nao foi possivel atualizar o Drive." }, { status: 502 });
-    }
+    await salvarEventos(index, session.accessToken);
     return NextResponse.json(novo);
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 500 });
@@ -134,10 +126,7 @@ export async function PATCH(req: NextRequest) {
     const idx   = index.findIndex((e) => e.id === id);
     if (idx === -1) return NextResponse.json({ error: "Evento não encontrado" }, { status: 404 });
     index[idx] = { ...index[idx], ...body };
-    const saved = await salvarEventos(index, session.accessToken);
-    if (!saved.savedDrive) {
-      return NextResponse.json({ error: "Evento salvo no cache local, mas nao foi possivel atualizar o Drive." }, { status: 502 });
-    }
+    await salvarEventos(index, session.accessToken);
     return NextResponse.json(index[idx]);
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 500 });
@@ -155,10 +144,7 @@ export async function DELETE(req: NextRequest) {
   try {
     const index = await lerEventos(session.accessToken);
     const novo  = index.filter((e) => e.id !== id);
-    const saved = await salvarEventos(novo, session.accessToken);
-    if (!saved.savedDrive) {
-      return NextResponse.json({ error: "Evento removido do cache local, mas nao foi possivel atualizar o Drive." }, { status: 502 });
-    }
+    await salvarEventos(novo, session.accessToken);
     return NextResponse.json({ ok: true });
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 500 });
