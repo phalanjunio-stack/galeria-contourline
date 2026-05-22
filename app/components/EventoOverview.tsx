@@ -89,25 +89,24 @@ function DiaCard({ dia, ordem, slug, minhas }: { dia: EventoDia; ordem: number; 
   const statusColor = status === "processando" ? "bg-amber-400" : status === "fechado" ? "bg-gray-400" : "bg-emerald-400";
 
   return (
-    <article className="bg-white dark:bg-[#0a1a2f]/80 border border-[#2E7DD1]/15 dark:border-[#5BA4E5]/15 rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5">
-      <div className="h-32 relative bg-gradient-to-br from-[#2E7DD1] to-[#7a3cff] flex items-center justify-center overflow-hidden">
+    <article className="group bg-white dark:bg-[#0a1a2f]/80 border border-[#2E7DD1]/15 dark:border-[#5BA4E5]/15 rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5">
+      {/* Capa clicável — landscape, sem número grande sobreposto */}
+      <Link href={`/eventos/${slug}?dia=${dia.id}`} className="block relative aspect-[16/10] bg-gradient-to-br from-[#2E7DD1] to-[#7a3cff] overflow-hidden">
         {dia.capa_id && (
           <img
             src={`/api/thumb?id=${dia.capa_id}&sz=600`}
-            alt=""
-            aria-hidden
-            className="absolute inset-0 h-full w-full object-cover"
+            alt={dia.titulo}
+            className="absolute inset-0 h-full w-full object-cover group-hover:scale-105 transition-transform duration-500"
           />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0D2B4E]/85 via-[#0D2B4E]/35 to-[#0D2B4E]/10" />
-        <div className="relative z-10 text-center">
-          <div className="text-white/70 text-xs font-bold uppercase tracking-widest">Dia</div>
-          <div className="text-white text-5xl font-black leading-none">{ordem}</div>
-        </div>
-        <span className={`absolute top-3 right-3 z-10 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/30 backdrop-blur text-white text-[10px] font-bold`}>
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0D2B4E]/60 via-transparent to-[#0D2B4E]/10" />
+        <span className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gradient-to-r from-[#2E7DD1] to-[#7a3cff] text-white text-xs font-bold shadow-md">
+          Dia {ordem}
+        </span>
+        <span className={`absolute top-3 right-3 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/40 backdrop-blur text-white text-[10px] font-bold`}>
           <span className={`w-1.5 h-1.5 rounded-full ${statusColor}`} /> {statusLabel}
         </span>
-      </div>
+      </Link>
 
       <div className="p-4 space-y-3">
         <div>
