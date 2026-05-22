@@ -5,10 +5,22 @@ import { lerEventosLocal, salvarEventosLocal } from "@/lib/eventos-cache";
 
 const ROOT_FOLDER = process.env.DRIVE_ROOT_FOLDER_ID!;
 
+export interface EventoDia {
+  id: string;                  // ex: "dia1" — usado em ?dia=...
+  titulo: string;              // "Dia 1 — Abertura"
+  data: string;                // ISO date — "2026-05-07"
+  descricao?: string;
+  folder_id: string;           // pasta separada no Drive
+  total_fotos?: number;
+  status?: "disponivel" | "processando" | "fechado";
+}
+
 export interface EventoItem {
   id: string;
   nome: string;
   data: string;
+  data_fim?: string;           // intervalo (presente em multi-dia)
+  local?: string;
   categoria?: string;
   tags?: string[];
   descricao?: string;
@@ -19,6 +31,8 @@ export interface EventoItem {
   folder_id: string;
   total_fotos: number;
   capa_id?: string;
+  /** Dias internos — se vazio/undefined, evento é tratado como 1 dia (usa folder_id). */
+  dias?: EventoDia[];
   criado_em: string;
 }
 

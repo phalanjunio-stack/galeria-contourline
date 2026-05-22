@@ -10,6 +10,7 @@ import {
 import { fetchDescritores } from "@/lib/descritoresCache";
 import { lerRecognitionThresholdLocal } from "@/lib/recognition-thresholds";
 import { SkeletonEventos } from "@/app/components/Skeleton";
+import MultiDayEventCard from "@/app/components/MultiDayEventCard";
 
 const categorias = [
   "Todos",
@@ -317,11 +318,17 @@ export default function EventosPage() {
       {!loading && filtrados.length > 0 && (
         <>
           <p className="text-gray-500 text-sm mb-5">{filtrados.length} eventos encontrados</p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {filtrados.map((e) => {
               const st = statusConfig[e.status] ?? statusConfig.encerrado;
-              // Marca eventos onde o usuário foi encontrado
               const encontrado = matches.some(m => m.evento.id === e.id);
+              const isMultiDia = (e.dias?.length ?? 0) > 1;
+
+              // Card multi-dia — usa componente dedicado
+              if (isMultiDia) {
+                return <MultiDayEventCard key={e.id} evento={e} slug={e.id} />;
+              }
+
               return (
                 <Link key={e.id} href={`/eventos/${e.id}${encontrado ? "?filtro=minhas" : ""}`} className="group block">
                   <div className="relative aspect-[4/5] rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1"

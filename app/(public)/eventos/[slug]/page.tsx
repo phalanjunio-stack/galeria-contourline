@@ -5,11 +5,12 @@ import Link from "next/link";
 import {
   Camera, Calendar, Scan, ArrowLeft,
   Share2, AlertCircle, CheckSquare, Square,
-  X, Download, ScanFace, ChevronRight, Heart, Loader2,
+  X, Download, ScanFace, ChevronRight, Heart, Loader2, Layers,
 } from "lucide-react";
-import type { EventoItem } from "@/app/api/eventos/route";
+import type { EventoItem, EventoDia } from "@/app/api/eventos/route";
 import FotoCard from "@/app/components/FotoCard";
 import Lightbox from "@/app/components/Lightbox";
+import EventoOverview from "@/app/components/EventoOverview";
 import { AnimatePresence } from "framer-motion";
 import GaleriaLoading from "@/app/components/GaleriaLoading";
 import GaleriaToolbar, { type ToolbarState, QUALITY_PX } from "@/app/components/GaleriaToolbar";
@@ -96,9 +97,18 @@ export default function EventoPage({ params }: { params: Promise<{ slug: string 
     return "columns-1 sm:columns-2 lg:columns-2";
   }
 
-  // Filtro ativo — inicia em "minhas" se vier da lista com ?filtro=minhas
-  const filtroInicial = (searchParams.get("filtro") as FiltroKey | null) ?? "todas";
-  const [filtroAtivo, setFiltroAtivo] = useState<FiltroKey>(filtroInicial);
+  // Filtro ativo — inicia em "minhas" se vier da lista com ?filtro=minhas (ou ?view=minhas)
+  const filtroInicial = (searchParams.get("filtro") ?? searchParams.get("view")) as FiltroKey | null;
+  const [filtroAtivo, setFiltroAtivo] = useState<FiltroKey>(filtroInicial ?? "todas");
+
+  // ?dia=X — multi-dia: carrega fotos do folder_id daquele dia
+  const diaQuery = searchParams.get("dia");
+  const diaAtivo: EventoDia | null = useMemo(() => {
+    if (!diaQuery || !evento?.dias?.length) return null;
+    return evento.dias.find(d => d.id === diaQuery) ?? null;
+  }, [diaQuery, evento]);
+  // folder_id efetivo: o do dia (se selecionado) OU o do evento
+  const folderIdAtivo = diaAtivo?.folder_id ?? evento?.folder_id;
 
   // Banner "Encontramos você"
   const [minhasFotosEvento, setMinhasFotosEvento] = useState<string[]>([]);
@@ -207,9 +217,15 @@ export default function EventoPage({ params }: { params: Promise<{ slug: string 
         setEvento(ev);
 
         if (ev?.id) buscarMinhasFotos(ev.id);
-        if (!ev?.folder_id) { setLoading(false); return; }
 
-        const cacheKey = `fotos_${ev.folder_id}`;
+        // Multi-dia + sem ?dia selecionado: a página vai renderizar o EventoOverview
+        // e não precisa carregar fotos. Só carrega se tiver folder específico.
+        const folderAtivo = diaAtivo?.folder_id ?? ev?.folder_id;
+        const ehMultiDiaSemSelecao = (ev?.dias?.length ?? 0) > 0 && !diaAtivo;
+        if (ehMultiDiaSemSelecao) { setLoading(false); return; }
+        if (!folderAtivo) { setLoading(false); return; }
+
+        const cacheKey = `fotos_${folderAtivo}`;
         let fotosCarregadas: DrivePhoto[] = [];
 
         // 1. Carrega do cache local primeiro → exibe imediatamente
@@ -224,7 +240,7 @@ export default function EventoPage({ params }: { params: Promise<{ slug: string 
         } catch { /* ignora erros de localStorage */ }
 
         // 2. Sempre busca do Drive para garantir lista completa e atualizada
-        const fRes  = await fetch(`/api/fotos?folderId=${ev.folder_id}`);
+        const fRes  = await fetch(`/api/fotos?folderId=${folderAtivo}`);
         const fData = await fRes.json();
         if (fData.error) {
           if (!fotosCarregadas.length) setErro(fData.error);
@@ -245,7 +261,7 @@ export default function EventoPage({ params }: { params: Promise<{ slug: string 
       finally   { setLoading(false); }
     }
     load();
-  }, [slug]);
+  }, [slug, diaAtivo?.folder_id]);
 
   function definirCapa(id: string) {
     if (!evento) return;
@@ -299,6 +315,45 @@ export default function EventoPage({ params }: { params: Promise<{ slug: string 
 
   const todasSel = selecionadas.size === fotos.length && fotos.length > 0;
 
+  // ── Multi-dia sem ?dia: renderiza visão geral ─────────────────────────────
+  const ehMultiDia = (evento?.dias?.length ?? 0) > 0;
+  if (ehMultiDia && !diaAtivo && evento) {
+    return (
+      <div>
+        {/* Capa */}
+        <div className="h-48 lg:h-72 relative flex items-end overflow-hidden">
+          <div className="absolute inset-0 gradient-hero" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0D2B4E]/95 via-[#0D2B4E]/40 to-[#0D2B4E]/20" />
+          <div className="relative z-10 p-6 lg:px-10 w-full max-w-7xl mx-auto">
+            <Link href="/eventos" className="inline-flex items-center gap-1.5 text-white/70 text-sm hover:text-white mb-3 transition">
+              <ArrowLeft size={15} /> Voltar
+            </Link>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/15 backdrop-blur text-white text-[11px] font-bold">
+                <Layers size={11} /> {evento.dias!.length} dias
+              </span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/30 text-emerald-100 text-[11px] font-bold">
+                Multi-dia
+              </span>
+            </div>
+            <h1 className="text-white text-2xl lg:text-3xl font-bold">{evento.nome}</h1>
+            {evento.data && (
+              <div className="flex items-center gap-4 mt-2 text-white/70 text-sm">
+                <span className="flex items-center gap-1.5">
+                  <Calendar size={14} />
+                  {new Date(evento.data).toLocaleDateString("pt-BR", { day: "2-digit", month: "long" })}
+                  {evento.data_fim && ` a ${new Date(evento.data_fim).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}`}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <EventoOverview evento={evento} slug={slug} />
+      </div>
+    );
+  }
+
   return (
     <div>
       {/* Capa */}
@@ -344,9 +399,16 @@ export default function EventoPage({ params }: { params: Promise<{ slug: string 
         {/* Overlay gradiente sobre o mosaico */}
         <div className="absolute inset-0 bg-gradient-to-t from-[#0D2B4E]/95 via-[#0D2B4E]/50 to-[#0D2B4E]/30" />
         <div className="relative z-10 p-6 lg:px-10 w-full">
-          <Link href="/eventos" className="inline-flex items-center gap-1.5 text-white/70 text-sm hover:text-white mb-3 transition">
-            <ArrowLeft size={15} /> Voltar
+          <Link
+            href={diaAtivo ? `/eventos/${slug}` : "/eventos"}
+            className="inline-flex items-center gap-1.5 text-white/70 text-sm hover:text-white mb-3 transition">
+            <ArrowLeft size={15} /> {diaAtivo ? "Voltar à visão geral" : "Voltar"}
           </Link>
+          {diaAtivo && (
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/15 backdrop-blur text-white text-[11px] font-bold mb-2">
+              <Layers size={11} /> {diaAtivo.titulo}
+            </div>
+          )}
           <h1 className="text-white text-2xl lg:text-3xl font-bold">
             {loading ? "Carregando..." : evento?.nome ?? "Evento"}
           </h1>
@@ -354,7 +416,7 @@ export default function EventoPage({ params }: { params: Promise<{ slug: string 
             <div className="flex items-center gap-4 mt-2">
               <span className="flex items-center gap-1.5 text-white/70 text-sm">
                 <Calendar size={14} />
-                {new Date(evento.data).toLocaleDateString("pt-BR", { day:"2-digit", month:"long", year:"numeric" })}
+                {new Date(diaAtivo?.data ?? evento.data).toLocaleDateString("pt-BR", { day:"2-digit", month:"long", year:"numeric" })}
               </span>
               <span className="flex items-center gap-1.5 text-white/70 text-sm">
                 <Camera size={14} /> {fotos.length} fotos
