@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth, getAccessTokenFromEnv } from "@/auth";
 import { lerArquivoOculto } from "@/lib/drive";
 import { lerDescritoresLocal } from "@/lib/storage-local";
+import type { EventoItem } from "@/app/api/eventos/route";
 import {
   faceIndexDbEnabled,
   lerAmostraRostosIndexadosDb,
@@ -49,9 +50,15 @@ async function lerPreviewDescritores(eventoId: string): Promise<FaceIndexPreview
   let dados: FotoDescritores[] | null = null;
 
   if (token && ROOT) {
-    try {
-      dados = await lerArquivoOculto<FotoDescritores[]>(ROOT, fileName, token);
-    } catch { /* usa cache local */ }
+    const eventos = await lerArquivoOculto<EventoItem[]>(ROOT, "_index.json", token).catch(() => null);
+    const folderId = eventos?.find((evento) => evento.id === eventoId)?.folder_id;
+    const folders = [...new Set([folderId, ROOT].filter(Boolean))] as string[];
+    for (const folder of folders) {
+      try {
+        dados = await lerArquivoOculto<FotoDescritores[]>(folder, fileName, token);
+      } catch { /* tenta proxima origem */ }
+      if (dados) break;
+    }
   }
   if (!dados) {
     dados = await lerDescritoresLocal<FotoDescritores[]>(eventoId, fileName);

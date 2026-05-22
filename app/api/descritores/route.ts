@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth, getAccessTokenFromEnv } from "@/auth";
 import { lerArquivoOculto, salvarArquivoOculto } from "@/lib/drive";
 import { lerDescritoresLocal } from "@/lib/storage-local";
+import type { EventoItem } from "@/app/api/eventos/route";
 
 const ROOT = process.env.DRIVE_ROOT_FOLDER_ID!;
 
@@ -17,6 +18,22 @@ export interface FotoDescritores {
 function nomeArquivo(eventoId: string) {
   // _desc_<eventoId>.json — começa com _ para não aparecer na listagem de fotos
   return `_desc_${eventoId}.json`;
+}
+
+async function lerDescritoresDrive(
+  eventoId: string,
+  fileName: string,
+  token: string
+) {
+  const eventos = await lerArquivoOculto<EventoItem[]>(ROOT, "_index.json", token).catch(() => null);
+  const folderId = eventos?.find((evento) => evento.id === eventoId)?.folder_id;
+  const folders = [...new Set([folderId, ROOT].filter(Boolean))] as string[];
+
+  for (const folder of folders) {
+    const dados = await lerArquivoOculto<FotoDescritores[]>(folder, fileName, token);
+    if (dados) return dados;
+  }
+  return null;
 }
 
 /**
@@ -35,7 +52,7 @@ export async function GET(req: NextRequest) {
   if (!token) return NextResponse.json({ error: "Sem token" }, { status: 401 });
 
   try {
-    let dados = await lerArquivoOculto<FotoDescritores[]>(ROOT, nomeArquivo(eventoId), token);
+    let dados = await lerDescritoresDrive(eventoId, nomeArquivo(eventoId), token);
     // Fallback: servidor local salva em data/descritores/ quando Drive retorna 403
     if (!dados) dados = await lerDescritoresLocal<FotoDescritores[]>(eventoId, nomeArquivo(eventoId));
     if (!dados) return NextResponse.json({ indexado: false, dados: [] });
