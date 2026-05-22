@@ -1,5 +1,5 @@
 // GET /api/indexar-remoto/status?jobId=xxx
-// Proxy pro servidor Render
+// Proxy pro face server
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 
@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
 
   if (!res.ok) {
     const txt = await res.text();
-    return NextResponse.json({ error: `Render: ${res.status} ${txt}` }, { status: res.status });
+    return NextResponse.json({ error: `Face server: ${res.status} ${txt}` }, { status: res.status });
   }
 
   return NextResponse.json(await res.json());

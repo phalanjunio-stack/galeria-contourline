@@ -363,8 +363,7 @@ export default function AdminDashboard() {
             <h3 className="font-bold text-[#0D2B4E] text-sm mb-3">Ações rápidas</h3>
             <div className="grid grid-cols-2 gap-2">
               {[
-                { href: "/admin/reconhecimento", icon: ScanFace, label: "Reconhecimento IA" },
-                { href: "/admin/reconhecimento-servidor", icon: ScanFace, label: "Reconhecimento (Servidor)" },
+                { href: "/admin/reconhecimento-servidor", icon: ScanFace, label: "Motor IA" },
                 { href: "/admin/usuarios",       icon: Users,    label: "Usuários"           },
                 { href: "/admin/fotos",          icon: Camera,   label: "Galeria"            },
                 { href: "/admin/drive",          icon: HardDrive, label: "Drive"             },

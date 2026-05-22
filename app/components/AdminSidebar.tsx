@@ -12,7 +12,7 @@ const navItems = [
   { href: "/admin/eventos",          label: "Eventos",           icon: Calendar },
   { href: "/admin/fotos",            label: "Fotos",             icon: ImgIcon },
   { href: "/admin/drive",            label: "Google Drive",      icon: HardDrive },
-  { href: "/admin/reconhecimento",   label: "Reconhecimento IA", icon: ScanFace },
+  { href: "/admin/reconhecimento-servidor", label: "Reconhecimento IA", icon: ScanFace },
   { href: "/admin/usuarios",         label: "Usuários",          icon: Users },
   { href: "/admin/config",           label: "Configurações",     icon: Settings },
 ];

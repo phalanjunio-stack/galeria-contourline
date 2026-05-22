@@ -1,12 +1,14 @@
 // POST /api/indexar-remoto/iniciar
-// Dispara indexacao no servidor Render (background).
+// Dispara indexacao no face server (background).
 // Responde imediato com jobId — admin pode fechar a aba.
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { auth, getAccessTokenFromEnv } from "@/auth";
+import { lerArquivoOculto } from "@/lib/drive";
 import fs from "node:fs/promises";
 import path from "node:path";
 import type { PerfilUsuario } from "@/app/api/perfil/route";
 
+const ROOT = process.env.DRIVE_ROOT_FOLDER_ID!;
 const PERFIS_PATH = path.join(process.cwd(), "data", "perfis.json");
 
 async function lerTodosPerfis(): Promise<PerfilUsuario[]> {
@@ -14,8 +16,19 @@ async function lerTodosPerfis(): Promise<PerfilUsuario[]> {
     const raw = await fs.readFile(PERFIS_PATH, "utf-8");
     return JSON.parse(raw);
   } catch {
-    return [];
+    // tenta Drive
   }
+
+  const token = await getAccessTokenFromEnv();
+  if (token && ROOT) {
+    try {
+      const perfis = await lerArquivoOculto<PerfilUsuario[]>(ROOT, "_perfis.json", token);
+      if (Array.isArray(perfis)) return perfis;
+    } catch {
+      // sem catalogo remoto
+    }
+  }
+  return [];
 }
 
 export async function POST(req: NextRequest) {
@@ -63,7 +76,7 @@ export async function POST(req: NextRequest) {
       thumb: p.foto_rastreio || null,
     }));
 
-  // Chama o servidor Render
+  // Chama o face server
   const res = await fetch(`${serverUrl}/indexar`, {
     method: "POST",
     headers: {
@@ -81,7 +94,7 @@ export async function POST(req: NextRequest) {
   if (!res.ok) {
     const txt = await res.text();
     return NextResponse.json(
-      { error: `Servidor Render: ${res.status} ${txt}` },
+      { error: `Face server: ${res.status} ${txt}` },
       { status: 502 }
     );
   }

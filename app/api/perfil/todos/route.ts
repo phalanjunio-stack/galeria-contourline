@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { auth, getAccessTokenFromEnv } from "@/auth";
+import { getAccessTokenFromEnv } from "@/auth";
 import { lerArquivoOculto } from "@/lib/drive";
 import type { PerfilUsuario } from "@/app/api/perfil/route";
 import fs from "fs";
@@ -36,18 +36,21 @@ async function lerTodosPerfis(): Promise<PerfilUsuario[]> {
  * Retorna todos os perfis com descriptor (para reconhecimento facial em lote).
  */
 export async function GET() {
-  const session = await auth();
   // Não requer admin — apenas token válido
   // (a página de reconhecimento já é protegida pelo layout admin)
 
   const perfis = await lerTodosPerfis();
 
   const resultado = perfis
-    .filter((p) => Array.isArray(p.descriptor) && p.descriptor.length > 0)
-    .map(({ email, nome, descriptor, notificar_site, foto_rastreio }) => ({
+    .filter((p) =>
+      (Array.isArray(p.descriptors) && p.descriptors.length > 0) ||
+      (Array.isArray(p.descriptor) && p.descriptor.length > 0)
+    )
+    .map(({ email, nome, descriptor, descriptors, notificar_site, foto_rastreio }) => ({
       email,
       nome,
-      descriptor,
+      descriptor: descriptor ?? descriptors?.[0],
+      descriptors: descriptors?.length ? descriptors : descriptor ? [descriptor] : [],
       notificar_site,
       thumb: foto_rastreio ?? null,
     }));

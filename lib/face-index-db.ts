@@ -79,6 +79,15 @@ export interface FaceIndexPreview {
   fotos: FaceIndexPreviewPhoto[];
 }
 
+export interface FaceIndexDbStatus {
+  configured: boolean;
+  ok: boolean;
+  eventosIndexados: number;
+  rostosIndexados: number;
+  ultimoIndice: string | null;
+  erro?: string;
+}
+
 const globalForFaceIndex = globalThis as typeof globalThis & {
   faceIndexPool?: Pool;
 };
@@ -386,4 +395,48 @@ export async function buscarFotosPorRostoDb({
   return [...melhores.values()]
     .sort((a, b) => a.dist - b.dist)
     .slice(0, Math.max(1, Math.min(limit, 1000)));
+}
+
+export async function lerStatusFaceIndexDb(): Promise<FaceIndexDbStatus> {
+  const pool = getPool();
+  if (!pool) {
+    return {
+      configured: false,
+      ok: false,
+      eventosIndexados: 0,
+      rostosIndexados: 0,
+      ultimoIndice: null,
+    };
+  }
+
+  try {
+    await ensureSchema();
+    const result = await pool.query<{
+      eventos_indexados: string | number;
+      rostos_indexados: string | number;
+      ultimo_indice: Date | string | null;
+    }>(
+      `SELECT count(*) AS eventos_indexados,
+              coalesce(sum(rostos_detectados), 0) AS rostos_indexados,
+              max(indexed_at) AS ultimo_indice
+         FROM face_index_events`
+    );
+    const row = result.rows[0];
+    return {
+      configured: true,
+      ok: true,
+      eventosIndexados: Number(row?.eventos_indexados) || 0,
+      rostosIndexados: Number(row?.rostos_indexados) || 0,
+      ultimoIndice: row?.ultimo_indice ? new Date(row.ultimo_indice).toISOString() : null,
+    };
+  } catch (err) {
+    return {
+      configured: true,
+      ok: false,
+      eventosIndexados: 0,
+      rostosIndexados: 0,
+      ultimoIndice: null,
+      erro: err instanceof Error ? err.message : String(err),
+    };
+  }
 }

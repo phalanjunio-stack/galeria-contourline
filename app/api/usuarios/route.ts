@@ -45,10 +45,12 @@ export async function GET() {
   const perfis = await lerTodos();
 
   const resultado = perfis.map(
-    ({ email, nome, foto, foto_rastreio, descriptor, notificar_site, criado_em, atualizado_em }) => ({
+    ({ email, nome, foto, foto_rastreio, descriptor, descriptors, notificar_site, criado_em, atualizado_em }) => ({
       email, nome, foto,
       thumb: foto_rastreio ?? null,
-      temDescriptor: Array.isArray(descriptor) && descriptor.length > 0,
+      temDescriptor:
+        (Array.isArray(descriptors) && descriptors.length > 0) ||
+        (Array.isArray(descriptor) && descriptor.length > 0),
       isAdmin: ADMIN_EMAILS.includes(email?.toLowerCase() ?? ""),
       notificar_site,
       criado_em,
