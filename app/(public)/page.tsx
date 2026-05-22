@@ -369,7 +369,11 @@ export default function HomePage() {
       .then(r => r.ok ? r.json() : [])
       .then((lista: EventoItem[]) => {
         if (!Array.isArray(lista)) return setEventos([]);
-        const ativos = lista.filter(e => e.status === "aberto" && e.folder_id);
+        // Mantém eventos abertos que tenham folder_id principal OU pelo menos um dia com folder
+        const ativos = lista.filter(e =>
+          e.status === "aberto" &&
+          (e.folder_id || e.dias?.some(d => d.folder_id))
+        );
         setEventos(ativos);
       })
       .catch(() => {})

@@ -26,6 +26,7 @@ export default function SingleEventCard({ evento, slug, encontrado }: Props) {
       >
         {evento.capa_id
           ? <img src={`/api/thumb?id=${evento.capa_id}&sz=600`} alt={evento.nome}
+              style={{ objectPosition: evento.capa_position ?? "center" }}
               className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
           : <div className="absolute inset-0 flex items-center justify-center">
               <span className="text-white/20 text-5xl">📷</span>
