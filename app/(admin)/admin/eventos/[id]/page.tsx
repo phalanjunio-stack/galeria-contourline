@@ -13,8 +13,11 @@ import {
   Save,
   ToggleLeft,
   ToggleRight,
+  Plus,
+  Trash2,
+  Layers,
 } from "lucide-react";
-import type { EventoItem } from "@/app/api/eventos/route";
+import type { EventoItem, EventoDia } from "@/app/api/eventos/route";
 
 const CATEGORIAS_EVENTO = [
   "Evento",
@@ -38,6 +41,8 @@ export default function EditarEventoPage({ params }: { params: Promise<{ id: str
   const [form, setForm] = useState({
     nome: "",
     data: "",
+    data_fim: "",
+    local: "",
     categoria: "Evento",
     tags: "",
     descricao: "",
@@ -46,6 +51,7 @@ export default function EditarEventoPage({ params }: { params: Promise<{ id: str
     reconhecimento_facial: true,
     download_liberado: true,
   });
+  const [dias, setDias] = useState<EventoDia[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [erro, setErro] = useState("");
@@ -61,6 +67,8 @@ export default function EditarEventoPage({ params }: { params: Promise<{ id: str
           setForm({
             nome: atual.nome ?? "",
             data: atual.data?.slice(0, 10) ?? "",
+            data_fim: atual.data_fim?.slice(0, 10) ?? "",
+            local: atual.local ?? "",
             categoria: atual.categoria ?? "Evento",
             tags: Array.isArray(atual.tags) ? atual.tags.join(", ") : "",
             descricao: atual.descricao ?? "",
@@ -69,6 +77,7 @@ export default function EditarEventoPage({ params }: { params: Promise<{ id: str
             reconhecimento_facial: atual.reconhecimento_facial ?? true,
             download_liberado: atual.download_liberado ?? true,
           });
+          setDias(Array.isArray(atual.dias) ? atual.dias : []);
         })
         .catch(() => setErro("Nao foi possivel carregar o evento."))
         .finally(() => setLoading(false));
@@ -91,6 +100,8 @@ export default function EditarEventoPage({ params }: { params: Promise<{ id: str
         body: JSON.stringify({
           nome: form.nome,
           data: form.data,
+          data_fim: form.data_fim || undefined,
+          local: form.local || undefined,
           categoria: form.categoria,
           tags: form.tags.split(",").map((tag) => tag.trim()).filter(Boolean),
           descricao: form.descricao,
@@ -98,6 +109,9 @@ export default function EditarEventoPage({ params }: { params: Promise<{ id: str
           folder_id: extrairFolderId(form.folder_id),
           reconhecimento_facial: form.reconhecimento_facial,
           download_liberado: form.download_liberado,
+          dias: dias.length > 0
+            ? dias.map(d => ({ ...d, folder_id: extrairFolderId(d.folder_id) }))
+            : undefined,
         }),
       });
       const data = await res.json().catch(() => null);
@@ -184,9 +198,72 @@ export default function EditarEventoPage({ params }: { params: Promise<{ id: str
             </div>
           </Field>
         </div>
+        <div className="grid gap-4 sm:grid-cols-2 mt-4">
+          <Field label="Data de termino (multi-dia)">
+            <div className="relative">
+              <Calendar size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#2E7DD1]" />
+              <input type="date" value={form.data_fim} onChange={(e) => setForm({ ...form, data_fim: e.target.value })} className="admin-event-input pl-9" />
+            </div>
+          </Field>
+          <Field label="Local">
+            <input value={form.local} onChange={(e) => setForm({ ...form, local: e.target.value })} placeholder="Cidade ou local do evento" className="admin-event-input" />
+          </Field>
+        </div>
         <Field label="Descricao" block>
           <textarea rows={3} value={form.descricao} onChange={(e) => setForm({ ...form, descricao: e.target.value })} className="admin-event-input resize-none" />
         </Field>
+      </section>
+
+      {/* ── Dias do evento (multi-dia) ─────────────────────────── */}
+      <section className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Layers size={18} className="text-[#2E7DD1]" />
+            <h2 className="font-bold text-[#0D2B4E]">Dias do evento</h2>
+            <span className="text-xs text-gray-400">opcional — para eventos de múltiplos dias</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setDias([...dias, {
+              id: `dia${dias.length + 1}`, titulo: `Dia ${dias.length + 1}`,
+              data: form.data, folder_id: "", descricao: "", status: "disponivel",
+            }])}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#2167AE] text-white text-xs font-semibold shadow hover:bg-[#19558F] transition">
+            <Plus size={13} /> Adicionar dia
+          </button>
+        </div>
+
+        {dias.length === 0 ? (
+          <p className="text-sm text-gray-400">
+            Evento de 1 dia. Adicione dias se for um congresso ou evento de múltiplos dias —
+            cada dia tem sua própria pasta no Drive.
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {dias.map((dia, i) => (
+              <div key={i} className="rounded-xl border border-gray-200 p-3 bg-gray-50">
+                <div className="grid gap-2 sm:grid-cols-12">
+                  <input className="admin-event-input sm:col-span-2 text-xs" placeholder="ID (dia1)"
+                    value={dia.id} onChange={e => setDias(dias.map((d, j) => j === i ? { ...d, id: e.target.value } : d))} />
+                  <input className="admin-event-input sm:col-span-3 text-xs" placeholder="Título do dia"
+                    value={dia.titulo} onChange={e => setDias(dias.map((d, j) => j === i ? { ...d, titulo: e.target.value } : d))} />
+                  <input type="date" className="admin-event-input sm:col-span-2 text-xs"
+                    value={dia.data?.slice(0, 10) ?? ""} onChange={e => setDias(dias.map((d, j) => j === i ? { ...d, data: e.target.value } : d))} />
+                  <input className="admin-event-input sm:col-span-4 text-xs" placeholder="Folder ID ou link Drive"
+                    value={dia.folder_id} onChange={e => setDias(dias.map((d, j) => j === i ? { ...d, folder_id: e.target.value } : d))} />
+                  <button type="button"
+                    onClick={() => setDias(dias.filter((_, j) => j !== i))}
+                    className="sm:col-span-1 flex items-center justify-center rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition"
+                    aria-label="Remover dia">
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+                <input className="admin-event-input mt-2 text-xs" placeholder="Descrição curta (ex: Abertura e credenciamento)"
+                  value={dia.descricao ?? ""} onChange={e => setDias(dias.map((d, j) => j === i ? { ...d, descricao: e.target.value } : d))} />
+              </div>
+            ))}
+          </div>
+        )}
       </section>
 
       <section className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
