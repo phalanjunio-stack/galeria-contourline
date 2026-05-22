@@ -45,7 +45,9 @@ export async function fetchDescritores(eventoId: string): Promise<DescritoresRes
 
   // 2. API
   try {
-    const r = await fetch(`/api/descritores?eventoId=${eventoId}`);
+    const r = await fetch(`/api/descritores?eventoId=${eventoId}`, {
+      signal: AbortSignal.timeout(12000),
+    });
     if (!r.ok) return null;
     const data: DescritoresResposta = await r.json();
 

@@ -203,7 +203,7 @@ export default function EventoPage({ params }: { params: Promise<{ slug: string 
       try {
         const res  = await fetch("/api/eventos");
         const lista: EventoItem[] = await res.json();
-        const ev   = lista.find((e) => e.id === slug) ?? null;
+        const ev   = lista.find((e) => e.id === slug || slug.startsWith(`${e.id}-`)) ?? null;
         setEvento(ev);
 
         if (ev?.id) buscarMinhasFotos(ev.id);

@@ -53,18 +53,21 @@ export default function MinhasFotos() {
 
   /* ── Detecta usuário ── */
   useEffect(() => {
-    if (session?.user?.email) {
-      setEmail(session.user.email);
-      setPrimeiroNome(session.user.name?.split(" ")[0] ?? "");
-      return;
-    }
-    try {
-      const raw = localStorage.getItem("usuario_simples");
-      if (raw) {
-        const u = JSON.parse(raw);
-        if (u?.email) { setEmail(u.email); setPrimeiroNome(u.nome?.split(" ")[0] ?? ""); }
+    const id = window.setTimeout(() => {
+      if (session?.user?.email) {
+        setEmail(session.user.email);
+        setPrimeiroNome(session.user.name?.split(" ")[0] ?? "");
+        return;
       }
-    } catch {}
+      try {
+        const raw = localStorage.getItem("usuario_simples");
+        if (raw) {
+          const u = JSON.parse(raw);
+          if (u?.email) { setEmail(u.email); setPrimeiroNome(u.nome?.split(" ")[0] ?? ""); }
+        }
+      } catch {}
+    }, 0);
+    return () => window.clearTimeout(id);
   }, [session]);
 
   const aplicarDados = useCallback((email: string, porEvento: { eventoId: string; eventoNome: string; fotos: string[] }[]) => {
@@ -108,8 +111,14 @@ export default function MinhasFotos() {
   /* ── Re-fetch automático quando outra página atualiza ── */
   useEffect(() => {
     if (!email) return;
-    carregar(email);
-    return ouvirAtualizacoes(() => { if (email) carregar(email); });
+    const id = window.setTimeout(() => {
+      void carregar(email);
+    }, 0);
+    const pararAtualizacoes = ouvirAtualizacoes(() => { if (email) carregar(email); });
+    return () => {
+      window.clearTimeout(id);
+      pararAtualizacoes();
+    };
   }, [email, carregar]);
 
   async function rodarMatchingLocal(userEmail: string) {
@@ -162,6 +171,7 @@ export default function MinhasFotos() {
       if (fotosEv.length) {
         porEvento.push({ eventoId: ev.id, eventoNome: ev.nome, fotos: fotosEv });
         for (const id of fotosEv) if (!todasFotos.includes(id)) todasFotos.push(id);
+        aplicarDados(userEmail, [...porEvento]);
       }
     }));
 

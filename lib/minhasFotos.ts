@@ -89,7 +89,9 @@ export async function fetchMinhasFotos(email: string): Promise<MinhasFotosData |
   migrarCachesAntigos();
   if (!email) return null;
   try {
-    const res = await fetch(`/api/meu/fotos?email=${encodeURIComponent(email)}`);
+    const res = await fetch(`/api/meu/fotos?email=${encodeURIComponent(email)}`, {
+      signal: AbortSignal.timeout(8000),
+    });
     if (!res.ok) return lerCacheMinhasFotos(email);
     const data = await res.json();
     if (!data?.eventos?.length) {
