@@ -13,7 +13,7 @@ const itemsPublic = [
   { href: "/",              label: "Início",       icon: Home },
   { href: "/eventos",       label: "Eventos",      icon: Calendar },
   { href: "/minhas-fotos",  label: "Minhas",       icon: ScanFace },
-  { href: "/cadastrar-rosto", label: "Buscar",     icon: Search },
+  { href: "/buscar-pessoa",   label: "Buscar",     icon: Search },
 ];
 
 const itemLogado = { href: "/favoritos", label: "Favoritos", icon: Heart };

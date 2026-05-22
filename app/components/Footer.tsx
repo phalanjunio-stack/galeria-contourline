@@ -109,7 +109,7 @@ type LinkItem =
 const links: LinkItem[] = [
   { tipo: "link",  href: "/eventos",        label: "Eventos",          icon: Calendar    },
   { tipo: "link",  href: "/minhas-fotos",   label: "Minhas fotos",     icon: Images      },
-  { tipo: "link",  href: "/cadastrar-rosto",label: "Buscar por rosto", icon: ScanFace    },
+  { tipo: "link",  href: "/buscar-pessoa",  label: "Buscar por rosto", icon: ScanFace    },
   { tipo: "modal", modal: "como-funciona",  label: "Como funciona",    icon: HelpCircle  },
   { tipo: "modal", modal: "privacidade",    label: "Privacidade",      icon: ShieldCheck },
 ];

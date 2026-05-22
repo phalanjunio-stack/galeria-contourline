@@ -246,7 +246,7 @@ export default function Topbar() {
 
         <div className="flex-1" />
 
-        <Link href="/cadastrar-rosto"
+        <Link href="/buscar-pessoa"
           className="tb-facial-btn hidden lg:flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold
             whitespace-nowrap transition-all duration-200"
           onMouseEnter={() => playSound("tap")}>

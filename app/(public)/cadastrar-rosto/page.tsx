@@ -25,6 +25,54 @@ interface EventoPicker {
   capa_id?: string;
 }
 
+function PassosCadastro({ atual }: { atual: 1 | 2 | 3 }) {
+  const passos = [
+    { titulo: "Perfil", detalhe: "Nome e email" },
+    { titulo: "Selfie", detalhe: "Seu rosto" },
+    { titulo: "Pronto", detalhe: "Avisos ativos" },
+  ];
+
+  return (
+    <div className="grid overflow-hidden rounded-2xl border border-[#2E7DD1]/15 bg-white shadow-sm sm:grid-cols-3">
+      {passos.map((passo, index) => {
+        const numero = index + 1;
+        const concluido = numero < atual;
+        const ativo = numero === atual;
+        return (
+          <div key={passo.titulo} className={`flex items-center gap-3 border-b border-[#2E7DD1]/10 px-4 py-4 last:border-b-0 sm:border-b-0 sm:border-r sm:last:border-r-0 ${ativo ? "bg-[#EFF5FF]" : ""}`}>
+            <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-black ${concluido ? "bg-emerald-500 text-white" : ativo ? "bg-[#2167AE] text-white shadow" : "bg-gray-100 text-gray-400"}`}>
+              {concluido ? <CheckCircle size={17} /> : numero}
+            </span>
+            <span>
+              <strong className="block text-sm text-[#0D2B4E]">{passo.titulo}</strong>
+              <small className="text-xs text-gray-400">{passo.detalhe}</small>
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function CabecalhoCadastro() {
+  return (
+    <header className="mb-5 grid gap-4 lg:grid-cols-[1fr_auto] lg:items-end">
+      <div>
+        <span className="mb-3 inline-flex items-center gap-2 rounded-full border border-[#2E7DD1]/15 bg-[#EFF5FF] px-3 py-1.5 text-xs font-bold text-[#1A4A80]">
+          <Shield size={13} /> Cadastro do seu perfil
+        </span>
+        <h1 className="text-2xl font-black text-[#0D2B4E] lg:text-4xl">Cadastre seu rosto uma vez</h1>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">
+          Esta selfie fica ligada ao seu perfil para encontrar suas fotos e avisar voce quando o motor reconhecer voce em um evento.
+        </p>
+      </div>
+      <a href="/buscar-pessoa" className="rounded-2xl border border-[#2E7DD1]/20 bg-white px-4 py-3 text-sm font-bold text-[#2E7DD1] shadow-sm transition hover:bg-[#EFF5FF]">
+        Buscar com outra foto
+      </a>
+    </header>
+  );
+}
+
 export default function CadastrarRostoPage() {
   const { data: session, status: sessionStatus } = useSession();
   const { toast } = useToast();
@@ -52,14 +100,17 @@ export default function CadastrarRostoPage() {
   const [descPendente,  setDescPendente]  = useState<{ arr: number[]; email: string; thumb: string } | null>(null);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem("usuario_simples");
-      if (raw) {
-        const u = JSON.parse(raw);
-        setUsuarioSimples(u);
-        setEtapa("pronto");
-      }
-    } catch {}
+    const timeout = window.setTimeout(() => {
+      try {
+        const raw = localStorage.getItem("usuario_simples");
+        if (raw) {
+          const u = JSON.parse(raw);
+          setUsuarioSimples(u);
+          setEtapa("pronto");
+        }
+      } catch {}
+    }, 0);
+    return () => window.clearTimeout(timeout);
   }, []);
 
   useEffect(() => {
@@ -450,7 +501,8 @@ export default function CadastrarRostoPage() {
   function toggleEvento(id: string) {
     setSelecionados(prev => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   }
@@ -485,8 +537,11 @@ export default function CadastrarRostoPage() {
 
   /* ─────────────── IDENTIFICAÇÃO ─────────────── */
   if (!usuarioAtivo) return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] px-4">
-      <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-8 max-w-sm w-full">
+    <div className="mx-auto max-w-6xl px-4 py-8 lg:py-12">
+      <CabecalhoCadastro />
+      <PassosCadastro atual={1} />
+      <div className="mt-5 grid gap-5 lg:grid-cols-[1fr_0.92fr]">
+      <div className="w-full rounded-3xl border border-[#2E7DD1]/15 bg-white p-8 shadow-sm">
         <div className="w-16 h-16 rounded-2xl gradient-primary flex items-center justify-center mx-auto mb-5 shadow-lg">
           <Scan size={28} className="text-white" />
         </div>
@@ -552,12 +607,30 @@ export default function CadastrarRostoPage() {
           <Shield size={12} /> Seus dados são protegidos
         </p>
       </div>
+      <aside className="rounded-3xl border border-[#2E7DD1]/15 bg-[#F5F9FF] p-6 shadow-sm">
+        <div className="mx-auto mb-5 flex h-40 w-40 items-center justify-center rounded-full border-4 border-[#2E7DD1]/25 bg-white shadow-inner">
+          <User size={62} className="text-[#2E7DD1]/45" />
+        </div>
+        <h2 className="text-lg font-bold text-[#0D2B4E]">Depois vem sua selfie</h2>
+        <p className="mt-2 text-sm leading-6 text-gray-500">
+          Use uma foto sua com rosto de frente. Ela vira a referencia do seu perfil para comparar com os rostos dos eventos.
+        </p>
+        <div className="mt-4 grid gap-2 text-xs font-semibold text-[#1A4A80]">
+          <span className="rounded-xl bg-white px-3 py-2">Recebe notificacoes quando encontrar voce</span>
+          <span className="rounded-xl bg-white px-3 py-2">Buscar por amigos fica separado</span>
+        </div>
+      </aside>
+      </div>
     </div>
   );
 
   /* ─────────────── UPLOAD + PROCESSAMENTO ─────────────── */
   return (
-    <div className="max-w-2xl mx-auto px-4 py-10">
+    <div className="mx-auto max-w-5xl px-4 py-8 lg:py-12">
+      <CabecalhoCadastro />
+      <div className="mb-6">
+        <PassosCadastro atual={2} />
+      </div>
 
       {/* Banner usuário identificado */}
       <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 rounded-2xl px-4 py-3 mb-6">
@@ -582,9 +655,9 @@ export default function CadastrarRostoPage() {
         <div className="w-16 h-16 gradient-primary rounded-2xl flex items-center justify-center mx-auto mb-4 shadow">
           <Scan size={32} className="text-white" />
         </div>
-        <h1 className="text-2xl lg:text-3xl font-bold text-[#0D2B4E] mb-2">Encontre suas fotos</h1>
+        <h2 className="text-2xl lg:text-3xl font-bold text-[#0D2B4E] mb-2">Agora cadastre sua selfie</h2>
         <p className="text-gray-500 text-sm max-w-sm mx-auto">
-          Envie uma selfie nítida. Nossa IA vai buscar suas fotos nos eventos.
+          Esta foto fica no seu perfil de reconhecimento. Para procurar outra pessoa, use a busca livre.
         </p>
       </div>
 
