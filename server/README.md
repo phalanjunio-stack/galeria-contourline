@@ -27,6 +27,21 @@ indices na primeira gravacao; `../db/face-index.sql` fica disponivel para
 instalacao manual ou auditoria. Sem essa variavel, o servidor mantem o fluxo
 antigo por JSON no Drive/local.
 
+## Autoindexacao
+
+No Easypanel, configure o face server para checar fotos novas em segundo plano:
+
+```env
+AUTO_INDEX_ENABLED=1
+AUTO_INDEX_INTERVAL_MIN=15
+NEXT_PUBLIC_SITE_URL=https://seu-dominio-da-galeria
+SERVER_SECRET=mesmo valor de FACE_SERVER_SECRET na galeria
+```
+
+Com essas variaveis o face server busca eventos e perfis no endpoint interno
+`/api/indexar/catalogo`, compara o Drive com os descritores ja salvos e indexa
+somente eventos com fotos pendentes.
+
 ## Body do POST /indexar
 
 ```json

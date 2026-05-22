@@ -1,5 +1,4 @@
-// Loop de auto-indexacao: roda periodicamente, verifica eventos
-// e indexa automaticamente os que tem fotos novas.
+// Loop de auto-indexacao: verifica eventos periodicamente e processa fotos novas.
 import fs from "node:fs/promises";
 import path from "node:path";
 import { listarFotosPasta } from "./drive.js";
@@ -7,7 +6,6 @@ import { lerArquivo } from "./storage.js";
 import { novoJob, indexarEvento, getJob } from "./indexar.js";
 
 const INTERVAL_MS = parseInt(process.env.AUTO_INDEX_INTERVAL_MIN || "30") * 60_000;
-// Caminho dos JSONs do Next.js (../data/ relativo ao server)
 const EVENTOS_PATH = process.env.EVENTOS_PATH || path.resolve("..", "data", "eventos.json");
 const PERFIS_PATH = process.env.PERFIS_PATH || path.resolve("..", "data", "perfis.json");
 
@@ -21,6 +19,43 @@ async function lerJSON(p) {
     console.warn(`[auto] Falha ao ler ${p}: ${err.message}`);
     return null;
   }
+}
+
+async function lerCatalogoRemoto() {
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "");
+  const secret = process.env.SERVER_SECRET;
+  if (!siteUrl || !secret) return null;
+
+  try {
+    const res = await fetch(`${siteUrl}/api/indexar/catalogo`, {
+      headers: { "X-Server-Secret": secret },
+    });
+    if (!res.ok) {
+      console.warn(`[auto] Catalogo da galeria falhou: HTTP ${res.status}`);
+      return null;
+    }
+    const data = await res.json();
+    if (!Array.isArray(data?.eventos) || !Array.isArray(data?.perfis)) return null;
+    console.log("[auto] Catalogo carregado da galeria");
+    return data;
+  } catch (err) {
+    console.warn(`[auto] Catalogo da galeria indisponivel: ${err.message}`);
+    return null;
+  }
+}
+
+async function lerCatalogo() {
+  const remoto = await lerCatalogoRemoto();
+  if (remoto) return remoto;
+
+  const [eventos, perfis] = await Promise.all([
+    lerJSON(EVENTOS_PATH),
+    lerJSON(PERFIS_PATH),
+  ]);
+  return {
+    eventos: Array.isArray(eventos) ? eventos : [],
+    perfis: Array.isArray(perfis) ? perfis : [],
+  };
 }
 
 async function precisaIndexar(evento) {
@@ -39,17 +74,14 @@ async function precisaIndexar(evento) {
       return {
         precisa: true,
         motivo: `${totalDrive - totalIndexado} fotos sem indexar (${totalIndexado}/${totalDrive})`,
-        totalDrive,
-        totalIndexado,
       };
     }
 
-    // Check de IDs (se totais batem mas IDs diferentes)
     if (Array.isArray(descritores) && totalDrive === totalIndexado) {
       const idsDrive = new Set(fotosDrive.map((f) => f.id));
-      const faltam = descritores.filter((d) => !idsDrive.has(d.fotoId)).length;
-      if (faltam > 0) {
-        return { precisa: true, motivo: `${faltam} fotos foram apagadas` };
+      const removidas = descritores.filter((d) => !idsDrive.has(d.fotoId)).length;
+      if (removidas > 0) {
+        return { precisa: true, motivo: `${removidas} fotos foram apagadas` };
       }
     }
 
@@ -59,21 +91,8 @@ async function precisaIndexar(evento) {
   }
 }
 
-async function tick() {
-  if (rodando) {
-    console.log("[auto] Tick pulado — job ainda rodando");
-    return;
-  }
-  console.log(`\n[auto] === Ciclo automatico ${new Date().toLocaleString("pt-BR")} ===`);
-
-  const eventos = await lerJSON(EVENTOS_PATH);
-  if (!Array.isArray(eventos)) {
-    console.log("[auto] Sem eventos.json acessivel — pulando ciclo");
-    return;
-  }
-
-  const perfis = (await lerJSON(PERFIS_PATH)) || [];
-  const perfisComDesc = perfis
+function perfisComDescritores(perfis) {
+  return perfis
     .filter((p) => {
       const descs = p.descriptors?.length ? p.descriptors : p.descriptor ? [p.descriptor] : [];
       return descs.length > 0;
@@ -82,34 +101,46 @@ async function tick() {
       email: p.email,
       nome: p.nome,
       descriptors: p.descriptors?.length ? p.descriptors : [p.descriptor],
-      thumb: p.foto_rastreio || null,
+      thumb: p.thumb || p.foto_rastreio || null,
     }));
+}
 
-  console.log(`[auto] ${eventos.length} eventos, ${perfisComDesc.length} perfis com descritor`);
+async function tick() {
+  if (rodando) {
+    console.log("[auto] Ciclo pulado - job ainda rodando");
+    return;
+  }
+
+  console.log(`\n[auto] === Ciclo automatico ${new Date().toLocaleString("pt-BR")} ===`);
+  const { eventos, perfis } = await lerCatalogo();
+  if (!eventos.length) {
+    console.log("[auto] Sem eventos acessiveis - pulando ciclo");
+    return;
+  }
+
+  const perfisProntos = perfisComDescritores(perfis);
+  console.log(`[auto] ${eventos.length} eventos, ${perfisProntos.length} perfis com descritor`);
 
   for (const evento of eventos) {
     if (evento.status === "encerrado") continue;
 
     const { precisa, motivo } = await precisaIndexar(evento);
     console.log(`[auto] ${evento.nome}: ${motivo}`);
+    if (!precisa) continue;
 
-    if (precisa) {
-      const job = novoJob(evento.id, evento.nome, evento.folder_id);
-      console.log(`[auto] → Indexando ${evento.nome} (job ${job.jobId})`);
-      rodando = true;
-      try {
-        await indexarEvento(job.jobId, perfisComDesc);
-        const finalJob = getJob(job.jobId);
-        console.log(
-          `[auto] ✓ ${evento.nome} concluido: ${finalJob?.matches || 0} matches, ${
-            finalJob?.fotosComRosto || 0
-          } com rosto`
-        );
-      } catch (err) {
-        console.error(`[auto] ✗ ${evento.nome} falhou:`, err.message);
-      } finally {
-        rodando = false;
-      }
+    const job = novoJob(evento.id, evento.nome, evento.folder_id);
+    console.log(`[auto] Indexando ${evento.nome} (job ${job.jobId})`);
+    rodando = true;
+    try {
+      await indexarEvento(job.jobId, perfisProntos);
+      const finalJob = getJob(job.jobId);
+      console.log(
+        `[auto] ${evento.nome} concluido: ${finalJob?.matches || 0} matches, ${finalJob?.fotosComRosto || 0} com rosto`
+      );
+    } catch (err) {
+      console.error(`[auto] ${evento.nome} falhou:`, err.message);
+    } finally {
+      rodando = false;
     }
   }
 
@@ -119,13 +150,12 @@ async function tick() {
 export function iniciarAutoIndexacao() {
   const enabled = process.env.AUTO_INDEX_ENABLED === "1";
   if (!enabled) {
-    console.log("[auto] AUTO_INDEX_ENABLED nao=1 — auto-indexacao desligada");
+    console.log("[auto] AUTO_INDEX_ENABLED nao=1 - auto-indexacao desligada");
     return;
   }
+
   console.log(`[auto] Iniciando ciclo automatico a cada ${INTERVAL_MS / 60000} min`);
-  console.log(`[auto] EVENTOS_PATH=${EVENTOS_PATH}`);
-  console.log(`[auto] PERFIS_PATH=${PERFIS_PATH}`);
-  // Primeira execucao em 30s (deixa o server estabilizar)
+  console.log(`[auto] Catalogo remoto=${process.env.NEXT_PUBLIC_SITE_URL ? "galeria" : "desligado"}`);
   setTimeout(() => tick().catch(console.error), 30_000);
   setInterval(() => tick().catch(console.error), INTERVAL_MS);
 }
