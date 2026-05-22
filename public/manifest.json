@@ -1,0 +1,16 @@
+{
+  "name": "Galeria Contourline",
+  "short_name": "Contourline",
+  "description": "Encontre suas fotos nos eventos da Contourline com IA",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0D2B4E",
+  "theme_color": "#2E7DD1",
+  "icons": [
+    { "src": "/logos/icon.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/logos/icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "categories": ["photo", "social", "events"],
+  "lang": "pt-BR"
+}

@@ -21,7 +21,8 @@ export async function GET(req: NextRequest) {
     return new NextResponse(cached.data, {
       headers: {
         "Content-Type": cached.type,
-        "Cache-Control": "public, max-age=3600",
+        // Thumbnails Drive não mudam — cache longo no browser + CDN
+        "Cache-Control": "public, max-age=31536000, s-maxage=31536000, immutable",
         "X-Cache": "HIT",
       },
     });
@@ -50,11 +51,10 @@ export async function GET(req: NextRequest) {
     // Salva no cache
     cache.set(cacheKey, { data, type, ts: Date.now() });
 
-    const maxAge = sz === "original" ? 86400 : 3600;
     return new NextResponse(data, {
       headers: {
         "Content-Type": type,
-        "Cache-Control": `public, max-age=${maxAge}`,
+        "Cache-Control": "public, max-age=31536000, s-maxage=31536000, immutable",
         "X-Cache": "MISS",
       },
     });
