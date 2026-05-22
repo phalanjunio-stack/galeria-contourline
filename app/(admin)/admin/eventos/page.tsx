@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Plus, Camera, Calendar, Settings, Trash2, Eye, Globe, Lock, CheckCircle, Loader2 } from "lucide-react";
+import { Plus, Camera, Calendar, Settings, Trash2, Eye, Globe, Lock, CheckCircle, Loader2, Database } from "lucide-react";
 import type { EventoItem } from "@/app/api/eventos/route";
 
 const statusBadge: Record<string, string> = {
@@ -42,10 +42,16 @@ export default function AdminEventosPage() {
             {loading ? "Carregando..." : `${eventos.length} eventos cadastrados`}
           </p>
         </div>
-        <Link href="/admin/eventos/novo"
-          className="flex items-center gap-2 px-5 py-2.5 rounded-xl gradient-primary text-white font-semibold text-sm shadow hover:opacity-90 transition">
-          <Plus size={16} /> Novo evento
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link href="/admin/backup"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 text-gray-600 font-semibold text-sm hover:bg-gray-50 transition">
+            <Database size={15} /> Backup
+          </Link>
+          <Link href="/admin/eventos/novo"
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl gradient-primary text-white font-semibold text-sm shadow hover:opacity-90 transition">
+            <Plus size={16} /> Novo evento
+          </Link>
+        </div>
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">

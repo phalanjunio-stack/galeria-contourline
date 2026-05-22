@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import {
   Calendar, Camera, Users, ScanFace, Plus, TrendingUp, HardDrive,
-  RefreshCw, Zap, AlertTriangle, Clock, CheckCircle, XCircle, Loader2,
+  RefreshCw, Zap, AlertTriangle, Clock, CheckCircle, XCircle, Loader2, Database,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -367,6 +367,7 @@ export default function AdminDashboard() {
                 { href: "/admin/usuarios",       icon: Users,    label: "Usuários"           },
                 { href: "/admin/fotos",          icon: Camera,   label: "Galeria"            },
                 { href: "/admin/drive",          icon: HardDrive, label: "Drive"             },
+                { href: "/admin/backup",        icon: Database,  label: "Backup"            },
               ].map(({ href, icon: Icon, label }) => (
                 <Link key={href} href={href}
                   className="flex flex-col items-center gap-1.5 p-3 rounded-xl border border-gray-100 hover:border-[#2E7DD1]/30 hover:bg-[#EFF5FF] transition text-center group">
