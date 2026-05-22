@@ -22,21 +22,24 @@ export default function MultiDayEventCard({ evento, slug }: Props) {
 
   return (
     <article className="group relative bg-white dark:bg-[#0a1a2f]/80 border border-[#2E7DD1]/15 dark:border-[#5BA4E5]/15 rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5">
-      {/* Capa mosaico */}
-      <div className="relative h-36 grid grid-cols-2 grid-rows-2 gap-1 p-1 bg-[#07182f]">
+      {/* Capa clicável */}
+      <Link href={`/eventos/${slug}`} className="block relative aspect-[16/10] bg-[#07182f] overflow-hidden">
         {evento.capa_id ? (
-          <img src={`/api/thumb?id=${evento.capa_id}&sz=400`} alt="" aria-hidden
-            className="col-span-2 row-span-2 absolute inset-0 w-full h-full object-cover opacity-90" />
+          <img src={`/api/thumb?id=${evento.capa_id}&sz=600`} alt={evento.nome}
+            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
         ) : (
-          [0, 1, 2, 3].map(i => (
-            <div key={i} className="rounded-md bg-gradient-to-br from-[#2E7DD1]/70 to-[#7a3cff]/50" />
-          ))
+          <div className="absolute inset-0 grid grid-cols-2 grid-rows-2 gap-1 p-1">
+            {[0, 1, 2, 3].map(i => (
+              <div key={i} className="rounded-md bg-gradient-to-br from-[#2E7DD1]/70 to-[#7a3cff]/50" />
+            ))}
+          </div>
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0D2B4E]/85 via-[#0D2B4E]/30 to-transparent" />
-        <span className="absolute top-2.5 left-2.5 z-10 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gradient-to-r from-[#2E7DD1] to-[#7a3cff] text-white text-[11px] font-bold shadow-md">
+        {/* Gradiente leve apenas no fundo para legibilidade do badge */}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0D2B4E]/55 via-transparent to-transparent" />
+        <span className="absolute top-2.5 left-2.5 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gradient-to-r from-[#2E7DD1] to-[#7a3cff] text-white text-[11px] font-bold shadow-md">
           <Layers size={11} /> {totalDias} dias
         </span>
-      </div>
+      </Link>
 
       <div className="p-4 space-y-3">
         <h3 className="font-bold text-[#0D2B4E] dark:text-white text-base leading-tight line-clamp-2">
