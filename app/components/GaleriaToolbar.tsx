@@ -9,7 +9,7 @@ export type Quality = "rapido" | "normal" | "hd";
 export interface ToolbarState {
   view: ViewMode;
   quality: Quality;
-  size: number; // 1..10 — controla largura mínima da coluna
+  size: number;
 }
 
 export const QUALITY_PX: Record<Quality, number> = {
@@ -21,7 +21,6 @@ export const QUALITY_PX: Record<Quality, number> = {
 interface Props {
   state: ToolbarState;
   onChange: (next: ToolbarState) => void;
-  /** Callback opcional ao clicar em fullscreen/expand */
   onFullscreen?: () => void;
 }
 
@@ -32,21 +31,17 @@ export default function GaleriaToolbar({ state, onChange, onFullscreen }: Props)
   };
 
   return (
-    <div
-      className="inline-flex flex-wrap items-center gap-0.5 px-1.5 py-1.5 rounded-2xl
-        border backdrop-blur-md select-none
-        bg-white/90 dark:bg-[#0D2B4E]/90
-        border-gray-200 dark:border-[#2E7DD1]/25
-        shadow-md dark:shadow-[0_4px_24px_rgba(0,0,0,0.25)]"
-    >
-      {/* ── Grupo: View modes ── */}
-      <div className="flex items-center gap-0.5 pr-2 border-r border-gray-200 dark:border-white/8">
+    <div className="inline-flex flex-wrap items-center gap-0.5 px-1.5 py-1.5 rounded-2xl
+      border border-[#2E7DD1]/20 bg-white shadow-sm select-none">
+
+      {/* ── View modes ── */}
+      <div className="flex items-center gap-0.5 pr-2 border-r border-[#2E7DD1]/15">
         {(
           [
-            { mode: "grid",    Icon: LayoutGrid, label: "Grade normal"    },
-            { mode: "compact", Icon: Grid3x3,    label: "Grade compacta"  },
-            { mode: "mobile",  Icon: Smartphone, label: "Coluna única"    },
-            { mode: "list",    Icon: List,       label: "Lista"           },
+            { mode: "grid",    Icon: LayoutGrid, label: "Grade normal"   },
+            { mode: "compact", Icon: Grid3x3,    label: "Grade compacta" },
+            { mode: "mobile",  Icon: Smartphone, label: "Coluna única"   },
+            { mode: "list",    Icon: List,       label: "Lista"          },
           ] as const
         ).map(({ mode, Icon, label }) => {
           const active = state.view === mode;
@@ -57,13 +52,14 @@ export default function GaleriaToolbar({ state, onChange, onFullscreen }: Props)
               onClick={() => set({ view: mode })}
               title={label}
               aria-label={label}
+              className="relative p-2 rounded-xl transition-all duration-150 flex items-center justify-center"
               style={{
+                color: active ? "#fff" : "#1A4A80",
                 background: active
-                  ? "linear-gradient(135deg, #2E7DD1 0%, #5BA4E5 100%)"
+                  ? "linear-gradient(135deg, #2E7DD1 0%, #7a3cff 100%)"
                   : "transparent",
-                boxShadow: active ? "0 2px 8px rgba(46,125,209,0.4)" : "none",
+                boxShadow: active ? "0 2px 8px rgba(46,125,209,0.35)" : "none",
               }}
-              className={`relative p-2 rounded-xl transition-all duration-150 flex items-center justify-center ${active ? "text-white" : "text-gray-400 dark:text-white/45"}`}
             >
               <Icon size={15} />
             </motion.button>
@@ -71,8 +67,8 @@ export default function GaleriaToolbar({ state, onChange, onFullscreen }: Props)
         })}
       </div>
 
-      {/* ── Grupo: Quality ── */}
-      <div className="flex items-center gap-0.5 px-2 border-r border-gray-200 dark:border-white/8">
+      {/* ── Quality ── */}
+      <div className="flex items-center gap-0.5 px-2 border-r border-[#2E7DD1]/15">
         {(
           [
             { q: "rapido", Icon: Zap,       label: "Rápido" },
@@ -86,13 +82,13 @@ export default function GaleriaToolbar({ state, onChange, onFullscreen }: Props)
               key={q}
               whileTap={{ scale: 0.9 }}
               onClick={() => set({ quality: q })}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold
-                transition-all duration-150 whitespace-nowrap ${active ? "text-white" : "text-gray-500 dark:text-white/50"}`}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all duration-150 whitespace-nowrap"
               style={{
+                color: active ? "#fff" : "#1A4A80",
                 background: active
-                  ? "linear-gradient(135deg, #2E7DD1 0%, #5BA4E5 100%)"
+                  ? "linear-gradient(135deg, #2E7DD1 0%, #7a3cff 100%)"
                   : "transparent",
-                boxShadow: active ? "0 2px 8px rgba(46,125,209,0.4)" : "none",
+                boxShadow: active ? "0 2px 8px rgba(46,125,209,0.35)" : "none",
               }}
             >
               <Icon size={12} />
@@ -102,36 +98,31 @@ export default function GaleriaToolbar({ state, onChange, onFullscreen }: Props)
         })}
       </div>
 
-      {/* ── Slider de tamanho ── */}
+      {/* ── Slider ── */}
       <div className="flex items-center gap-2 px-3 min-w-[130px]">
-        {/* Ícone menor */}
-        <span className="w-2 h-2 rounded-sm shrink-0"
-          style={{ background: "rgba(91,164,229,0.4)" }} />
-
+        <span className="w-2 h-2 rounded-sm shrink-0 bg-[#2E7DD1]/30" />
         <input
           type="range"
-          min={1}
-          max={10}
-          step={1}
+          min={1} max={10} step={1}
           value={state.size}
           onChange={(e) => set({ size: Number(e.target.value) })}
           className="flex-1 cursor-pointer"
-          style={{ accentColor: "#5BA4E5" }}
+          style={{ accentColor: "#7a3cff" }}
           aria-label="Tamanho dos thumbnails"
         />
-
-        {/* Ícone maior */}
-        <span className="w-3 h-3 rounded-sm shrink-0"
-          style={{ background: "rgba(46,125,209,0.7)" }} />
+        <span className="w-3 h-3 rounded-sm shrink-0 bg-[#7a3cff]/60" />
       </div>
 
-      {/* ── Botão fullscreen (opcional) ── */}
+      {/* ── Fullscreen (opcional) ── */}
       {onFullscreen && (
         <motion.button
           whileTap={{ scale: 0.88 }}
           onClick={() => { playSound("open"); onFullscreen(); }}
-          className="p-2 rounded-xl transition-all duration-150 ml-0.5 text-gray-400 dark:text-white/40 hover:text-gray-700 dark:hover:text-white"
+          className="p-2 rounded-xl transition-all duration-150 ml-0.5"
           title="Expandir"
+          style={{ color: "#1A4A80" }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = "#7a3cff")}
+          onMouseLeave={(e) => (e.currentTarget.style.color = "#1A4A80")}
         >
           <Maximize2 size={14} />
         </motion.button>
