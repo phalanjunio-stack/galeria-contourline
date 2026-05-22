@@ -11,6 +11,29 @@ const PERFIS_PATH = process.env.PERFIS_PATH || path.resolve("..", "data", "perfi
 
 let rodando = false;
 
+const autoStatus = {
+  enabled: process.env.AUTO_INDEX_ENABLED === "1",
+  intervalMin: INTERVAL_MS / 60000,
+  catalogoRemoto: Boolean(process.env.NEXT_PUBLIC_SITE_URL),
+  iniciadoEm: null,
+  rodando: false,
+  ultimoCiclo: null,
+};
+
+export function getAutoIndexStatus() {
+  return JSON.parse(JSON.stringify(autoStatus));
+}
+
+function statusEvento(evento, status, motivo, extra = {}) {
+  return {
+    eventoId: evento.id,
+    nome: evento.nome,
+    status,
+    motivo,
+    ...extra,
+  };
+}
+
 async function lerJSON(p) {
   try {
     const raw = await fs.readFile(p, "utf-8");
@@ -108,47 +131,96 @@ function perfisComDescritores(perfis) {
 async function tick() {
   if (rodando) {
     console.log("[auto] Ciclo pulado - job ainda rodando");
+    autoStatus.ultimoCiclo = {
+      iniciadoEm: new Date().toISOString(),
+      terminadoEm: new Date().toISOString(),
+      pulado: true,
+      erro: "Job de indexacao ainda rodando",
+      eventosTotal: 0,
+      perfisProntos: 0,
+      eventos: [],
+    };
     return;
   }
 
+  const ciclo = {
+    iniciadoEm: new Date().toISOString(),
+    terminadoEm: null,
+    pulado: false,
+    erro: null,
+    eventosTotal: 0,
+    perfisProntos: 0,
+    eventos: [],
+  };
+  autoStatus.ultimoCiclo = ciclo;
+  autoStatus.rodando = true;
   console.log(`\n[auto] === Ciclo automatico ${new Date().toLocaleString("pt-BR")} ===`);
-  const { eventos, perfis } = await lerCatalogo();
-  if (!eventos.length) {
-    console.log("[auto] Sem eventos acessiveis - pulando ciclo");
-    return;
-  }
-
-  const perfisProntos = perfisComDescritores(perfis);
-  console.log(`[auto] ${eventos.length} eventos, ${perfisProntos.length} perfis com descritor`);
-
-  for (const evento of eventos) {
-    if (evento.status === "encerrado") continue;
-
-    const { precisa, motivo } = await precisaIndexar(evento);
-    console.log(`[auto] ${evento.nome}: ${motivo}`);
-    if (!precisa) continue;
-
-    const job = novoJob(evento.id, evento.nome, evento.folder_id);
-    console.log(`[auto] Indexando ${evento.nome} (job ${job.jobId})`);
-    rodando = true;
-    try {
-      await indexarEvento(job.jobId, perfisProntos);
-      const finalJob = getJob(job.jobId);
-      console.log(
-        `[auto] ${evento.nome} concluido: ${finalJob?.matches || 0} matches, ${finalJob?.fotosComRosto || 0} com rosto`
-      );
-    } catch (err) {
-      console.error(`[auto] ${evento.nome} falhou:`, err.message);
-    } finally {
-      rodando = false;
+  try {
+    const { eventos, perfis } = await lerCatalogo();
+    ciclo.eventosTotal = eventos.length;
+    if (!eventos.length) {
+      console.log("[auto] Sem eventos acessiveis - pulando ciclo");
+      ciclo.erro = "Sem eventos acessiveis";
+      return;
     }
-  }
 
-  console.log("[auto] === Ciclo finalizado ===\n");
+    const perfisProntos = perfisComDescritores(perfis);
+    ciclo.perfisProntos = perfisProntos.length;
+    console.log(`[auto] ${eventos.length} eventos, ${perfisProntos.length} perfis com descritor`);
+
+    for (const evento of eventos) {
+      if (evento.status === "encerrado") {
+        ciclo.eventos.push(statusEvento(evento, "ignorado", "evento encerrado"));
+        continue;
+      }
+
+      const { precisa, motivo } = await precisaIndexar(evento);
+      console.log(`[auto] ${evento.nome}: ${motivo}`);
+      if (!precisa) {
+        ciclo.eventos.push(statusEvento(
+          evento,
+          motivo.startsWith("erro:") ? "erro" : "ok",
+          motivo
+        ));
+        continue;
+      }
+
+      const job = novoJob(evento.id, evento.nome, evento.folder_id);
+      const registro = statusEvento(evento, "indexando", motivo, { jobId: job.jobId });
+      ciclo.eventos.push(registro);
+      console.log(`[auto] Indexando ${evento.nome} (job ${job.jobId})`);
+      rodando = true;
+      try {
+        await indexarEvento(job.jobId, perfisProntos);
+        const finalJob = getJob(job.jobId);
+        registro.status = "indexado";
+        registro.matches = finalJob?.matches || 0;
+        registro.fotosComRosto = finalJob?.fotosComRosto || 0;
+        console.log(
+          `[auto] ${evento.nome} concluido: ${registro.matches} matches, ${registro.fotosComRosto} com rosto`
+        );
+      } catch (err) {
+        registro.status = "erro";
+        registro.motivo = err.message;
+        console.error(`[auto] ${evento.nome} falhou:`, err.message);
+      } finally {
+        rodando = false;
+      }
+    }
+  } catch (err) {
+    ciclo.erro = err.message;
+    console.error("[auto] Ciclo falhou:", err.message);
+  } finally {
+    ciclo.terminadoEm = new Date().toISOString();
+    autoStatus.rodando = rodando;
+    console.log("[auto] === Ciclo finalizado ===\n");
+  }
 }
 
 export function iniciarAutoIndexacao() {
   const enabled = process.env.AUTO_INDEX_ENABLED === "1";
+  autoStatus.enabled = enabled;
+  autoStatus.iniciadoEm = new Date().toISOString();
   if (!enabled) {
     console.log("[auto] AUTO_INDEX_ENABLED nao=1 - auto-indexacao desligada");
     return;

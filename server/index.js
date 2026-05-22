@@ -2,7 +2,7 @@
 import express from "express";
 import { initFaceApi } from "./lib/face.js";
 import { novoJob, getJob, indexarEvento } from "./lib/indexar.js";
-import { iniciarAutoIndexacao } from "./lib/auto-indexar.js";
+import { getAutoIndexStatus, iniciarAutoIndexacao } from "./lib/auto-indexar.js";
 import { lerArquivo } from "./lib/storage.js";
 import { lerPreviewIndiceEvento } from "./lib/face-index-db.js";
 
@@ -132,6 +132,11 @@ app.get("/status/:jobId", exigirSecret, (req, res) => {
   const job = getJob(req.params.jobId);
   if (!job) return res.status(404).json({ error: "Job nao encontrado" });
   res.json(job);
+});
+
+// Mostra o ultimo ciclo automatico para o painel admin da galeria.
+app.get("/auto/status", exigirSecret, (req, res) => {
+  res.json(getAutoIndexStatus());
 });
 
 // Amostra dos rostos que o proprio face-server ja salvou no indice de descritores.

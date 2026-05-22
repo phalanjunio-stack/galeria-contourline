@@ -17,6 +17,17 @@ type FaceServerStatus = {
   erro?: string;
 };
 
+type AutoIndexStatus = {
+  supported: boolean;
+  enabled: boolean | null;
+  intervalMin: number | null;
+  catalogoRemoto: boolean | null;
+  iniciadoEm: string | null;
+  rodando: boolean;
+  ultimoCiclo: unknown;
+  erro?: string;
+};
+
 async function testarFaceServer(): Promise<FaceServerStatus> {
   const serverUrl = process.env.FACE_SERVER_URL;
   const serverSecret = process.env.FACE_SERVER_SECRET;
@@ -60,6 +71,46 @@ async function testarFaceServer(): Promise<FaceServerStatus> {
       uptime: null,
       erro: err instanceof Error ? err.message : String(err),
     };
+  }
+}
+
+async function lerAutoIndexacao(): Promise<AutoIndexStatus> {
+  const serverUrl = process.env.FACE_SERVER_URL;
+  const serverSecret = process.env.FACE_SERVER_SECRET;
+  const indisponivel = (erro: string): AutoIndexStatus => ({
+    supported: false,
+    enabled: null,
+    intervalMin: null,
+    catalogoRemoto: null,
+    iniciadoEm: null,
+    rodando: false,
+    ultimoCiclo: null,
+    erro,
+  });
+
+  if (!serverUrl) return indisponivel("FACE_SERVER_URL ausente");
+
+  try {
+    const res = await fetch(`${serverUrl}/auto/status`, {
+      headers: serverSecret ? { "X-Server-Secret": serverSecret } : {},
+      cache: "no-store",
+      signal: AbortSignal.timeout(5000),
+    });
+    if (res.status === 404) return indisponivel("Atualize o face server para ler autoindexacao");
+    if (!res.ok) return indisponivel(`Autoindex HTTP ${res.status}`);
+
+    const status = await res.json().catch(() => null);
+    return {
+      supported: true,
+      enabled: typeof status?.enabled === "boolean" ? status.enabled : null,
+      intervalMin: Number.isFinite(Number(status?.intervalMin)) ? Number(status.intervalMin) : null,
+      catalogoRemoto: typeof status?.catalogoRemoto === "boolean" ? status.catalogoRemoto : null,
+      iniciadoEm: typeof status?.iniciadoEm === "string" ? status.iniciadoEm : null,
+      rodando: Boolean(status?.rodando),
+      ultimoCiclo: status?.ultimoCiclo ?? null,
+    };
+  } catch (err) {
+    return indisponivel(err instanceof Error ? err.message : String(err));
   }
 }
 
@@ -130,8 +181,9 @@ export async function GET() {
     return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
   }
 
-  const [faceServer, pgvector, drive, perfis] = await Promise.all([
+  const [faceServer, autoIndex, pgvector, drive, perfis] = await Promise.all([
     testarFaceServer(),
+    lerAutoIndexacao(),
     lerStatusFaceIndexDb(),
     testarDrive(),
     lerPerfis(),
@@ -151,6 +203,7 @@ export async function GET() {
       notificacoes.siteUrlConfigurada &&
       notificacoes.secretConfigurado,
     faceServer,
+    autoIndex,
     pgvector,
     drive,
     perfis,

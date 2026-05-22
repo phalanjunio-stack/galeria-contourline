@@ -4,8 +4,8 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   Camera, Calendar, Scan, ArrowLeft,
-  Share2, Filter, AlertCircle, CheckSquare, Square,
-  X, Download, ImagePlus, ScanFace, ChevronRight, Heart, Loader2,
+  Share2, AlertCircle, CheckSquare, Square,
+  X, Download, ScanFace, ChevronRight, Heart, Loader2,
 } from "lucide-react";
 import type { EventoItem } from "@/app/api/eventos/route";
 import FotoCard from "@/app/components/FotoCard";
@@ -16,17 +16,20 @@ import GaleriaToolbar, { type ToolbarState, QUALITY_PX } from "@/app/components/
 import IndexarEventoButton from "@/app/components/IndexarEventoButton";
 import { baixarComoZip } from "@/lib/download-zip";
 import { lerFavoritos, salvarFavoritos } from "@/app/(public)/favoritos/page";
-import { fetchMinhasFotos, lerCacheMinhasFotos, ouvirAtualizacoes } from "@/lib/minhasFotos";
+import {
+  fetchMinhasFotos,
+  lerCacheMinhasFotos,
+  ouvirAtualizacoes,
+  lerDescriptors,
+  menorDistancia,
+} from "@/lib/minhasFotos";
 import { fetchDescritores } from "@/lib/descritoresCache";
+import { lerRecognitionThresholdLocal } from "@/lib/recognition-thresholds";
 
 type FiltroKey = "todas" | "minhas" | "favoritas";
 
 interface DrivePhoto { id: string; name: string; }
 interface FotoDesc { fotoId: string; rostos: { descriptor: number[] }[] }
-
-function distEuclid(a: Float32Array, b: number[]) {
-  let s = 0; for (let i = 0; i < a.length; i++) { const d = a[i] - b[i]; s += d * d; } return Math.sqrt(s);
-}
 
 
 function syncEvento(ev: EventoItem, fotos: DrivePhoto[], capaOverride?: string) {
@@ -60,10 +63,13 @@ export default function EventoPage({ params }: { params: Promise<{ slug: string 
   const [toolbar, setToolbar] = useState<ToolbarState>(DEFAULT_TOOLBAR);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(TOOLBAR_KEY);
-      if (raw) setToolbar({ ...DEFAULT_TOOLBAR, ...JSON.parse(raw) });
-    } catch {}
+    const id = window.setTimeout(() => {
+      try {
+        const raw = localStorage.getItem(TOOLBAR_KEY);
+        if (raw) setToolbar({ ...DEFAULT_TOOLBAR, ...JSON.parse(raw) });
+      } catch {}
+    }, 0);
+    return () => window.clearTimeout(id);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -146,30 +152,44 @@ export default function EventoPage({ params }: { params: Promise<{ slug: string 
       }
 
       // 5. Fallback: compara descriptor salvo com índice do evento
-      const descRaw = sessionStorage.getItem("faceDescriptor") ?? localStorage.getItem("face_descriptor_v1");
-      if (!descRaw) return;
-      const meuDesc = new Float32Array(JSON.parse(descRaw));
+      let descriptors = lerDescriptors();
+      if (descriptors.length === 0 && email) {
+        const perfilRes = await fetch(`/api/perfil?email=${encodeURIComponent(email)}`).catch(() => null);
+        const perfil = perfilRes?.ok ? await perfilRes.json() : null;
+        const doPerfil: number[][] = Array.isArray(perfil?.descriptors) && perfil.descriptors.length > 0
+          ? perfil.descriptors
+          : Array.isArray(perfil?.descriptor) && perfil.descriptor.length === 128
+          ? [perfil.descriptor]
+          : [];
+        descriptors = doPerfil.map((descriptor) => new Float32Array(descriptor));
+      }
+      if (descriptors.length === 0) return;
       const idxData = await fetchDescritores(eventoId);
       if (!idxData?.indexado || !idxData.dados?.length) return;
 
       const encontradas: string[] = [];
+      const limiar = lerRecognitionThresholdLocal("usuario");
       for (const foto of idxData.dados as FotoDesc[]) {
+        let melhor = Infinity;
         for (const rosto of foto.rostos) {
-          if (distEuclid(meuDesc, rosto.descriptor) < 0.60) {
-            encontradas.push(foto.fotoId); break;
-          }
+          const distancia = menorDistancia(descriptors, rosto.descriptor);
+          if (distancia < melhor) melhor = distancia;
         }
+        if (melhor < limiar) encontradas.push(foto.fotoId);
       }
       if (encontradas.length) setMinhasFotosEvento(encontradas);
     } catch { /**/ }
   }, []);
 
   useEffect(() => {
-    fetch("/api/auth/session").then(r => r.json()).then(s => {
-      if (s?.user?.isAdmin) setIsAdmin(true);
-    }).catch(() => {});
-    // Carrega favoritos persistidos
-    setFavoritos(new Set(lerFavoritos()));
+    const id = window.setTimeout(() => {
+      fetch("/api/auth/session").then(r => r.json()).then(s => {
+        if (s?.user?.isAdmin) setIsAdmin(true);
+      }).catch(() => {});
+      // Carrega favoritos persistidos
+      setFavoritos(new Set(lerFavoritos()));
+    }, 0);
+    return () => window.clearTimeout(id);
   }, []);
 
   // Re-fetch das "minhas fotos" quando outra página atualiza

@@ -1,13 +1,14 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
-import { Filter, Calendar, Search, Loader2, ScanFace, ChevronRight, X, Scan } from "lucide-react";
+import { Filter, Calendar, Search, ScanFace, ChevronRight, X, Scan } from "lucide-react";
 import Link from "next/link";
 import type { EventoItem } from "@/app/api/eventos/route";
 import {
   fetchMinhasFotos, lerCacheMinhasFotos, salvarCacheMinhasFotos,
-  ouvirAtualizacoes, lerDescriptor,
+  ouvirAtualizacoes, lerDescriptors, menorDistancia,
 } from "@/lib/minhasFotos";
 import { fetchDescritores } from "@/lib/descritoresCache";
+import { lerRecognitionThresholdLocal } from "@/lib/recognition-thresholds";
 import { SkeletonEventos } from "@/app/components/Skeleton";
 
 const categorias = ["Todos", "Corporativo", "Workshop", "Palestra", "Confraternização", "Outros"];
@@ -19,10 +20,6 @@ const statusConfig: Record<string, { label: string; dot: string; bg: string }> =
 };
 
 interface FotoDesc { fotoId: string; rostos: { descriptor: number[] }[] }
-
-function distEuclid(a: Float32Array, b: number[]) {
-  let s = 0; for (let i = 0; i < a.length; i++) { const d = a[i] - b[i]; s += d * d; } return Math.sqrt(s);
-}
 
 interface MatchEvento {
   evento: EventoItem;
@@ -52,8 +49,8 @@ export default function EventosPage() {
       if (sessao?.user) { nome = sessao.user.name ?? nome; email = sessao.user.email ?? email; }
       if (nome) setNomeUsuario(nome.split(" ")[0]);
 
-      const meuDesc = lerDescriptor();
-      setTemRosto(!!meuDesc || !!email);
+      let descriptors = lerDescriptors();
+      setTemRosto(descriptors.length > 0 || !!email);
 
       // 1. Fonte de verdade: Drive
       if (email) {
@@ -70,20 +67,35 @@ export default function EventosPage() {
       }
 
       // 2. Fallback: descriptor vs índice de cada evento
-      if (!meuDesc) return;
+      if (descriptors.length === 0 && email) {
+        const perfilRes = await fetch(`/api/perfil?email=${encodeURIComponent(email)}`).catch(() => null);
+        const perfil = perfilRes?.ok ? await perfilRes.json() : null;
+        const doPerfil: number[][] = Array.isArray(perfil?.descriptors) && perfil.descriptors.length > 0
+          ? perfil.descriptors
+          : Array.isArray(perfil?.descriptor) && perfil.descriptor.length === 128
+          ? [perfil.descriptor]
+          : [];
+        descriptors = doPerfil.map((descriptor) => new Float32Array(descriptor));
+      }
+      if (descriptors.length === 0) {
+        setMatches([]);
+        return;
+      }
       const resultados: MatchEvento[] = [];
       const porEvento: { eventoId: string; eventoNome: string; fotos: string[] }[] = [];
+      const limiar = lerRecognitionThresholdLocal("usuario");
       for (const ev of lista.filter(e => e.status === "aberto" && e.folder_id)) {
         const idxData = await fetchDescritores(ev.id);
         if (!idxData?.indexado || !idxData.dados?.length) continue;
 
         const encontradas: string[] = [];
         for (const foto of idxData.dados as FotoDesc[]) {
+          let melhor = Infinity;
           for (const rosto of foto.rostos) {
-            if (distEuclid(meuDesc, rosto.descriptor) < 0.60) {
-              encontradas.push(foto.fotoId); break;
-            }
+            const distancia = menorDistancia(descriptors, rosto.descriptor);
+            if (distancia < melhor) melhor = distancia;
           }
+          if (melhor < limiar) encontradas.push(foto.fotoId);
         }
         if (encontradas.length) {
           resultados.push({ evento: ev, fotos: encontradas.slice(0, 5) });
@@ -99,6 +111,8 @@ export default function EventosPage() {
             porEvento,
           });
         }
+      } else {
+        setMatches([]);
       }
     } catch { /**/ }
   }, []);
@@ -110,10 +124,12 @@ export default function EventosPage() {
       if (u?.email) {
         const cached = lerCacheMinhasFotos(u.email);
         if (cached?.porEvento?.length) {
-          setMatches(cached.porEvento.map(pe => ({
-            evento: { id: pe.eventoId, nome: pe.eventoNome } as EventoItem,
-            fotos: pe.fotos.slice(0, 5),
-          })));
+          window.setTimeout(() => {
+            setMatches(cached.porEvento.map(pe => ({
+              evento: { id: pe.eventoId, nome: pe.eventoNome } as EventoItem,
+              fotos: pe.fotos.slice(0, 5),
+            })));
+          }, 0);
         }
       }
     } catch { /**/ }

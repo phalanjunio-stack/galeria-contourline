@@ -1,123 +1,279 @@
 "use client";
-import type { ReactElement } from "react";
-import { HardDrive, FolderOpen, RefreshCw, CheckCircle, AlertCircle, Clock, Plus } from "lucide-react";
 
-const pastas = [
-  { nome: "Confraterização 2024",  fotos: 320, status: "sincronizado", ultima: "há 10 min" },
-  { nome: "Workshop Inovação",      fotos: 215, status: "sincronizado", ultima: "há 1 hora"  },
-  { nome: "Feira de Negócios",      fotos: 278, status: "processando",  ultima: "agora"      },
-  { nome: "Palestra Liderança",     fotos: 189, status: "sincronizado", ultima: "ontem"       },
-];
+import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import {
+  AlertCircle,
+  CheckCircle,
+  Clock,
+  FolderOpen,
+  HardDrive,
+  Loader2,
+  Plus,
+  RefreshCw,
+} from "lucide-react";
 
-const statusIcon: Record<string, ReactElement> = {
-  sincronizado: <CheckCircle size={15} className="text-emerald-500" />,
-  processando:  <RefreshCw   size={15} className="text-amber-500 animate-spin" />,
-  erro:         <AlertCircle size={15} className="text-red-500" />,
-};
-const statusLabel: Record<string, string> = {
-  sincronizado: "text-emerald-600 bg-emerald-50",
-  processando:  "text-amber-600 bg-amber-50",
-  erro:         "text-red-600 bg-red-50",
-};
+type GaleriaStatus = "online" | "erro" | "sem_pasta";
+
+interface DriveGaleria {
+  eventoId: string;
+  nome: string;
+  pastaId: string;
+  pastaNome: string | null;
+  totalFotos: number;
+  status: GaleriaStatus;
+  motivo: string;
+}
+
+interface DriveGaleriasPayload {
+  ok: boolean;
+  drive: {
+    ok: boolean;
+    email: string | null;
+    erro?: string;
+  };
+  fonteCatalogo: string;
+  rootConfigurada: boolean;
+  consultadoEm: string;
+  galerias: DriveGaleria[];
+}
+
+function fmtDate(iso?: string | null) {
+  if (!iso) return "Nao consultado";
+  return new Date(iso).toLocaleString("pt-BR", {
+    dateStyle: "short",
+    timeStyle: "short",
+  });
+}
+
+function badge(status: GaleriaStatus) {
+  if (status === "online") {
+    return {
+      label: "Online",
+      classes: "bg-emerald-100 text-emerald-700",
+      icon: <CheckCircle size={14} />,
+    };
+  }
+  if (status === "sem_pasta") {
+    return {
+      label: "Sem pasta",
+      classes: "bg-gray-100 text-gray-600",
+      icon: <FolderOpen size={14} />,
+    };
+  }
+  return {
+    label: "Revisar",
+    classes: "bg-red-100 text-red-700",
+    icon: <AlertCircle size={14} />,
+  };
+}
 
 export default function DrivePage() {
+  const [dados, setDados] = useState<DriveGaleriasPayload | null>(null);
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
+
+  const carregar = useCallback(async () => {
+    setCarregando(true);
+    setErro(null);
+    try {
+      const res = await fetch("/api/admin/drive-galerias", { cache: "no-store" });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error || "Falha ao testar o Google Drive.");
+      setDados(data as DriveGaleriasPayload);
+    } catch (err) {
+      setErro(err instanceof Error ? err.message : String(err));
+    } finally {
+      setCarregando(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      void carregar();
+    }, 0);
+    return () => window.clearTimeout(id);
+  }, [carregar]);
+
+  const resumo = useMemo(() => {
+    const galerias = dados?.galerias ?? [];
+    return {
+      online: galerias.filter((galeria) => galeria.status === "online").length,
+      erro: galerias.filter((galeria) => galeria.status === "erro").length,
+      semPasta: galerias.filter((galeria) => galeria.status === "sem_pasta").length,
+      fotos: galerias.reduce((total, galeria) => total + (galeria.totalFotos || 0), 0),
+    };
+  }, [dados]);
+
   return (
-    <div>
-      <div className="flex items-center justify-between mb-8">
+    <div className="max-w-6xl space-y-5">
+      <header className="flex flex-col gap-4 border-b border-gray-100 pb-5 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[#0D2B4E] flex items-center gap-2">
-            <HardDrive className="text-[#2E7DD1]" size={24} /> Google Drive
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-[#0D2B4E]">
+            <HardDrive className="text-[#2E7DD1]" size={25} />
+            Google Drive
           </h1>
-          <p className="text-gray-500 text-sm mt-0.5">Sincronize pastas do Drive com os eventos da galeria</p>
+          <p className="mt-1 text-sm text-gray-500">
+            Estado real do token e das pastas usadas por cada evento.
+          </p>
         </div>
-        <button className="flex items-center gap-2 px-5 py-2.5 rounded-xl gradient-primary text-white font-semibold text-sm shadow hover:opacity-90 transition">
-          <Plus size={15} /> Conectar pasta
-        </button>
-      </div>
-
-      {/* Status geral */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-        <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-9 h-9 rounded-xl bg-emerald-100 flex items-center justify-center">
-              <CheckCircle size={18} className="text-emerald-600" />
-            </div>
-            <div>
-              <p className="text-xl font-bold text-[#0D2B4E]">3</p>
-              <p className="text-xs text-gray-500">Sincronizadas</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center">
-              <RefreshCw size={18} className="text-amber-600" />
-            </div>
-            <div>
-              <p className="text-xl font-bold text-[#0D2B4E]">1</p>
-              <p className="text-xs text-gray-500">Processando</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-9 h-9 rounded-xl gradient-primary flex items-center justify-center shadow">
-              <HardDrive size={18} className="text-white" />
-            </div>
-            <div>
-              <p className="text-xl font-bold text-[#0D2B4E]">1.002</p>
-              <p className="text-xs text-gray-500">Fotos no Drive</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Pastas conectadas */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mb-6">
-        <h2 className="font-bold text-[#0D2B4E] mb-5">Pastas conectadas</h2>
-        <div className="space-y-3">
-          {pastas.map((p) => (
-            <div key={p.nome} className="flex items-center gap-4 p-4 rounded-xl border border-gray-100 hover:bg-[#EFF5FF] transition">
-              <div className="w-10 h-10 gradient-primary rounded-xl flex items-center justify-center shrink-0 shadow">
-                <FolderOpen size={18} className="text-white" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-[#0D2B4E] text-sm truncate">{p.nome}</p>
-                <p className="text-gray-400 text-xs flex items-center gap-1">
-                  <Clock size={11} /> Última sync: {p.ultima} · {p.fotos} fotos
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${statusLabel[p.status]}`}>
-                  {statusIcon[p.status]} {p.status.charAt(0).toUpperCase() + p.status.slice(1)}
-                </span>
-                <button className="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center hover:bg-[#EFF5FF] transition text-[#2E7DD1]">
-                  <RefreshCw size={14} />
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Conectar nova pasta */}
-      <div className="bg-[#EFF5FF] rounded-2xl border-2 border-dashed border-[#2E7DD1]/30 p-8 text-center">
-        <div className="w-14 h-14 gradient-primary rounded-2xl flex items-center justify-center mx-auto mb-4 shadow">
-          <HardDrive size={28} className="text-white" />
-        </div>
-        <h3 className="font-bold text-[#0D2B4E] mb-1">Conectar nova pasta do Drive</h3>
-        <p className="text-gray-500 text-sm mb-5 max-w-sm mx-auto">
-          Cole o link da pasta do Google Drive ou selecione diretamente na sua conta.
-        </p>
-        <div className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
-          <input
-            type="text"
-            placeholder="Cole o link da pasta do Google Drive..."
-            className="flex-1 px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-[#2E7DD1] transition"
-          />
-          <button className="px-5 py-3 rounded-xl gradient-primary text-white font-semibold text-sm shadow hover:opacity-90 transition shrink-0">
-            Conectar
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={carregar}
+            disabled={carregando}
+            className="inline-flex h-10 items-center gap-2 rounded-xl border border-gray-200 px-4 text-sm font-semibold text-gray-600 transition hover:border-[#2E7DD1]/40 hover:text-[#2E7DD1] disabled:opacity-50"
+            title="Testar Drive novamente"
+          >
+            {carregando ? <Loader2 size={15} className="animate-spin" /> : <RefreshCw size={15} />}
+            Atualizar
           </button>
+          <Link
+            href="/admin/eventos"
+            className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#2167AE] px-4 text-sm font-semibold text-white shadow transition hover:bg-[#19558F]"
+          >
+            <Plus size={15} />
+            Evento com pasta
+          </Link>
+        </div>
+      </header>
+
+      {erro && (
+        <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <AlertCircle size={16} className="mt-0.5 shrink-0" />
+          {erro}
+        </div>
+      )}
+
+      <section className={`rounded-2xl border p-5 shadow-sm ${
+        dados?.drive.ok ? "border-emerald-100 bg-emerald-50/50" : "border-amber-100 bg-amber-50/60"
+      }`}>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <div className={`mt-0.5 flex h-10 w-10 items-center justify-center rounded-xl ${
+              dados?.drive.ok ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
+            }`}>
+              {dados?.drive.ok ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
+            </div>
+            <div>
+              <p className="font-bold text-[#0D2B4E]">
+                {dados?.drive.ok ? "Drive conectado" : "Drive precisa de atencao"}
+              </p>
+              <p className="mt-0.5 text-sm text-gray-600">
+                {dados?.drive.email ?? dados?.drive.erro ?? "Aguardando teste do token"}
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2 text-xs text-gray-500">
+            <span className="rounded-lg bg-white/80 px-2.5 py-1">
+              Catalogo: {dados?.fonteCatalogo ?? "carregando"}
+            </span>
+            <span className="rounded-lg bg-white/80 px-2.5 py-1">
+              Raiz: {dados?.rootConfigurada ? "configurada" : "ausente"}
+            </span>
+            <span className="inline-flex items-center gap-1 rounded-lg bg-white/80 px-2.5 py-1">
+              <Clock size={11} />
+              {fmtDate(dados?.consultadoEm)}
+            </span>
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <ResumoCard icon={<CheckCircle size={18} />} label="Galerias online" value={String(resumo.online)} tone="ok" />
+        <ResumoCard icon={<AlertCircle size={18} />} label="Com erro" value={String(resumo.erro)} tone="erro" />
+        <ResumoCard icon={<FolderOpen size={18} />} label="Sem pasta" value={String(resumo.semPasta)} tone="neutro" />
+        <ResumoCard icon={<HardDrive size={18} />} label="Fotos cadastradas" value={String(resumo.fotos)} tone="drive" />
+      </section>
+
+      <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+        <div className="mb-4">
+          <h2 className="font-bold text-[#0D2B4E]">Galerias do Drive</h2>
+          <p className="text-xs text-gray-400">
+            Cada linha testa a pasta cadastrada no evento e a capacidade de listar seus arquivos.
+          </p>
+        </div>
+
+        {carregando && !dados ? (
+          <div className="flex min-h-40 items-center justify-center gap-2 rounded-xl bg-[#F7FAFD] text-sm text-gray-500">
+            <Loader2 size={16} className="animate-spin text-[#2E7DD1]" />
+            Testando pastas...
+          </div>
+        ) : dados?.galerias.length ? (
+          <div className="space-y-2.5">
+            {dados.galerias.map((galeria) => (
+              <GaleriaRow key={galeria.eventoId} galeria={galeria} />
+            ))}
+          </div>
+        ) : (
+          <div className="flex min-h-40 flex-col items-center justify-center rounded-xl bg-[#F7FAFD] px-4 text-center">
+            <FolderOpen size={22} className="mb-2 text-[#2E7DD1]" />
+            <p className="text-sm font-bold text-[#0D2B4E]">Nenhum evento no catalogo</p>
+            <p className="mt-1 text-xs text-gray-400">Cadastre um evento com pasta do Drive para testar a galeria.</p>
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
+
+function GaleriaRow({ galeria }: { galeria: DriveGaleria }) {
+  const status = badge(galeria.status);
+  return (
+    <div className="flex flex-col gap-3 rounded-xl border border-gray-100 bg-[#F7FAFD] px-4 py-3 lg:flex-row lg:items-center">
+      <div className="flex min-w-0 flex-1 items-start gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#E6F0FC] text-[#2E7DD1]">
+          <FolderOpen size={18} />
+        </div>
+        <div className="min-w-0">
+          <p className="truncate text-sm font-bold text-[#0D2B4E]">{galeria.nome}</p>
+          <p className="truncate text-xs text-gray-500">
+            {galeria.pastaNome || galeria.pastaId || "Sem pasta cadastrada"}
+          </p>
+          <p className={`mt-1 text-xs ${galeria.status === "erro" ? "font-semibold text-red-600" : "text-gray-400"}`}>
+            {galeria.motivo}
+          </p>
+        </div>
+      </div>
+      <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+        <span className="rounded-lg bg-white px-2.5 py-1 text-xs text-gray-500">
+          {galeria.totalFotos} foto(s)
+        </span>
+        <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold ${status.classes}`}>
+          {status.icon}
+          {status.label}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function ResumoCard({
+  icon,
+  label,
+  value,
+  tone,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  tone: "ok" | "erro" | "neutro" | "drive";
+}) {
+  const classes = {
+    ok: "bg-emerald-100 text-emerald-700",
+    erro: "bg-red-100 text-red-700",
+    neutro: "bg-gray-100 text-gray-600",
+    drive: "bg-[#E6F0FC] text-[#2E7DD1]",
+  };
+
+  return (
+    <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+      <div className="flex items-center gap-3">
+        <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${classes[tone]}`}>
+          {icon}
+        </div>
+        <div>
+          <p className="text-xl font-black text-[#0D2B4E]">{value}</p>
+          <p className="text-xs text-gray-500">{label}</p>
         </div>
       </div>
     </div>
