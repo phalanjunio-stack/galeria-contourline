@@ -142,6 +142,17 @@ async function lerPreviewDescritores(eventoId: string, folderId?: string): Promi
   return dados ? criarPreviewDescritores(eventoId, dados) : null;
 }
 
+async function lerPreviewPgvector(eventoId: string) {
+  if (!faceIndexDbEnabled()) return null;
+
+  try {
+    return await lerAmostraRostosIndexadosDb(eventoId);
+  } catch (err) {
+    console.warn("[indexacao/rostos] Pgvector da galeria indisponivel, tentando face-server:", err);
+    return null;
+  }
+}
+
 export async function GET(req: NextRequest) {
   const session = await auth();
   if (!session?.user?.isAdmin) {
@@ -158,9 +169,7 @@ export async function GET(req: NextRequest) {
       ? await lerArquivoOculto<EventoItem[]>(ROOT, "_index.json", token).catch(() => null)
       : null;
     const folderId = eventos?.find((evento) => evento.id === eventoId)?.folder_id;
-    const previewDb = faceIndexDbEnabled()
-      ? await lerAmostraRostosIndexadosDb(eventoId)
-      : null;
+    const previewDb = await lerPreviewPgvector(eventoId);
     if (previewDb) {
       return NextResponse.json({ enabled: true, source: "pgvector", preview: previewDb });
     }
