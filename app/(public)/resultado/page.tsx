@@ -558,10 +558,14 @@ export default function ResultadoPage() {
       });
     }
 
-    // Persiste no Drive (fonte de verdade) — MERGE com fotos já confirmadas
+    // Persiste no Drive (fonte de verdade) — MERGE com fotos já confirmadas.
+    // IMPORTANTE: PUTs precisam ser SEQUENCIAIS — o endpoint faz read-modify-write
+    // no mesmo arquivo _mf_{email}.json. Em paralelo os writes se sobrescrevem
+    // (lost-update) e o usuário perde fotos.
     if (email) {
       const processadoEm = new Date().toISOString();
-      const resultados = await Promise.all(novoPorEvento.map(async ev => {
+      const resultados: { ok: boolean; evento: string; status?: number; erro?: string }[] = [];
+      for (const ev of novoPorEvento) {
         try {
           const res = await fetch("/api/meu/fotos", {
             method: "PUT",
@@ -577,13 +581,14 @@ export default function ResultadoPage() {
           });
           if (!res.ok) {
             const txt = await res.text().catch(() => res.statusText);
-            return { ok: false, evento: ev.eventoNome, status: res.status, erro: txt };
+            resultados.push({ ok: false, evento: ev.eventoNome, status: res.status, erro: txt });
+          } else {
+            resultados.push({ ok: true, evento: ev.eventoNome });
           }
-          return { ok: true, evento: ev.eventoNome };
         } catch (e) {
-          return { ok: false, evento: ev.eventoNome, erro: String(e) };
+          resultados.push({ ok: false, evento: ev.eventoNome, erro: String(e) });
         }
-      }));
+      }
       const falhas = resultados.filter(r => !r.ok);
       if (falhas.length > 0) {
         console.error("[São minhas] PUT falhou para alguns eventos:", falhas);
