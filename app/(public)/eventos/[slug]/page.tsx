@@ -447,11 +447,11 @@ export default function EventoPage({ params }: { params: Promise<{ slug: string 
             </button>
 
             {/* Botão Indexar — público */}
-            {evento?.folder_id && fotos.length > 0 && (
+            {folderIdAtivo && fotos.length > 0 && (
               <IndexarEventoButton
                 eventoId={evento.id}
                 eventoNome={evento.nome}
-                folderId={evento.folder_id}
+                folderId={folderIdAtivo}
                 totalFotos={fotos.length}
               />
             )}
@@ -597,7 +597,7 @@ export default function EventoPage({ params }: { params: Promise<{ slug: string 
         )}
 
         {/* Sem pasta */}
-        {!loading && !erro && !evento?.folder_id && (
+        {!loading && !erro && !folderIdAtivo && (
           <div className="flex flex-col items-center justify-center py-20 gap-3 text-center">
             <div className="w-16 h-16 gradient-primary rounded-2xl flex items-center justify-center shadow">
               <Camera size={28} className="text-white" />
@@ -608,7 +608,7 @@ export default function EventoPage({ params }: { params: Promise<{ slug: string 
         )}
 
         {/* Sem fotos */}
-        {!loading && !erro && evento?.folder_id && fotos.length === 0 && (
+        {!loading && !erro && folderIdAtivo && fotos.length === 0 && (
           <div className="flex flex-col items-center justify-center py-20 gap-3 text-center">
             <Camera size={36} className="text-gray-300" />
             <p className="font-semibold text-[#0D2B4E]">Nenhuma foto encontrada</p>
