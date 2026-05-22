@@ -32,6 +32,24 @@ type FiltroKey = "todas" | "minhas" | "favoritas";
 interface DrivePhoto { id: string; name: string; }
 interface FotoDesc { fotoId: string; rostos: { descriptor: number[] }[] }
 
+async function carregarTotaisDias(ev: EventoItem) {
+  if (!ev.dias?.length) return ev;
+
+  const dias = await Promise.all(ev.dias.map(async (dia) => {
+    if (!dia.folder_id) return dia;
+    try {
+      const res = await fetch(`/api/fotos?folderId=${encodeURIComponent(dia.folder_id)}`);
+      const data = await res.json();
+      if (!res.ok || !Array.isArray(data?.fotos)) return dia;
+      return { ...dia, total_fotos: data.fotos.length };
+    } catch {
+      return dia;
+    }
+  }));
+  const total_fotos = dias.reduce((total, dia) => total + (dia.total_fotos ?? 0), 0);
+  return { ...ev, dias, total_fotos: total_fotos || ev.total_fotos };
+}
+
 
 function syncEvento(ev: EventoItem, fotos: DrivePhoto[], capaOverride?: string) {
   const capa_id   = capaOverride ?? (ev.capa_id || fotos[0]?.id);
@@ -214,14 +232,20 @@ export default function EventoPage({ params }: { params: Promise<{ slug: string 
         const res  = await fetch("/api/eventos");
         const lista: EventoItem[] = await res.json();
         const ev   = lista.find((e) => e.id === slug || slug.startsWith(`${e.id}-`)) ?? null;
-        setEvento(ev);
+        const evComTotais = ev && !diaQuery && ev.dias?.length
+          ? await carregarTotaisDias(ev)
+          : ev;
+        setEvento(evComTotais);
 
-        if (ev?.id) buscarMinhasFotos(ev.id);
+        if (evComTotais?.id) buscarMinhasFotos(evComTotais.id);
 
         // Multi-dia + sem ?dia selecionado: a página vai renderizar o EventoOverview
         // e não precisa carregar fotos. Só carrega se tiver folder específico.
-        const folderAtivo = diaAtivo?.folder_id ?? ev?.folder_id;
-        const ehMultiDiaSemSelecao = (ev?.dias?.length ?? 0) > 0 && !diaAtivo;
+        const diaSelecionado = diaQuery && evComTotais?.dias?.length
+          ? evComTotais.dias.find((dia) => dia.id === diaQuery) ?? null
+          : null;
+        const folderAtivo = diaSelecionado?.folder_id ?? evComTotais?.folder_id;
+        const ehMultiDiaSemSelecao = (evComTotais?.dias?.length ?? 0) > 0 && !diaSelecionado;
         if (ehMultiDiaSemSelecao) { setLoading(false); return; }
         if (!folderAtivo) { setLoading(false); return; }
 
@@ -254,14 +278,14 @@ export default function EventoPage({ params }: { params: Promise<{ slug: string 
             try {
               localStorage.setItem(cacheKey, JSON.stringify({ fotos: novas, ts: Date.now() }));
             } catch { /**/ }
-            syncEvento(ev, novas);
+            if (evComTotais) syncEvento(evComTotais, novas);
           }
         }
       } catch { setErro("Erro ao carregar fotos."); }
       finally   { setLoading(false); }
     }
     load();
-  }, [slug, diaAtivo?.folder_id]);
+  }, [slug, diaQuery, diaAtivo?.folder_id]);
 
   function definirCapa(id: string) {
     if (!evento) return;
