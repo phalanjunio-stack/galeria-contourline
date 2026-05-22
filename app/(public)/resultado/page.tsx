@@ -3,14 +3,16 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Download, Heart, Share2, Camera, ArrowLeft, ScanFace, Check, Square, CheckSquare, X, Loader2, Zap, UserCheck } from "lucide-react";
 import Link from "next/link";
+import { AnimatePresence } from "framer-motion";
 import type { EventoItem } from "@/app/api/eventos/route";
-// Tipo local (evita importar de rota de API em componente client)
 interface FotoDescritores {
   fotoId: string;
   rostos: { descriptor: number[] }[];
 }
 import GaleriaLoading from "@/app/components/GaleriaLoading";
+import Lightbox from "@/app/components/Lightbox";
 import { baixarComoZip } from "@/lib/download-zip";
+import { compartilharFoto } from "@/lib/compartilhar";
 import {
   fetchMinhasFotos, lerCacheMinhasFotos, salvarCacheMinhasFotos,
   notificarAtualizacao, lerDescriptor, lerDescriptors, menorDistancia,
@@ -23,6 +25,7 @@ import {
   DEFAULT_RECOGNITION_THRESHOLDS,
   lerRecognitionThresholdLocal,
 } from "@/lib/recognition-thresholds";
+import { playSound } from "@/lib/sounds";
 
 interface Foto  { id: string; name: string; }
 interface Match { foto: Foto; distancia: number; modoRapido?: boolean; }
@@ -38,20 +41,26 @@ function distancia(a: Float32Array, b: number[]): number {
 }
 
 function FotoCard({
-  match, selecionada, modoSelecao, onToggleSel,
+  match, selecionada, favoritada, modoSelecao, onToggleSel, onToggleFav, onOpenLightbox, onCompartilhar,
 }: {
-  match: Match; selecionada: boolean; modoSelecao: boolean; onToggleSel: () => void;
+  match: Match; selecionada: boolean; favoritada: boolean; modoSelecao: boolean;
+  onToggleSel: () => void; onToggleFav: () => void;
+  onOpenLightbox: () => void; onCompartilhar: () => void;
 }) {
   const [loaded, setLoaded] = useState(false);
-  const [fav, setFav]       = useState(() => isFavorito(match.foto.id));
   const badge = match.distancia < 0.45 ? "Alta chance" : "Talvez você";
   const cor   = match.distancia < 0.45 ? "bg-emerald-500/90" : "bg-amber-500/90";
 
+  function handleClick() {
+    if (modoSelecao) { playSound("snap"); onToggleSel(); }
+    else { playSound("open"); onOpenLightbox(); }
+  }
+
   return (
     <div
-      onClick={modoSelecao ? onToggleSel : undefined}
+      onClick={handleClick}
       className={`group relative aspect-square rounded-xl overflow-hidden shadow hover:shadow-lg transition cursor-pointer
-        ${selecionada ? "ring-[3px] ring-[#2E7DD1] ring-offset-2 scale-[0.97]" : ""}`}
+        ${selecionada ? "ring-[3px] ring-[#2E7DD1] ring-offset-2 scale-[0.97]" : "hover:-translate-y-0.5"}`}
     >
       {!loaded && <div className="absolute inset-0 bg-gradient-to-br from-[#1A4A80]/30 to-[#2E7DD1]/30 animate-pulse" />}
       <img src={`/api/thumb?id=${match.foto.id}&sz=40`} alt="" aria-hidden
@@ -85,20 +94,32 @@ function FotoCard({
 
       {/* Hover overlay */}
       {!modoSelecao && (
-        <div className="absolute inset-0 bg-[#0D2B4E]/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 z-10">
-          <button onClick={(e) => { e.stopPropagation(); const novo = toggleFavorito(match.foto.id); setFav(novo); }}
-            className={`w-9 h-9 rounded-full flex items-center justify-center transition ${fav ? "bg-red-500" : "bg-white/20 hover:bg-white/40"}`}>
-            <Heart size={16} className="text-white" fill={fav ? "white" : "none"} />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0D2B4E]/80 via-[#0D2B4E]/20 to-transparent
+          opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-end justify-between p-2 z-10">
+          <button aria-label={favoritada ? "Remover dos favoritos" : "Adicionar aos favoritos"}
+            onClick={(e) => { e.stopPropagation(); playSound("snap"); onToggleFav(); }}
+            className={`w-8 h-8 rounded-full flex items-center justify-center transition
+              ${favoritada ? "bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)] scale-110" : "bg-white/20 hover:bg-red-500/80 hover:scale-110"}`}>
+            <Heart size={14} className="text-white" fill={favoritada ? "white" : "none"} />
           </button>
-          <a href={`/api/download?id=${match.foto.id}`} target="_blank" rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            className="w-9 h-9 rounded-full bg-white/20 hover:bg-white/40 flex items-center justify-center transition">
-            <Download size={16} className="text-white" />
-          </a>
-          <button onClick={(e) => { e.stopPropagation(); onToggleSel(); }}
-            className="w-9 h-9 rounded-full bg-white/20 hover:bg-white/40 flex items-center justify-center transition">
-            <CheckSquare size={16} className="text-white" />
-          </button>
+          <div className="flex gap-1">
+            <button aria-label="Compartilhar foto"
+              onClick={(e) => { e.stopPropagation(); onCompartilhar(); }}
+              className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/40 hover:scale-110 flex items-center justify-center transition">
+              <Share2 size={14} className="text-white" />
+            </button>
+            <a href={`/api/download?id=${match.foto.id}`} target="_blank" rel="noopener noreferrer"
+              aria-label="Baixar foto"
+              onClick={(e) => { e.stopPropagation(); playSound("tap"); }}
+              className="w-8 h-8 rounded-full bg-white/20 hover:bg-[#2E7DD1]/60 hover:scale-110 flex items-center justify-center transition">
+              <Download size={14} className="text-white" />
+            </a>
+            <button aria-label="Selecionar foto"
+              onClick={(e) => { e.stopPropagation(); playSound("snap"); onToggleSel(); }}
+              className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/40 hover:scale-110 flex items-center justify-center transition">
+              <CheckSquare size={14} className="text-white" />
+            </button>
+          </div>
         </div>
       )}
     </div>
@@ -147,6 +168,13 @@ export default function ResultadoPage() {
   const [fase,         setFase]         = useState<"init"|"buscando"|"comparando"|"done"|"sem-rosto">("init");
   const [modoRapido,   setModoRapido]   = useState(false);
   const [selecionadas,   setSelecionadas]   = useState<Set<string>>(new Set());
+  const [favoritos,      setFavoritos]      = useState<Set<string>>(() => {
+    try {
+      const raw = typeof localStorage !== "undefined" ? localStorage.getItem("favoritos_v1") : null;
+      return raw ? new Set(JSON.parse(raw) as string[]) : new Set();
+    } catch { return new Set(); }
+  });
+  const [lightboxIdx,    setLightboxIdx]    = useState<number | null>(null);
   const [modoSelecao,    setModoSelecao]    = useState(false);
   const [baixando,       setBaixando]       = useState(false);
   const [confirmando,    setConfirmando]    = useState(false);
@@ -531,10 +559,41 @@ export default function ResultadoPage() {
     const todos = matches.map(m => m.foto.id);
     setSelecionadas(selecionadas.size === todos.length ? new Set() : new Set(todos));
   }
+
+  function toggleFav(id: string) {
+    setFavoritos(prev => {
+      const n = new Set(prev);
+      n.has(id) ? n.delete(id) : n.add(id);
+      try { localStorage.setItem("favoritos_v1", JSON.stringify(Array.from(n))); } catch {}
+      // Sync com helper legado
+      toggleFavorito(id);
+      return n;
+    });
+  }
+
+  function favoritarSelecionadas() {
+    selecionadas.forEach(id => {
+      if (!favoritos.has(id)) toggleFav(id);
+    });
+    playSound("snap");
+  }
+
+  async function compartilharFotoFn(id: string, nome: string) {
+    const r = await compartilharFoto({ fotoId: id, nomeEvento: evento?.nome });
+    if (r.ok) playSound("ding");
+  }
+
   async function baixarSelecionadas() {
     setBaixando(true);
     await baixarComoZip(Array.from(selecionadas), "minhas-fotos-contourline.zip");
     setBaixando(false);
+  }
+
+  function baixarIndividuais() {
+    Array.from(selecionadas).forEach(id => {
+      window.open(`/api/download?id=${id}`, "_blank");
+    });
+    playSound("tap");
   }
 
   async function confirmarMinhasFotos() {
@@ -771,16 +830,13 @@ export default function ResultadoPage() {
             className="flex items-center gap-2 px-5 py-2.5 rounded-xl gradient-primary text-white font-semibold text-sm shadow hover:opacity-90 transition">
             <CheckSquare size={15} /> Selecionar fotos
           </button>
-          <button className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-gray-200 text-[#1A4A80] font-semibold text-sm hover:bg-[#EFF5FF] transition">
-            <Share2 size={15} /> Compartilhar link
-          </button>
         </div>
       )}
       {/* Dica de confirmação */}
       {matches.length > 0 && !modoSelecao && !confirmado && (
         <p className="text-xs text-gray-400 mb-6 flex items-center gap-1.5">
           <UserCheck size={12} className="text-emerald-500" />
-          Selecione só as fotos que realmente são você e clique em <strong className="text-emerald-600">São minhas</strong> para salvar.
+          Selecione as fotos que são você e clique em <strong className="text-emerald-600">São minhas</strong> para salvar.
         </p>
       )}
 
@@ -794,12 +850,16 @@ export default function ResultadoPage() {
             </h2>
             <span className="text-gray-400 text-sm">({alta.length})</span>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-            {alta.map(m => (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+            {alta.map((m, idx) => (
               <FotoCard key={m.foto.id} match={m}
                 selecionada={selecionadas.has(m.foto.id)}
+                favoritada={favoritos.has(m.foto.id)}
                 modoSelecao={modoSelecao}
-                onToggleSel={() => toggleSel(m.foto.id)} />
+                onToggleSel={() => toggleSel(m.foto.id)}
+                onToggleFav={() => toggleFav(m.foto.id)}
+                onOpenLightbox={() => setLightboxIdx(idx)}
+                onCompartilhar={() => compartilharFotoFn(m.foto.id, m.foto.name)} />
             ))}
           </div>
         </section>
@@ -813,12 +873,16 @@ export default function ResultadoPage() {
             <h2 className="font-bold text-[#0D2B4E] text-base">Possível match — Talvez você apareça nestas</h2>
             <span className="text-gray-400 text-sm">({talvez.length})</span>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-            {talvez.map(m => (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+            {talvez.map((m, idx) => (
               <FotoCard key={m.foto.id} match={m}
                 selecionada={selecionadas.has(m.foto.id)}
+                favoritada={favoritos.has(m.foto.id)}
                 modoSelecao={modoSelecao}
-                onToggleSel={() => toggleSel(m.foto.id)} />
+                onToggleSel={() => toggleSel(m.foto.id)}
+                onToggleFav={() => toggleFav(m.foto.id)}
+                onOpenLightbox={() => setLightboxIdx(alta.length + idx)}
+                onCompartilhar={() => compartilharFotoFn(m.foto.id, m.foto.name)} />
             ))}
           </div>
         </section>
@@ -942,26 +1006,56 @@ export default function ResultadoPage() {
               {selecionadas.size > 0 && (
                 <>
                   <button onClick={confirmarMinhasFotos} disabled={confirmando}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-semibold shadow transition disabled:opacity-60">
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-semibold shadow transition disabled:opacity-60"
+                    title="Marcar como minhas fotos">
                     {confirmando ? <Loader2 size={13} className="animate-spin" /> : <UserCheck size={13} />}
-                    <span>{confirmando ? "Salvando..." : "São minhas"}</span>
+                    <span className="hidden sm:inline">{confirmando ? "Salvando..." : "São minhas"}</span>
+                  </button>
+                  <button onClick={favoritarSelecionadas}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-red-500 hover:bg-red-600 text-white text-xs sm:text-sm font-semibold shadow transition"
+                    title="Favoritar selecionadas">
+                    <Heart size={13} />
+                    <span className="hidden sm:inline">Favoritar</span>
+                  </button>
+                  <button onClick={baixarIndividuais}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#2E7DD1] text-[#2E7DD1] text-xs sm:text-sm font-semibold hover:bg-[#EFF5FF] transition"
+                    title="Baixar fotos individualmente">
+                    <Download size={13} />
+                    <span className="hidden md:inline">Baixar</span>
                   </button>
                   <button onClick={baixarSelecionadas} disabled={baixando}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl gradient-primary text-white text-xs sm:text-sm font-semibold shadow hover:opacity-90 transition disabled:opacity-60">
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl gradient-primary text-white text-xs sm:text-sm font-semibold shadow hover:opacity-90 transition disabled:opacity-60"
+                    title="Baixar como ZIP">
                     {baixando ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
-                    <span className="hidden sm:inline">{baixando ? "Baixando..." : "Baixar ZIP"}</span>
-                    <span className="sm:hidden">{baixando ? "..." : "ZIP"}</span>
+                    <span className="hidden sm:inline">{baixando ? "..." : "ZIP"}</span>
                   </button>
                 </>
               )}
               <button onClick={() => { setModoSelecao(false); setSelecionadas(new Set()); }}
-                className="flex items-center justify-center w-8 h-8 rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition shrink-0">
+                className="flex items-center justify-center w-8 h-8 rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition shrink-0"
+                aria-label="Cancelar seleção">
                 <X size={15} />
               </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* Lightbox */}
+      <AnimatePresence>
+        {lightboxIdx !== null && (
+          <Lightbox
+            fotos={matches.map(m => ({ id: m.foto.id, name: m.foto.name }))}
+            index={lightboxIdx}
+            favoritos={favoritos}
+            nomeEvento={evento?.nome ?? porEvento[0]?.eventoNome}
+            onClose={() => { playSound("close"); setLightboxIdx(null); }}
+            onPrev={() => setLightboxIdx(i => Math.max(0, (i ?? 1) - 1))}
+            onNext={() => setLightboxIdx(i => Math.min(matches.length - 1, (i ?? 0) + 1))}
+            onToggleFav={toggleFav}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
