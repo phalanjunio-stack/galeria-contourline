@@ -9,6 +9,7 @@ import {
 import type { ReindexFlag } from "@/app/api/indexacao/flags/route";
 import { fetchDescritores, invalidarDescritoresCache } from "@/lib/descritoresCache";
 import { clusterizar, type FaceDetection } from "@/lib/clustering";
+import { lerRecognitionThresholdLocal } from "@/lib/recognition-thresholds";
 
 // Tipos locais (evita importar de rotas de API)
 interface EventoItem {
@@ -453,9 +454,7 @@ export default function ReconhecimentoPage() {
       const { loadFaceModels, detectorOptions } = await import("@/lib/faceapi-loader");
       const faceapi = await loadFaceModels();
 
-      // 0.55 captura "mesma pessoa em ângulo/maquiagem/expressão diferente".
-      // < 0.45 era ultra-restrito e perdia muitos matches reais.
-      const THRESHOLD = 0.55;
+      const THRESHOLD = lerRecognitionThresholdLocal("admin");
       // Pra cada perfil, usa TODAS as selfies cadastradas (não só a primeira).
       // Mais selfies = mais ângulos/iluminações cobertos = melhor recall.
       const matcher = perfisValidos.length > 0

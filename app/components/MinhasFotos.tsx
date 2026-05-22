@@ -8,16 +8,11 @@ import {
   ouvirAtualizacoes, lerDescriptors, menorDistancia,
 } from "@/lib/minhasFotos";
 import { fetchDescritores } from "@/lib/descritoresCache";
+import { lerRecognitionThresholdLocal } from "@/lib/recognition-thresholds";
 
 interface FotoDescritores {
   fotoId: string;
   rostos: { descriptor: number[] }[];
-}
-
-function dist(a: Float32Array, b: number[]): number {
-  let s = 0;
-  for (let i = 0; i < a.length; i++) { const d = a[i] - b[i]; s += d * d; }
-  return Math.sqrt(s);
 }
 
 /* ── Mini card ────────────────────────────────────────────── */
@@ -44,7 +39,6 @@ function MiniCard({ id }: { id: string }) {
 }
 
 const MAX_FOTOS = 30;
-const LIMIAR = 0.60;  // bumped de 0.50 — captura variações de expressão/ângulo
 
 export default function MinhasFotos() {
   const { data: session } = useSession();
@@ -150,6 +144,7 @@ export default function MinhasFotos() {
 
     const porEvento: { eventoId: string; eventoNome: string; fotos: string[] }[] = [];
     const todasFotos: string[] = [];
+    const limiar = lerRecognitionThresholdLocal("usuario");
 
     await Promise.all(ativos.map(async (ev) => {
       const json = await fetchDescritores(ev.id);
@@ -162,7 +157,7 @@ export default function MinhasFotos() {
           const d = menorDistancia(descriptors, rosto.descriptor);
           if (d < melhor) melhor = d;
         }
-        if (melhor < LIMIAR) fotosEv.push(fotoDesc.fotoId);
+        if (melhor < limiar) fotosEv.push(fotoDesc.fotoId);
       }
       if (fotosEv.length) {
         porEvento.push({ eventoId: ev.id, eventoNome: ev.nome, fotos: fotosEv });

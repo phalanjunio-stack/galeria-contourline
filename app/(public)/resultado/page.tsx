@@ -17,9 +17,12 @@ import {
 } from "@/lib/minhasFotos";
 import { fetchDescritores } from "@/lib/descritoresCache";
 import { autoIndexarEventos } from "@/lib/autoIndexar";
-import { acharClustersDoUsuario, type ClusterPessoa } from "@/lib/clustering";
 import type { MinhasFotosEvento } from "@/lib/minhasFotos";
 import { toggleFavorito, isFavorito } from "@/app/(public)/favoritos/page";
+import {
+  DEFAULT_RECOGNITION_THRESHOLDS,
+  lerRecognitionThresholdLocal,
+} from "@/lib/recognition-thresholds";
 
 interface Foto  { id: string; name: string; }
 interface Match { foto: Foto; distancia: number; modoRapido?: boolean; }
@@ -149,7 +152,7 @@ export default function ResultadoPage() {
   const [confirmando,    setConfirmando]    = useState(false);
   const [confirmado,     setConfirmado]     = useState(false);
   const [debug,          setDebug]          = useState<{ totalEventos: number; eventosIndexados: number; fotosAnalisadas: number; melhorDistancia: number | null; limiar: number; eventosComMatch: number; emailUsado: string; eventosConsultados: { id: string; nome: string; temMatches: boolean; emailsNoMatches: string[] }[] }>({
-    totalEventos: 0, eventosIndexados: 0, fotosAnalisadas: 0, melhorDistancia: null, limiar: 0.65,
+    totalEventos: 0, eventosIndexados: 0, fotosAnalisadas: 0, melhorDistancia: null, limiar: DEFAULT_RECOGNITION_THRESHOLDS.resultado,
     eventosComMatch: 0, emailUsado: "", eventosConsultados: [],
   });
 
@@ -290,11 +293,11 @@ export default function ResultadoPage() {
       const ativos = lista.filter(e => e.folder_id);
       if (!ativos.length) { setFase("done"); return; }
 
-      // Tenta pgvector primeiro; se ele nao estiver configurado, usa clusters JSON.
+      // Resultado final usa rosto individual. Cluster inteiro pode incluir
+      // gente parecida demais para ser mostrado como foto do usuario.
       const descriptorsArr = descriptors.map(f => Array.from(f));
-      const LIMIAR_CLUSTER = 0.65;
-      const matchesViaClusters = new Map<string, { ev: EventoItem; fotos: Set<string>; melhorDist: number }>();
-      let buscaPgvectorAtiva = false;
+      const limiarResultado = lerRecognitionThresholdLocal("resultado");
+      const matchesViaPgvector = new Map<string, { ev: EventoItem; fotos: Map<string, number> }>();
 
       try {
         const buscaRes = await fetch("/api/pessoas/buscar", {
@@ -303,46 +306,29 @@ export default function ResultadoPage() {
           body: JSON.stringify({
             eventoIds: ativos.map(e => e.id),
             descriptors: descriptorsArr,
+            threshold: limiarResultado,
           }),
         });
         const buscaData = buscaRes.ok ? await buscaRes.json() : null;
-        buscaPgvectorAtiva = !!buscaData?.enabled;
         if (Array.isArray(buscaData?.matches)) {
-          for (const match of buscaData.matches as { eventoId: string; dist: number; cluster: ClusterPessoa }[]) {
+          for (const match of buscaData.matches as { eventoId: string; fotoId: string; dist: number }[]) {
             const ev = ativos.find(e => e.id === match.eventoId);
-            if (!ev || !Array.isArray(match.cluster?.fotos)) continue;
-            const anterior = matchesViaClusters.get(ev.id);
-            const fotos = anterior?.fotos ?? new Set<string>();
-            for (const id of match.cluster.fotos) fotos.add(id);
-            matchesViaClusters.set(ev.id, {
-              ev,
-              fotos,
-              melhorDist: Math.min(anterior?.melhorDist ?? Infinity, Number(match.dist) || Infinity),
-            });
+            const dist = Number(match.dist);
+            if (!ev || typeof match.fotoId !== "string" || !Number.isFinite(dist)) continue;
+            const anterior = matchesViaPgvector.get(ev.id);
+            const fotos = anterior?.fotos ?? new Map<string, number>();
+            const distAnterior = fotos.get(match.fotoId);
+            if (distAnterior === undefined || dist < distAnterior) fotos.set(match.fotoId, dist);
+            matchesViaPgvector.set(ev.id, { ev, fotos });
           }
         }
       } catch { /* fallback abaixo */ }
-
-      if (!buscaPgvectorAtiva) {
-        for (const ev of ativos) {
-          const r = await fetch(`/api/pessoas?eventoId=${ev.id}`).catch(() => null);
-          const data = r?.ok ? await r.json() : null;
-          if (!data?.indexado || !Array.isArray(data.clusters)) continue;
-          const meus = acharClustersDoUsuario(data.clusters as ClusterPessoa[], descriptorsArr, LIMIAR_CLUSTER);
-          if (meus.length === 0) continue;
-          const fotos = new Set<string>();
-          for (const c of meus) {
-            for (const id of c.fotos) fotos.add(id);
-          }
-          matchesViaClusters.set(ev.id, { ev, fotos, melhorDist: Infinity });
-        }
-      }
 
       // ── Eventos com índice (vai pro fallback de descritores soltos pros que não tem cluster) ──
       const indexados: { ev: EventoItem; dados: FotoDescritores[] }[] = [];
       const naoIndexados: EventoItem[] = [];
       for (const ev of ativos) {
-        if (matchesViaClusters.has(ev.id)) continue; // já resolvido via cluster
+        if (matchesViaPgvector.has(ev.id)) continue; // ja resolvido foto a foto no banco
         const idxJson = await fetchDescritores(ev.id);
         if (idxJson?.indexado && Array.isArray(idxJson.dados) && idxJson.dados.length > 0) {
           indexados.push({ ev, dados: idxJson.dados });
@@ -365,42 +351,63 @@ export default function ResultadoPage() {
         }).catch(() => {});
       }
 
-      // Se TUDO foi resolvido via clusters (caminho rápido), salva e retorna
-      if (matchesViaClusters.size > 0 && indexados.length === 0) {
-        const foundCluster: Match[] = [];
-        const porEventoCluster: MinhasFotosEvento[] = [];
-        for (const { ev, fotos } of matchesViaClusters.values()) {
-          const fotosArr = Array.from(fotos);
-          for (const id of fotosArr) {
-            foundCluster.push({ foto: { id, name: id }, distancia: 0.4, modoRapido: true });
-          }
-          porEventoCluster.push({ eventoId: ev.id, eventoNome: ev.nome, fotos: fotosArr });
+      const foundPgvector: Match[] = [];
+      const porEventoPgvector: MinhasFotosEvento[] = [];
+      for (const { ev, fotos } of matchesViaPgvector.values()) {
+        const fotosArr = [...fotos.entries()].sort((a, b) => a[1] - b[1]);
+        for (const [id, dist] of fotosArr) {
+          foundPgvector.push({ foto: { id, name: id }, distancia: dist, modoRapido: true });
         }
-        setEventosCount(matchesViaClusters.size);
-        if (matchesViaClusters.size === 1) setEvento([...matchesViaClusters.values()][0].ev);
+        porEventoPgvector.push({
+          eventoId: ev.id,
+          eventoNome: ev.nome,
+          fotos: fotosArr.map(([id]) => id),
+        });
+      }
+
+      // Se TUDO foi resolvido via pgvector (caminho rapido), salva e retorna.
+      if (foundPgvector.length > 0 && indexados.length === 0) {
+        foundPgvector.sort((a, b) => a.distancia - b.distancia);
+        setDebug(prev => ({
+          ...prev,
+          totalEventos: ativos.length,
+          eventosIndexados: matchesViaPgvector.size,
+          fotosAnalisadas: foundPgvector.length,
+          melhorDistancia: foundPgvector[0]?.distancia ?? null,
+          limiar: limiarResultado,
+        }));
+        setEventosCount(matchesViaPgvector.size);
+        if (matchesViaPgvector.size === 1) setEvento([...matchesViaPgvector.values()][0].ev);
         setModoRapido(true);
-        setMatches(foundCluster);
-        setPorEvento(porEventoCluster);
+        setMatches(foundPgvector);
+        setPorEvento(porEventoPgvector);
         setFase("done");
-        // NÃO cacheamos: candidatos da IA, não confirmação do usuário
+        // Nao cacheamos: candidatos da IA, nao confirmacao do usuario.
         return;
       }
 
       if (indexados.length > 0) {
         // ★ MODO RÁPIDO — busca em TODOS os eventos indexados ★
-        setEventosCount(indexados.length);
-        if (indexados.length === 1) setEvento(indexados[0].ev);
+        const eventosComparados = new Set([
+          ...porEventoPgvector.map(ev => ev.eventoId),
+          ...indexados.map(({ ev }) => ev.id),
+        ]);
+        setEventosCount(eventosComparados.size);
+        if (eventosComparados.size === 1) {
+          setEvento(porEventoPgvector[0]
+            ? ativos.find(ev => ev.id === porEventoPgvector[0].eventoId) ?? null
+            : indexados[0].ev);
+        }
         setModoRapido(true);
         setFase("comparando");
         const totalFotos = indexados.reduce((s, e) => s + e.dados.length, 0);
         setTotal(totalFotos);
 
-        // 0.65 captura mesmas pessoas com expressão/ângulo/maquiagem variando.
-        const LIMIAR = 0.65;
-        const found: Match[] = [];
-        const porEvento: MinhasFotosEvento[] = [];
+        const LIMIAR = limiarResultado;
+        const found: Match[] = [...foundPgvector];
+        const porEvento: MinhasFotosEvento[] = [...porEventoPgvector];
         let done = 0;
-        let melhorGlobal = Infinity;
+        let melhorGlobal = foundPgvector[0]?.distancia ?? Infinity;
 
         for (const { ev, dados } of indexados) {
           const fotosEvento: string[] = [];
@@ -484,7 +491,7 @@ export default function ResultadoPage() {
       const { loadFaceModels, detectorOptions } = await import("@/lib/faceapi-loader");
       const faceapi = await loadFaceModels();
 
-      const LIMIAR = 0.55;
+      const LIMIAR = limiarResultado;
       const LOTE   = 8;
 
       for (let i = 0; i < fotos.length; i += LOTE) {

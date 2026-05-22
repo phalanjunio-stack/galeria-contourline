@@ -5,7 +5,10 @@ import { detectarRostos, distanceEuclidean } from "./face.js";
 import { substituirIndiceEvento } from "./face-index-db.js";
 
 // Parametros (mesmos do client-side)
-const THRESHOLD_MATCH = 0.55;
+const THRESHOLD_MATCH_ENV = Number(process.env.FACE_MATCH_THRESHOLD || 0.52);
+const THRESHOLD_MATCH = Number.isFinite(THRESHOLD_MATCH_ENV)
+  ? Math.min(0.65, Math.max(0.35, THRESHOLD_MATCH_ENV))
+  : 0.52;
 const CLUSTER_THRESHOLD = 0.50;
 // Concurrencia configuravel — Render Free CPU = 2-3, plano pago = 6-8, local = 8-12
 const LOTE = Number(process.env.INDEX_BATCH_SIZE || 4);
@@ -35,6 +38,7 @@ export function novoJob(eventoId, eventoNome, folderId) {
     rostosDetectados: 0,
     usuariosCadastrados: 0,
     matches: 0,
+    notificacoes: 0,
     erro: null,
   };
   jobs.set(jobId, job);
@@ -171,7 +175,7 @@ export async function indexarEvento(jobId, perfis) {
           email: perfil.email,
           nome: perfil.nome,
           fotosIds,
-          thumbUrl: perfil.thumb || null,
+          thumbUrl: `/api/thumb?id=${fotosIds[0]}&sz=120`,
         });
       }
     }
@@ -211,6 +215,9 @@ export async function indexarEvento(jobId, perfis) {
       rostosDetectados: job.rostosDetectados,
     });
 
+    job.fase = "notificando";
+    job.notificacoes = await notificarMatches(job, fotos.length, usuariosMatches);
+
     job.fase = "concluido";
     job.status = "done";
     job.terminadoEm = new Date().toISOString();
@@ -220,6 +227,43 @@ export async function indexarEvento(jobId, perfis) {
     job.status = "error";
     job.erro = err.message;
     job.terminadoEm = new Date().toISOString();
+  }
+}
+
+async function notificarMatches(job, totalFotos, usuarios) {
+  if (!usuarios.length) return 0;
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
+  if (!siteUrl) {
+    console.warn(`[job ${job.jobId}] NEXT_PUBLIC_SITE_URL ausente; notificacoes puladas`);
+    return 0;
+  }
+
+  try {
+    const res = await fetch(`${siteUrl}/api/indexar/notificar`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(process.env.SERVER_SECRET ? { "X-Server-Secret": process.env.SERVER_SECRET } : {}),
+      },
+      body: JSON.stringify({
+        eventoId: job.eventoId,
+        eventoNome: job.eventoNome,
+        totalFotos,
+        fotosComRosto: job.fotosComRosto,
+        usuarios,
+      }),
+    });
+    if (!res.ok) {
+      console.warn(`[job ${job.jobId}] Notificacoes falharam: HTTP ${res.status} ${await res.text()}`);
+      return 0;
+    }
+    const data = await res.json();
+    const total = Number(data?.notificacoes) || 0;
+    console.log(`[job ${job.jobId}] Notificacoes no sininho: ${total}/${usuarios.length}`);
+    return total;
+  } catch (err) {
+    console.warn(`[job ${job.jobId}] Notificacoes falharam: ${err.message}`);
+    return 0;
   }
 }
 

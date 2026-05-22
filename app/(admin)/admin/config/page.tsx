@@ -4,6 +4,12 @@ import {
   Settings, CalendarClock, Clock, ListChecks, ToggleLeft, ToggleRight,
   Play, Loader2, CheckCircle, Zap, SlidersHorizontal,
 } from "lucide-react";
+import {
+  DEFAULT_RECOGNITION_THRESHOLDS,
+  lerRecognitionThresholdsLocal,
+  salvarRecognitionThresholdsLocal,
+  type RecognitionThresholds,
+} from "@/lib/recognition-thresholds";
 
 interface EventoItem {
   id: string; nome: string; folder_id?: string;
@@ -17,38 +23,17 @@ interface AutomacaoConfig {
   ultimoLog: string | null;
 }
 
-interface ThresholdConfig {
-  admin: number;
-  usuario: number;
-  resultado: number;
-}
-
-const DEFAULT_THRESHOLDS: ThresholdConfig = { admin: 0.45, usuario: 0.50, resultado: 0.60 };
-const THRESH_KEY = "config_thresholds";
-
-function lerThresholds(): ThresholdConfig {
-  try {
-    const raw = localStorage.getItem(THRESH_KEY);
-    if (raw) return { ...DEFAULT_THRESHOLDS, ...JSON.parse(raw) };
-  } catch { /**/ }
-  return DEFAULT_THRESHOLDS;
-}
-
-function salvarThresholds(t: ThresholdConfig) {
-  try { localStorage.setItem(THRESH_KEY, JSON.stringify(t)); } catch { /**/ }
-}
-
 export default function AdminConfigPage() {
   const [eventos,      setEventos]      = useState<EventoItem[]>([]);
   const [automacao,    setAutomacao]    = useState<AutomacaoConfig | null>(null);
   const [salvandoAuto, setSalvandoAuto] = useState(false);
   const [cronRodando,  setCronRodando]  = useState(false);
   const [cronResultado, setCronResultado] = useState<{ totalNovosMatches: number; totalNotificacoes: number; duracao: number } | null>(null);
-  const [thresholds,   setThresholds]   = useState<ThresholdConfig>(DEFAULT_THRESHOLDS);
+  const [thresholds,   setThresholds]   = useState<RecognitionThresholds>(DEFAULT_RECOGNITION_THRESHOLDS);
   const [threshSaved,  setThreshSaved]  = useState(false);
 
   useEffect(() => {
-    setThresholds(lerThresholds());
+    setThresholds(lerRecognitionThresholdsLocal());
 
     fetch("/api/eventos")
       .then(r => r.ok ? r.json() : [])
@@ -92,9 +77,9 @@ export default function AdminConfigPage() {
     }
   }
 
-  function aplicarThresholds(nova: ThresholdConfig) {
+  function aplicarThresholds(nova: RecognitionThresholds) {
     setThresholds(nova);
-    salvarThresholds(nova);
+    salvarRecognitionThresholdsLocal(nova);
     setThreshSaved(true);
     setTimeout(() => setThreshSaved(false), 2000);
   }
@@ -290,7 +275,7 @@ export default function AdminConfigPage() {
         ))}
 
         <button
-          onClick={() => aplicarThresholds(DEFAULT_THRESHOLDS)}
+          onClick={() => aplicarThresholds(DEFAULT_RECOGNITION_THRESHOLDS)}
           className="text-xs text-gray-400 hover:text-[#2E7DD1] hover:underline transition"
         >
           Restaurar padrões (0.45 / 0.50 / 0.60)

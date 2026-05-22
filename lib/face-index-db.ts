@@ -39,9 +39,21 @@ type DbFaceCropRow = {
   box_height: number | null;
 };
 
+type DbPhotoMatchRow = {
+  evento_id: string;
+  foto_id: string;
+  distance?: number | string;
+};
+
 export interface ClusterMatchDb {
   eventoId: string;
   cluster: ClusterPessoa;
+  dist: number;
+}
+
+export interface FacePhotoMatchDb {
+  eventoId: string;
+  fotoId: string;
   dist: number;
 }
 
@@ -322,4 +334,56 @@ export async function buscarClustersDb({
   }
 
   return [...melhores.values()].sort((a, b) => a.dist - b.dist);
+}
+
+export async function buscarFotosPorRostoDb({
+  eventoIds,
+  descriptors,
+  limit = 240,
+  threshold = 0.55,
+}: {
+  eventoIds: string[];
+  descriptors: number[][];
+  limit?: number;
+  threshold?: number;
+}) {
+  const pool = getPool();
+  if (!pool) return null;
+  await ensureSchema();
+
+  const validDescriptors = descriptors.filter((d) => d.length === VECTOR_SIZE);
+  if (validDescriptors.length === 0 || eventoIds.length === 0) return [];
+
+  const melhores = new Map<string, FacePhotoMatchDb>();
+  for (const descriptor of validDescriptors) {
+    const result = await pool.query<DbPhotoMatchRow>(
+      `SELECT evento_id,
+              foto_id,
+              min(embedding <-> $1::vector) AS distance
+         FROM face_index_faces
+        WHERE evento_id = ANY($2::text[])
+          AND embedding <-> $1::vector < $3
+        GROUP BY evento_id, foto_id
+        ORDER BY distance ASC
+        LIMIT $4`,
+      [toVector(descriptor), eventoIds, threshold, Math.max(1, Math.min(limit, 1000))]
+    );
+
+    for (const row of result.rows) {
+      const dist = Number(row.distance);
+      const key = `${row.evento_id}:${row.foto_id}`;
+      const anterior = melhores.get(key);
+      if (!anterior || dist < anterior.dist) {
+        melhores.set(key, {
+          eventoId: row.evento_id,
+          fotoId: row.foto_id,
+          dist,
+        });
+      }
+    }
+  }
+
+  return [...melhores.values()]
+    .sort((a, b) => a.dist - b.dist)
+    .slice(0, Math.max(1, Math.min(limit, 1000)));
 }

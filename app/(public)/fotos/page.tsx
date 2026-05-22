@@ -4,6 +4,7 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Loader2, Camera, Download, ChevronRight, PartyPopper, AlertCircle } from "lucide-react";
 import { fetchDescritores } from "@/lib/descritoresCache";
+import { lerRecognitionThresholdLocal } from "@/lib/recognition-thresholds";
 
 interface FotoMatch { id: string; distancia: number; }
 
@@ -57,12 +58,25 @@ function FotosConteudo() {
       if (!ev) { setEstado("erro"); return; }
       setEvento(ev.nome);
 
+      const salvoRes = await fetch(`/api/matches?eventoId=${encodeURIComponent(ev.id)}`).catch(() => null);
+      const salvo = salvoRes?.ok ? await salvoRes.json() : null;
+      const salvoUsuario = Array.isArray(salvo?.usuarios)
+        ? salvo.usuarios.find((u: { email?: string }) =>
+            (u.email ?? "").toLowerCase().trim() === emailUsuario.toLowerCase().trim()
+          )
+        : null;
+      if (Array.isArray(salvoUsuario?.fotosIds) && salvoUsuario.fotosIds.length > 0) {
+        setFotos(salvoUsuario.fotosIds.filter((id: unknown): id is string => typeof id === "string"));
+        setEstado("ok");
+        return;
+      }
+
       const meuDesc = new Float32Array(perfil.descriptor);
+      const limiarResultado = lerRecognitionThresholdLocal("resultado");
 
       // 3. ★ MODO RÁPIDO ★ — usa o índice pré-computado pelo admin (mesma fonte que /resultado)
       const idxData = await fetchDescritores(ev.id);
       if (idxData?.indexado && Array.isArray(idxData.dados) && idxData.dados.length > 0) {
-        const LIMIAR = 0.60;   // mesmo limiar de /resultado pra consistência
         const matches: FotoMatch[] = [];
         for (const foto of idxData.dados) {
           let melhor = Infinity;
@@ -75,7 +89,7 @@ function FotosConteudo() {
             const dist = Math.sqrt(soma);
             if (dist < melhor) melhor = dist;
           }
-          if (melhor < LIMIAR) matches.push({ id: foto.fotoId, distancia: melhor });
+          if (melhor < limiarResultado) matches.push({ id: foto.fotoId, distancia: melhor });
         }
         matches.sort((a, b) => a.distancia - b.distancia);
         setFotos(matches.map(m => m.id));
@@ -106,7 +120,7 @@ function FotosConteudo() {
 
             for (const det of dets) {
               const dist = faceapi.euclideanDistance(meuDesc, det.descriptor);
-              if (dist < 0.55) matches.push({ id: foto.id, distancia: dist });
+              if (dist < limiarResultado) matches.push({ id: foto.id, distancia: dist });
             }
           } catch { /* foto com problema, ignora */ }
         }));

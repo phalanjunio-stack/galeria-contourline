@@ -1,5 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { buscarClustersDb, faceIndexDbEnabled } from "@/lib/face-index-db";
+import { buscarFotosPorRostoDb, faceIndexDbEnabled } from "@/lib/face-index-db";
+
+const DEFAULT_THRESHOLD = 0.55;
+
+function lerThreshold(value: unknown) {
+  const threshold = Number(value);
+  if (!Number.isFinite(threshold)) return DEFAULT_THRESHOLD;
+  return Math.min(0.65, Math.max(0.35, threshold));
+}
 
 export async function POST(req: NextRequest) {
   if (!faceIndexDbEnabled()) {
@@ -21,11 +29,11 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const matches = await buscarClustersDb({
+    const matches = await buscarFotosPorRostoDb({
       eventoIds,
       descriptors,
-      limit: 12,
-      threshold: 0.65,
+      limit: 400,
+      threshold: lerThreshold(body?.threshold),
     });
     return NextResponse.json({ enabled: true, matches: matches ?? [] });
   } catch (err) {

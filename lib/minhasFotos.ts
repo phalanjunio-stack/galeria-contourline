@@ -3,7 +3,7 @@
  *
  * Estratégia:
  *   1. Drive (_mf_{email}.json) é a fonte de verdade.
- *   2. localStorage (mf_user_v3_${email}) é cache de leitura com TTL curto.
+ *   2. localStorage (mf_user_v4_${email}) é cache de leitura com TTL curto.
  *   3. Todas as escritas (admin indexação, "São minhas", cadastrar-rosto) emitem
  *      `minhas-fotos-atualizada` no window → todos os consumidores re-buscam.
  *
@@ -12,7 +12,7 @@
  */
 
 export const FACE_DESC_KEY    = "face_descriptor_v1";
-const CACHE_KEY_PREFIX        = "mf_user_v3_";
+const CACHE_KEY_PREFIX        = "mf_user_v4_";
 const CACHE_TTL_HIT_MS        = 2 * 60 * 1000;   // 2 min quando achou
 const CACHE_TTL_MISS_MS       = 30 * 1000;       // 30s quando não achou
 const EVENTO_ATUALIZADO       = "minhas-fotos-atualizada";
@@ -26,7 +26,7 @@ function migrarCachesAntigos() {
     const remover: string[] = [];
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
-      if (k?.startsWith("mf_v2_")) remover.push(k);
+      if (k?.startsWith("mf_v2_") || k?.startsWith("mf_user_v3_")) remover.push(k);
     }
     remover.forEach(k => localStorage.removeItem(k));
   } catch { /* ignora */ }

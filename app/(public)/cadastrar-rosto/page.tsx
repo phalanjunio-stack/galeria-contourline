@@ -10,7 +10,7 @@ import { useSession } from "next-auth/react";
 import { useToast } from "@/app/components/ToastProvider";
 import { salvarDescriptor, salvarCacheMinhasFotos, lerDescriptors, menorDistancia } from "@/lib/minhasFotos";
 import { fetchDescritores } from "@/lib/descritoresCache";
-import { acharClustersDoUsuario, type ClusterPessoa } from "@/lib/clustering";
+import { lerRecognitionThresholdLocal } from "@/lib/recognition-thresholds";
 
 type EtapaID = "email" | "checking" | "nome" | "pronto";
 
@@ -237,35 +237,50 @@ export default function CadastrarRostoPage() {
           } catch { /* segue só com local */ }
         }
         interface FotoDesc { fotoId: string; rostos: { descriptor: number[] }[] }
-        const LIMIAR = 0.64;
+        const LIMIAR = lerRecognitionThresholdLocal("resultado");
+        const eventosResolvidosPgvector = new Set<string>();
+
+        try {
+          const buscaRes = await fetch("/api/pessoas/buscar", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              eventoIds: alvo
+                .filter(ev => !porEvento.some(p => p.eventoId === ev.id))
+                .map(ev => ev.id),
+              descriptors: descritoresUser,
+              threshold: LIMIAR,
+            }),
+          });
+          const buscaData = buscaRes.ok ? await buscaRes.json() : null;
+          const fotosPgvector = new Map<string, string[]>();
+
+          if (Array.isArray(buscaData?.matches)) {
+            for (const match of buscaData.matches as { eventoId: string; fotoId: string }[]) {
+              if (matches.length >= 30) break;
+              if (typeof match?.eventoId !== "string" || typeof match?.fotoId !== "string") continue;
+              if (matches.includes(match.fotoId)) continue;
+              matches.push(match.fotoId);
+              const fotosEvento = fotosPgvector.get(match.eventoId) ?? [];
+              fotosEvento.push(match.fotoId);
+              fotosPgvector.set(match.eventoId, fotosEvento);
+            }
+          }
+
+          for (const [eventoId, fotosEvento] of fotosPgvector) {
+            const ev = alvo.find(item => item.id === eventoId);
+            if (!ev || fotosEvento.length === 0) continue;
+            porEvento.push({ eventoId: ev.id, eventoNome: ev.nome, fotos: fotosEvento });
+            eventosResolvidosPgvector.add(ev.id);
+          }
+        } catch { /* fallback abaixo */ }
 
         for (const ev of alvo) {
           if (matches.length >= 30) break;
           if (porEvento.some(p => p.eventoId === ev.id)) continue; // já veio do Drive
+          if (eventosResolvidosPgvector.has(ev.id)) continue;
 
-          // ★ 1ª tentativa: clusters (rápido — compara contra ~50 pessoas)
-          const pessoasRes = await fetch(`/api/pessoas?eventoId=${ev.id}`).catch(() => null);
-          const pessoasData = pessoasRes?.ok ? await pessoasRes.json() : null;
-          if (pessoasData?.indexado && Array.isArray(pessoasData.clusters) && pessoasData.clusters.length > 0) {
-            const meus = acharClustersDoUsuario(pessoasData.clusters as ClusterPessoa[], descritoresUser, LIMIAR);
-            if (meus.length > 0) {
-              const fotosEvento: string[] = [];
-              for (const c of meus) {
-                for (const id of c.fotos) {
-                  if (!matches.includes(id)) {
-                    matches.push(id);
-                    fotosEvento.push(id);
-                  }
-                }
-              }
-              if (fotosEvento.length) {
-                porEvento.push({ eventoId: ev.id, eventoNome: ev.nome, fotos: fotosEvento });
-              }
-              continue; // resolveu via clusters, não precisa do _desc_*.json
-            }
-          }
-
-          // Fallback: descritores soltos (eventos antigos ainda sem clusters)
+          // Fallback: descritores soltos para eventos fora do pgvector.
           const json = await fetchDescritores(ev.id);
           if (!json?.indexado || !Array.isArray(json.dados)) continue;
           const descritoresUserF32 = descritoresUser.map(d => new Float32Array(d));
