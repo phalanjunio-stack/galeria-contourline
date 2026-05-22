@@ -1,8 +1,9 @@
 "use client";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Calendar, Camera, HardDrive, Globe, Lock, Save, ToggleLeft, ToggleRight, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
+
+const CATEGORIAS_EVENTO = ["Evento", "Congresso", "Treinamento", "Corporativo", "Workshop", "Palestra", "Confraternizacao", "Outros"];
 
 // Extrai o folder ID do link do Google Drive
 function extrairFolderId(link: string): string | null {
@@ -11,10 +12,11 @@ function extrairFolderId(link: string): string | null {
 }
 
 export default function NovoEventoPage() {
-  const router = useRouter();
   const [form, setForm] = useState({
     nome: "",
     data: "",
+    categoria: "Evento",
+    tags: "",
     descricao: "",
     status: "aberto",
     reconhecimento: true,
@@ -49,6 +51,8 @@ export default function NovoEventoPage() {
       const metadata = {
         nome: form.nome,
         data: form.data,
+        categoria: form.categoria,
+        tags: form.tags.split(",").map((tag) => tag.trim()).filter(Boolean),
         descricao: form.descricao,
         status: form.status,
         reconhecimento_facial: form.reconhecimento,
@@ -137,6 +141,28 @@ export default function NovoEventoPage() {
                   value={form.data}
                   onChange={(e) => setForm({ ...form, data: e.target.value })}
                   className="w-full pl-9 pr-4 py-3 rounded-xl border border-gray-200 bg-[#EFF5FF] text-sm text-[#0D2B4E] focus:outline-none focus:border-[#2E7DD1] focus:ring-2 focus:ring-[#2E7DD1]/20 transition"
+                />
+              </div>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="block text-xs font-bold text-[#1A4A80] uppercase tracking-wider mb-1.5">Categoria</label>
+                <select
+                  value={form.categoria}
+                  onChange={(e) => setForm({ ...form, categoria: e.target.value })}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-[#EFF5FF] text-sm text-[#0D2B4E] focus:outline-none focus:border-[#2E7DD1] focus:ring-2 focus:ring-[#2E7DD1]/20 transition"
+                >
+                  {CATEGORIAS_EVENTO.map((categoria) => <option key={categoria} value={categoria}>{categoria}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-[#1A4A80] uppercase tracking-wider mb-1.5">Tags</label>
+                <input
+                  type="text"
+                  placeholder="Ex: saude, equipe, maio"
+                  value={form.tags}
+                  onChange={(e) => setForm({ ...form, tags: e.target.value })}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-[#EFF5FF] text-sm text-[#0D2B4E] focus:outline-none focus:border-[#2E7DD1] focus:ring-2 focus:ring-[#2E7DD1]/20 transition"
                 />
               </div>
             </div>

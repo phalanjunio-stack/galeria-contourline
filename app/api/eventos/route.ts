@@ -9,6 +9,8 @@ export interface EventoItem {
   id: string;
   nome: string;
   data: string;
+  categoria?: string;
+  tags?: string[];
   descricao?: string;
   status: string;
   reconhecimento_facial: boolean;
@@ -70,6 +72,8 @@ export async function POST(req: NextRequest) {
       id:                    Date.now().toString(),
       nome:                  body.nome,
       data:                  body.data,
+      categoria:             body.categoria ?? "Evento",
+      tags:                  Array.isArray(body.tags) ? body.tags : [],
       descricao:             body.descricao ?? "",
       status:                body.status ?? "aberto",
       reconhecimento_facial: body.reconhecimento_facial ?? true,
@@ -91,7 +95,7 @@ export async function POST(req: NextRequest) {
 // PATCH /api/eventos?id=xxx → atualiza campos
 export async function PATCH(req: NextRequest) {
   const session = await auth();
-  if (!session) return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
+  if (!session?.user?.isAdmin) return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
 
   const id = req.nextUrl.searchParams.get("id");
   if (!id) return NextResponse.json({ error: "id obrigatório" }, { status: 400 });

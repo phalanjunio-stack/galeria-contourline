@@ -85,7 +85,21 @@ export default function AdminEventosPage() {
                       <div className="w-9 h-9 gradient-primary rounded-xl flex items-center justify-center shrink-0 shadow">
                         <Camera size={15} className="text-white" />
                       </div>
-                      <span className="font-semibold text-[#0D2B4E] text-sm">{e.nome}</span>
+                      <div className="min-w-0">
+                        <span className="block truncate font-semibold text-[#0D2B4E] text-sm">{e.nome}</span>
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {e.categoria && (
+                            <span className="rounded-full bg-[#EFF5FF] px-2 py-0.5 text-[10px] font-semibold text-[#1A4A80]">
+                              {e.categoria}
+                            </span>
+                          )}
+                          {e.tags?.slice(0, 2).map((tag) => (
+                            <span key={tag} className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-500">
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
                     </div>
                   </td>
                   <td className="px-4 py-4 hidden sm:table-cell">

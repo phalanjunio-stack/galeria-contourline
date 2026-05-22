@@ -11,7 +11,25 @@ import { fetchDescritores } from "@/lib/descritoresCache";
 import { lerRecognitionThresholdLocal } from "@/lib/recognition-thresholds";
 import { SkeletonEventos } from "@/app/components/Skeleton";
 
-const categorias = ["Todos", "Corporativo", "Workshop", "Palestra", "Confraternização", "Outros"];
+const categorias = [
+  "Todos",
+  "Evento",
+  "Congresso",
+  "Treinamento",
+  "Corporativo",
+  "Workshop",
+  "Palestra",
+  "Confraternizacao",
+  "Outros",
+];
+
+function normalizarFiltro(value?: string) {
+  return (value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
+}
 
 const statusConfig: Record<string, { label: string; dot: string; bg: string }> = {
   aberto:    { label: "Aberto",    dot: "bg-emerald-400", bg: "from-emerald-700 to-emerald-500" },
@@ -30,6 +48,7 @@ export default function EventosPage() {
   const [eventos,  setEventos]  = useState<EventoItem[]>([]);
   const [loading,  setLoading]  = useState(true);
   const [busca,    setBusca]    = useState("");
+  const [categoria, setCategoria] = useState("Todos");
 
   // Banner "Encontramos você"
   const [matches,       setMatches]       = useState<MatchEvento[]>([]);
@@ -151,9 +170,16 @@ export default function EventosPage() {
     });
   }, [buscarMinhasFotos]);
 
-  const filtrados = eventos.filter((e) =>
-    e.nome.toLowerCase().includes(busca.toLowerCase())
-  );
+  const filtroBusca = normalizarFiltro(busca);
+  const filtroCategoria = normalizarFiltro(categoria);
+  const filtrados = eventos.filter((e) => {
+    const bateBusca = normalizarFiltro(e.nome).includes(filtroBusca)
+      || !!e.tags?.some((tag) => normalizarFiltro(tag).includes(filtroBusca));
+    const bateCategoria = categoria === "Todos"
+      || normalizarFiltro(e.categoria) === filtroCategoria
+      || !!e.tags?.some((tag) => normalizarFiltro(tag) === filtroCategoria);
+    return bateBusca && bateCategoria;
+  });
 
   const totalFotos = matches.reduce((s, m) => s + m.fotos.length, 0);
 
@@ -267,10 +293,11 @@ export default function EventosPage() {
 
       {/* Categorias */}
       <div className="flex gap-2 overflow-x-auto pb-2 mb-8">
-        {categorias.map((cat, i) => (
+        {categorias.map((cat) => (
           <button key={cat}
+            onClick={() => setCategoria(cat)}
             className={`px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap shrink-0 transition
-              ${i === 0 ? "gradient-primary text-white shadow" : "bg-white border border-gray-200 text-[#1A4A80] hover:border-[#2E7DD1]"}`}>
+              ${categoria === cat ? "gradient-primary text-white shadow" : "bg-white border border-gray-200 text-[#1A4A80] hover:border-[#2E7DD1]"}`}>
             {cat}
           </button>
         ))}
