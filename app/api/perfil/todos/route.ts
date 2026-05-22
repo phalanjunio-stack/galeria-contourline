@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getAccessTokenFromEnv } from "@/auth";
+import { auth, getAccessTokenFromEnv } from "@/auth";
 import { lerArquivoOculto } from "@/lib/drive";
 import type { PerfilUsuario } from "@/app/api/perfil/route";
 import fs from "fs";
@@ -36,9 +36,10 @@ async function lerTodosPerfis(): Promise<PerfilUsuario[]> {
  * Retorna todos os perfis com descriptor (para reconhecimento facial em lote).
  */
 export async function GET() {
-  // Não requer admin — apenas token válido
-  // (a página de reconhecimento já é protegida pelo layout admin)
-
+  const session = await auth();
+  if (!session?.user?.isAdmin) {
+    return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
+  }
   const perfis = await lerTodosPerfis();
 
   const resultado = perfis

@@ -13,6 +13,8 @@ interface UsuarioItem {
   foto: string;
   thumb: string | null;
   temDescriptor: boolean;
+  totalReferencias: number;
+  totalFotosRastreio: number;
   isAdmin: boolean;
   notificar_site: boolean;
   criado_em: string;
@@ -50,7 +52,7 @@ export default function AdminUsuariosPage() {
   const [usuarios,   setUsuarios]   = useState<UsuarioItem[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [busca,      setBusca]      = useState("");
-  const [filtro,     setFiltro]     = useState<"todos" | "com_rosto" | "sem_rosto">("todos");
+  const [filtro,     setFiltro]     = useState<"todos" | "prontos" | "reforcar" | "sem_rosto" | "sem_sininho">("todos");
   const [removendo,  setRemovendo]  = useState<string | null>(null);
 
   useEffect(() => {
@@ -63,8 +65,10 @@ export default function AdminUsuariosPage() {
 
   const lista = useMemo(() => {
     let r = usuarios;
-    if (filtro === "com_rosto")  r = r.filter(u => u.temDescriptor);
+    if (filtro === "prontos")    r = r.filter(u => u.totalReferencias >= 2);
+    if (filtro === "reforcar")   r = r.filter(u => u.totalReferencias === 1);
     if (filtro === "sem_rosto")  r = r.filter(u => !u.temDescriptor);
+    if (filtro === "sem_sininho") r = r.filter(u => !u.notificar_site);
     if (busca.trim()) {
       const q = busca.toLowerCase();
       r = r.filter(u => u.nome.toLowerCase().includes(q) || u.email.toLowerCase().includes(q));
@@ -81,6 +85,9 @@ export default function AdminUsuariosPage() {
   }
 
   const totalComRosto = usuarios.filter(u => u.temDescriptor).length;
+  const totalProntos = usuarios.filter(u => u.totalReferencias >= 2).length;
+  const totalReforcar = usuarios.filter(u => u.totalReferencias === 1).length;
+  const totalSemRosto = usuarios.filter(u => !u.temDescriptor).length;
 
   return (
     <div>
@@ -98,7 +105,7 @@ export default function AdminUsuariosPage() {
 
       {/* Estatísticas rápidas */}
       {!carregando && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-2 xl:grid-cols-5 gap-4 mb-6">
           <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl gradient-primary flex items-center justify-center shadow">
@@ -116,8 +123,30 @@ export default function AdminUsuariosPage() {
                 <ScanFace size={16} className="text-emerald-600" />
               </div>
               <div>
-                <p className="text-xl font-black text-[#0D2B4E]">{totalComRosto}</p>
-                <p className="text-xs text-gray-500">Com rosto cadastrado</p>
+                <p className="text-xl font-black text-[#0D2B4E]">{totalProntos}</p>
+                <p className="text-xs text-gray-500">Com 2+ referencias</p>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center">
+                <ScanFace size={16} className="text-amber-600" />
+              </div>
+              <div>
+                <p className="text-xl font-black text-[#0D2B4E]">{totalReforcar}</p>
+                <p className="text-xs text-gray-500">Com 1 referencia</p>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center">
+                <XCircle size={16} className="text-gray-500" />
+              </div>
+              <div>
+                <p className="text-xl font-black text-[#0D2B4E]">{totalSemRosto}</p>
+                <p className="text-xs text-gray-500">Sem rosto</p>
               </div>
             </div>
           </div>
@@ -149,8 +178,8 @@ export default function AdminUsuariosPage() {
             className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 text-sm text-[#0D2B4E] bg-white focus:outline-none focus:border-[#2E7DD1] transition"
           />
         </div>
-        <div className="flex gap-2">
-          {(["todos", "com_rosto", "sem_rosto"] as const).map(f => (
+        <div className="flex flex-wrap gap-2">
+          {(["todos", "prontos", "reforcar", "sem_rosto", "sem_sininho"] as const).map(f => (
             <button key={f}
               onClick={() => setFiltro(f)}
               className={`px-3 py-2 rounded-xl text-xs font-semibold transition ${
@@ -159,7 +188,13 @@ export default function AdminUsuariosPage() {
                   : "border border-gray-200 text-gray-500 hover:bg-[#EFF5FF] hover:text-[#1A4A80]"
               }`}
             >
-              {{ todos: "Todos", com_rosto: "Com rosto", sem_rosto: "Sem rosto" }[f]}
+              {{
+                todos: "Todos",
+                prontos: "2+ referencias",
+                reforcar: "1 referencia",
+                sem_rosto: "Sem rosto",
+                sem_sininho: "Sem sininho",
+              }[f]}
             </button>
           ))}
         </div>
@@ -220,9 +255,13 @@ export default function AdminUsuariosPage() {
 
                   {/* Rosto */}
                   <div className="pl-12 sm:pl-0">
-                    {u.temDescriptor ? (
+                    {u.totalReferencias >= 2 ? (
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">
-                        <ScanFace size={11} /> Cadastrado
+                        <ScanFace size={11} /> {u.totalReferencias} refs
+                      </span>
+                    ) : u.totalReferencias === 1 ? (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-100">
+                        <ScanFace size={11} /> 1 ref
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-500">

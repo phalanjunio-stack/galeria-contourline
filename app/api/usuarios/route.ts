@@ -38,25 +38,65 @@ function salvarLocal(perfis: PerfilUsuario[]) {
   } catch { /**/ }
 }
 
+function descritoresValidos(perfil: PerfilUsuario) {
+  const multiplos = Array.isArray(perfil.descriptors)
+    ? perfil.descriptors.filter((descriptor) => Array.isArray(descriptor) && descriptor.length === 128)
+    : [];
+  if (multiplos.length > 0) return multiplos;
+  return Array.isArray(perfil.descriptor) && perfil.descriptor.length === 128
+    ? [perfil.descriptor]
+    : [];
+}
+
+function fotosRastreio(perfil: PerfilUsuario) {
+  const multiplas = Array.isArray(perfil.foto_rastreios)
+    ? perfil.foto_rastreios.filter((foto): foto is string => typeof foto === "string" && foto.length > 0)
+    : [];
+  if (multiplas.length > 0) return multiplas.slice(0, 5);
+  return typeof perfil.foto_rastreio === "string" && perfil.foto_rastreio.length > 0
+    ? [perfil.foto_rastreio]
+    : [];
+}
+
+function resumirPerfil(perfil: PerfilUsuario) {
+  const referenciasRosto = fotosRastreio(perfil);
+  const totalReferencias = descritoresValidos(perfil).length;
+  return {
+    email: perfil.email,
+    nome: perfil.nome,
+    foto: perfil.foto,
+    thumb: perfil.foto_rastreio ?? referenciasRosto[0] ?? null,
+    temDescriptor: totalReferencias > 0,
+    totalReferencias,
+    totalFotosRastreio: referenciasRosto.length,
+    isAdmin: ADMIN_EMAILS.includes(perfil.email?.toLowerCase() ?? ""),
+    notificar_site: perfil.notificar_site,
+    criado_em: perfil.criado_em,
+    atualizado_em: perfil.atualizado_em,
+  };
+}
+
 /**
  * GET /api/usuarios — lista todos os perfis (admin)
  */
-export async function GET() {
-  const perfis = await lerTodos();
+export async function GET(req: NextRequest) {
+  const session = await auth();
+  if (!session?.user?.isAdmin) {
+    return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
+  }
 
-  const resultado = perfis.map(
-    ({ email, nome, foto, foto_rastreio, descriptor, descriptors, notificar_site, criado_em, atualizado_em }) => ({
-      email, nome, foto,
-      thumb: foto_rastreio ?? null,
-      temDescriptor:
-        (Array.isArray(descriptors) && descriptors.length > 0) ||
-        (Array.isArray(descriptor) && descriptor.length > 0),
-      isAdmin: ADMIN_EMAILS.includes(email?.toLowerCase() ?? ""),
-      notificar_site,
-      criado_em,
-      atualizado_em,
-    })
-  );
+  const perfis = await lerTodos();
+  const email = req.nextUrl.searchParams.get("email")?.trim().toLowerCase();
+  if (email) {
+    const perfil = perfis.find((item) => item.email?.trim().toLowerCase() === email);
+    if (!perfil) return NextResponse.json(null, { status: 404 });
+    return NextResponse.json({
+      ...resumirPerfil(perfil),
+      referenciasRosto: fotosRastreio(perfil),
+    });
+  }
+
+  const resultado = perfis.map(resumirPerfil);
 
   resultado.sort((a, b) => b.criado_em?.localeCompare(a.criado_em ?? "") ?? 0);
   return NextResponse.json(resultado);

@@ -31,6 +31,9 @@ export async function GET(req: NextRequest) {
   if (!eventoId) return NextResponse.json(null);
 
   const session = await auth();
+  if (!session?.user?.isAdmin) {
+    return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
+  }
   // Service account primeiro — gera token sempre fresco; OAuth pode ter expirado
   const token   = (await getAccessTokenFromEnv()) ?? session?.accessToken;
   if (!token) return NextResponse.json(null);

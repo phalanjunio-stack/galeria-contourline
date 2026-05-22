@@ -13,8 +13,12 @@ interface UsuarioInfo {
   foto: string;
   thumb: string | null;
   temDescriptor: boolean;
+  totalReferencias: number;
+  totalFotosRastreio: number;
+  referenciasRosto: string[];
   notificar_site: boolean;
   criado_em: string;
+  atualizado_em: string;
 }
 
 interface EventoMatch {
@@ -61,11 +65,10 @@ export default function UsuarioGaleriaPage() {
     async function carregar() {
       try {
         // Carrega info do usuário
-        const usRes = await fetch("/api/usuarios");
+        const usRes = await fetch(`/api/usuarios?email=${encodeURIComponent(emailParam)}`);
         if (usRes.ok) {
-          const lista: UsuarioInfo[] = await usRes.json();
-          const u = lista.find(u => u.email === emailParam) ?? null;
-          setUsuario(u);
+          const u: UsuarioInfo | null = await usRes.json();
+          setUsuario(u?.email ? u : null);
         }
 
         // Carrega lista de eventos para buscar matches
@@ -103,7 +106,6 @@ export default function UsuarioGaleriaPage() {
       setCarregando(false);
     }
     carregar();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [emailParam]);
 
   const eventoSelecionado = eventos.find(e => e.eventoId === eventoAtivo);
@@ -153,17 +155,70 @@ export default function UsuarioGaleriaPage() {
               <Calendar size={11} /> Cadastrado em {tempo(usuario.criado_em)}
             </p>
             <div className="flex items-center gap-2 mt-2 flex-wrap">
-              {usuario.temDescriptor && (
+              {usuario.totalReferencias >= 2 ? (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">
-                  <ScanFace size={10} /> Rosto cadastrado
+                  <ScanFace size={10} /> {usuario.totalReferencias} referencias
+                </span>
+              ) : usuario.totalReferencias === 1 ? (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-100">
+                  <ScanFace size={10} /> 1 referencia
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-500">
+                  <ScanFace size={10} /> Sem rosto
                 </span>
               )}
+              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold border ${
+                usuario.notificar_site
+                  ? "bg-blue-50 text-[#2E7DD1] border-blue-100"
+                  : "bg-gray-100 text-gray-500 border-gray-100"
+              }`}>
+                {usuario.notificar_site ? "Sininho ativo" : "Sininho inativo"}
+              </span>
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-[#EFF5FF] text-[#1A4A80] border border-[#2E7DD1]/20">
                 <Images size={10} /> {totalFotos} foto{totalFotos !== 1 ? "s" : ""} encontrada{totalFotos !== 1 ? "s" : ""}
               </span>
             </div>
           </div>
         </div>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-5">
+        <div className="flex flex-wrap items-start justify-between gap-2 mb-4">
+          <div>
+            <h2 className="font-bold text-[#0D2B4E] flex items-center gap-2">
+              <ScanFace size={16} className="text-[#2E7DD1]" />
+              Referencias do rosto
+            </h2>
+            <p className="text-xs text-gray-400 mt-1">
+              Selfies salvas no perfil para comparar com o indice dos eventos.
+            </p>
+          </div>
+          <span className="text-xs font-bold text-[#1A4A80] bg-[#EFF5FF] rounded-full px-2.5 py-1">
+            {usuario.totalReferencias} descriptor{usuario.totalReferencias === 1 ? "" : "es"}
+          </span>
+        </div>
+        {usuario.referenciasRosto?.length ? (
+          <div className="flex flex-wrap gap-3">
+            {usuario.referenciasRosto.map((foto, index) => (
+              <img
+                key={`${index}:${foto.slice(0, 24)}`}
+                src={foto}
+                alt=""
+                className="h-24 w-24 rounded-2xl border border-gray-100 object-cover shadow-sm"
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-2xl bg-[#F7FAFD] px-4 py-5 text-sm">
+            <p className="font-semibold text-[#0D2B4E]">
+              {usuario.temDescriptor ? "Ha descritor salvo, mas a selfie de referencia nao esta disponivel." : "Este usuario ainda precisa cadastrar o rosto."}
+            </p>
+            <p className="text-gray-400 mt-1">
+              {usuario.temDescriptor ? "A busca pode funcionar, mas a revisao visual fica limitada." : "Sem referencia facial o motor nao consegue comparar as fotos dele."}
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Sem fotos */}
@@ -174,7 +229,7 @@ export default function UsuarioGaleriaPage() {
           <p className="text-gray-400 text-sm mb-4">
             Este usuário ainda não foi identificado em nenhum evento indexado.
           </p>
-          <Link href="/admin/reconhecimento"
+          <Link href="/admin/reconhecimento-servidor"
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl gradient-primary text-white text-sm font-bold shadow hover:opacity-90 transition">
             <ScanFace size={14} /> Ir para Reconhecimento
           </Link>
