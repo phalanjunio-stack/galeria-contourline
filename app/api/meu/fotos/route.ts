@@ -49,6 +49,25 @@ export async function GET(req: NextRequest) {
  * o próprio email da sessão; simples (sem sessão) é confiado — pode gravar
  * pro email que indicar (mesmo modelo do resto do app).
  */
+// Lock por email para evitar race condition em multi-cliente
+// (duas abas/dispositivos gravando o mesmo _mf_email.json simultaneamente)
+const locks = new Map<string, Promise<void>>();
+
+async function comLock<T>(key: string, fn: () => Promise<T>): Promise<T> {
+  while (locks.has(key)) {
+    try { await locks.get(key); } catch { /**/ }
+  }
+  let resolver: () => void = () => {};
+  const p = new Promise<void>((res) => { resolver = res; });
+  locks.set(key, p);
+  try {
+    return await fn();
+  } finally {
+    locks.delete(key);
+    resolver();
+  }
+}
+
 export async function PUT(req: NextRequest) {
   const session = await auth();
 
@@ -68,33 +87,37 @@ export async function PUT(req: NextRequest) {
     }
   }
 
-  const key = `_mf_${email.toLowerCase().replace(/[^a-z0-9]/g, "_")}.json`;
+  const emailKey = email.toLowerCase().replace(/[^a-z0-9]/g, "_");
+  const key = `_mf_${emailKey}.json`;
 
   try {
-    // Lê dados existentes e atualiza apenas o evento
-    const atual = await lerArquivoOculto<MeusFotosData>(ROOT, key, token).catch(() => null);
-    const eventosExist: MeusFotosEvento[] = atual?.eventos ?? [];
-    const evAnterior = eventosExist.find(e => e.eventoId === eventoId);
-    const outros    = eventosExist.filter(e => e.eventoId !== eventoId);
+    const result = await comLock(emailKey, async () => {
+      // Lê dados existentes e atualiza apenas o evento
+      const atual = await lerArquivoOculto<MeusFotosData>(ROOT, key, token).catch(() => null);
+      const eventosExist: MeusFotosEvento[] = atual?.eventos ?? [];
+      const evAnterior = eventosExist.find(e => e.eventoId === eventoId);
+      const outros    = eventosExist.filter(e => e.eventoId !== eventoId);
 
-    // Se merge=true, soma fotos novas com as já confirmadas (sem duplicar)
-    const fotoIdsFinais = merge && evAnterior?.fotoIds?.length
-      ? Array.from(new Set([...evAnterior.fotoIds, ...fotoIds]))
-      : fotoIds;
+      // Se merge=true, soma fotos novas com as já confirmadas (sem duplicar)
+      const fotoIdsFinais = merge && evAnterior?.fotoIds?.length
+        ? Array.from(new Set([...evAnterior.fotoIds, ...fotoIds]))
+        : fotoIds;
 
-    const eventos: MeusFotosEvento[] = fotoIdsFinais.length
-      ? [...outros, { eventoId, eventoNome, fotoIds: fotoIdsFinais, processadoEm }]
-      : outros;
+      const eventos: MeusFotosEvento[] = fotoIdsFinais.length
+        ? [...outros, { eventoId, eventoNome, fotoIds: fotoIdsFinais, processadoEm }]
+        : outros;
 
-    const data: MeusFotosData = {
-      email,
-      eventos,
-      totalFotos: eventos.reduce((s, e) => s + e.fotoIds.length, 0),
-      atualizadoEm: new Date().toISOString(),
-    };
+      const data: MeusFotosData = {
+        email,
+        eventos,
+        totalFotos: eventos.reduce((s, e) => s + e.fotoIds.length, 0),
+        atualizadoEm: new Date().toISOString(),
+      };
 
-    await salvarArquivoOculto(ROOT, key, data, token);
-    return NextResponse.json({ ok: true, totalFotos: data.totalFotos });
+      await salvarArquivoOculto(ROOT, key, data, token);
+      return data;
+    });
+    return NextResponse.json({ ok: true, totalFotos: result.totalFotos });
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
   }

@@ -29,6 +29,10 @@ export default function Lightbox({ fotos, index, favoritos, nomeEvento, onClose,
 
   const [shareToast, setShareToast] = useState<string | null>(null);
   const [dir, setDir] = useState<1 | -1>(1); // direção da animação da foto
+  const [zoom, setZoom] = useState<number>(1); // 1 = normal, 2 = 2x zoom
+
+  // Reset zoom ao trocar foto
+  useEffect(() => { setZoom(1); }, [foto.id]);
 
   const handleKey = useCallback((e: KeyboardEvent) => {
     if (e.key === "Escape")     { playSound("close"); onClose(); }
@@ -179,13 +183,26 @@ export default function Lightbox({ fotos, index, favoritos, nomeEvento, onClose,
               animate={{ opacity: 1, x: 0,        scale: 1    }}
               exit={{    opacity: 0, x: dir * -60, scale: 0.96 }}
               transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-              className="glow-active relative flex items-center justify-center rounded-2xl"
+              drag={zoom === 1 ? "x" : false}
+              dragConstraints={{ left: 0, right: 0 }}
+              dragElastic={0.4}
+              onDragEnd={(_, info) => {
+                if (zoom !== 1) return;
+                if (info.offset.x < -80 && index < fotos.length - 1) handleNext();
+                else if (info.offset.x > 80 && index > 0) handlePrev();
+              }}
+              className="glow-active relative flex items-center justify-center rounded-2xl touch-pan-y"
             >
-              <img
+              <motion.img
                 src={fullUrl(foto.id)}
                 alt={foto.name}
-                className="max-h-full max-w-full rounded-2xl object-contain shadow-2xl select-none"
+                onDoubleClick={() => { playSound("tap"); setZoom(z => z === 1 ? 2 : 1); }}
+                animate={{ scale: zoom }}
+                transition={{ duration: 0.25 }}
+                className={`max-h-full max-w-full rounded-2xl object-contain shadow-2xl select-none ${zoom > 1 ? "cursor-zoom-out" : "cursor-zoom-in"}`}
                 style={{ maxHeight: "calc(100vh - 160px)" }}
+                drag={zoom > 1}
+                dragConstraints={{ left: -200, right: 200, top: -200, bottom: 200 }}
               />
               {/* Marca d'água */}
               <img

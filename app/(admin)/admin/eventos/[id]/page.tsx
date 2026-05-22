@@ -16,6 +16,7 @@ import {
   Plus,
   Trash2,
   Layers,
+  GripVertical,
 } from "lucide-react";
 import type { EventoItem, EventoDia } from "@/app/api/eventos/route";
 import FocalPointPicker from "@/app/components/FocalPointPicker";
@@ -280,19 +281,36 @@ export default function EditarEventoPage({ params }: { params: Promise<{ id: str
         ) : (
           <div className="space-y-3">
             {dias.map((dia, i) => (
-              <div key={i} className="rounded-xl border border-gray-200 p-3 bg-gray-50">
-                <div className="grid gap-2 sm:grid-cols-12">
+              <div
+                key={i}
+                draggable
+                onDragStart={e => { e.dataTransfer.setData("text/plain", String(i)); e.dataTransfer.effectAllowed = "move"; }}
+                onDragOver={e => e.preventDefault()}
+                onDrop={e => {
+                  e.preventDefault();
+                  const from = Number(e.dataTransfer.getData("text/plain"));
+                  if (Number.isNaN(from) || from === i) return;
+                  const novo = [...dias];
+                  const [moved] = novo.splice(from, 1);
+                  novo.splice(i, 0, moved);
+                  setDias(novo);
+                }}
+                className="rounded-xl border border-gray-200 p-3 bg-gray-50 cursor-move hover:border-[#2E7DD1]/40 transition">
+                <div className="grid gap-2 sm:grid-cols-12 items-center">
+                  <div className="sm:col-span-1 flex items-center justify-center text-gray-400">
+                    <GripVertical size={16} />
+                  </div>
                   <input className="admin-event-input sm:col-span-2 text-xs" placeholder="ID (dia1)"
                     value={dia.id} onChange={e => setDias(dias.map((d, j) => j === i ? { ...d, id: e.target.value } : d))} />
                   <input className="admin-event-input sm:col-span-3 text-xs" placeholder="Título do dia"
                     value={dia.titulo} onChange={e => setDias(dias.map((d, j) => j === i ? { ...d, titulo: e.target.value } : d))} />
                   <input type="date" className="admin-event-input sm:col-span-2 text-xs"
                     value={dia.data?.slice(0, 10) ?? ""} onChange={e => setDias(dias.map((d, j) => j === i ? { ...d, data: e.target.value } : d))} />
-                  <input className="admin-event-input sm:col-span-4 text-xs" placeholder="Folder ID ou link Drive"
+                  <input className="admin-event-input sm:col-span-3 text-xs" placeholder="Folder ID ou link Drive"
                     value={dia.folder_id} onChange={e => setDias(dias.map((d, j) => j === i ? { ...d, folder_id: e.target.value } : d))} />
                   <button type="button"
                     onClick={() => setDias(dias.filter((_, j) => j !== i))}
-                    className="sm:col-span-1 flex items-center justify-center rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition"
+                    className="sm:col-span-1 flex items-center justify-center rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition h-9"
                     aria-label="Remover dia">
                     <Trash2 size={14} />
                   </button>

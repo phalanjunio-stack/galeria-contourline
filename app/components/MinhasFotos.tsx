@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
 import { useSession } from "next-auth/react";
-import { ScanFace, ChevronRight, Download, Loader2, Sparkles, X, Zap } from "lucide-react";
+import { ScanFace, ChevronRight, Download, Loader2, Sparkles, X, Zap, ThumbsDown } from "lucide-react";
 import Link from "next/link";
 import {
   fetchMinhasFotos, lerCacheMinhasFotos, salvarCacheMinhasFotos,
@@ -9,6 +9,8 @@ import {
 } from "@/lib/minhasFotos";
 import { fetchDescritores } from "@/lib/descritoresCache";
 import { lerRecognitionThresholdLocal } from "@/lib/recognition-thresholds";
+import { lerRejeitadas, rejeitarFoto, desfazerRejeicao } from "@/lib/fotosRejeitadas";
+import { useToast } from "./Toast";
 
 interface FotoDescritores {
   fotoId: string;
@@ -16,7 +18,7 @@ interface FotoDescritores {
 }
 
 /* ── Mini card ────────────────────────────────────────────── */
-function MiniCard({ id }: { id: string }) {
+function MiniCard({ id, onRejeitar }: { id: string; onRejeitar?: (id: string) => void }) {
   const [loaded, setLoaded] = useState(false);
   return (
     <div className="relative flex-shrink-0 w-28 h-28 sm:w-32 sm:h-32 rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-shadow cursor-pointer group">
@@ -27,11 +29,21 @@ function MiniCard({ id }: { id: string }) {
         onLoad={() => setLoaded(true)}
         className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 ${loaded ? "opacity-100" : "opacity-0"}`}
       />
-      <div className="absolute inset-0 bg-[#0D2B4E]/55 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+      <div className="absolute inset-0 bg-[#0D2B4E]/55 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-between p-2">
+        {onRejeitar && (
+          <button
+            onClick={e => { e.stopPropagation(); onRejeitar(id); }}
+            title="Não sou eu"
+            aria-label="Marcar como não sou eu"
+            className="w-8 h-8 rounded-full bg-white/20 hover:bg-red-500/80 flex items-center justify-center transition"
+          >
+            <ThumbsDown size={13} className="text-white" />
+          </button>
+        )}
         <a href={`/api/download?id=${id}`} target="_blank" rel="noopener noreferrer"
           onClick={e => e.stopPropagation()}
-          className="w-9 h-9 rounded-full bg-white/20 hover:bg-white/40 flex items-center justify-center transition">
-          <Download size={16} className="text-white" />
+          className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/40 flex items-center justify-center transition ml-auto">
+          <Download size={14} className="text-white" />
         </a>
       </div>
     </div>
@@ -42,6 +54,7 @@ const MAX_FOTOS = 30;
 
 export default function MinhasFotos() {
   const { data: session } = useSession();
+  const toast = useToast();
 
   const [email,        setEmail]        = useState<string | null>(null);
   const [primeiroNome, setPrimeiroNome] = useState("");
@@ -50,6 +63,27 @@ export default function MinhasFotos() {
   const [fase,         setFase]         = useState<"idle"|"buscando"|"pronto"|"vazio">("idle");
   const [fechado,      setFechado]      = useState(false);
   const [usouIndice,   setUsouIndice]   = useState(false);
+  const [rejeitadas,   setRejeitadas]   = useState<Set<string>>(new Set());
+
+  function handleRejeitar(id: string) {
+    rejeitarFoto(id);
+    setRejeitadas(prev => new Set([...prev, id]));
+    setFotos(prev => prev.filter(f => f !== id));
+    toast.show("Foto removida das sugestões", {
+      onUndo: () => {
+        desfazerRejeicao(id);
+        setRejeitadas(prev => { const n = new Set(prev); n.delete(id); return n; });
+        setFotos(prev => prev.includes(id) ? prev : [...prev, id]);
+      },
+    });
+  }
+
+  useEffect(() => {
+    setRejeitadas(lerRejeitadas());
+    const sync = () => setRejeitadas(lerRejeitadas());
+    window.addEventListener("fotos-rejeitadas-mudou", sync);
+    return () => window.removeEventListener("fotos-rejeitadas-mudou", sync);
+  }, []);
 
   /* ── Detecta usuário ── */
   useEffect(() => {
@@ -71,17 +105,18 @@ export default function MinhasFotos() {
   }, [session]);
 
   const aplicarDados = useCallback((email: string, porEvento: { eventoId: string; eventoNome: string; fotos: string[] }[]) => {
+    const rej = lerRejeitadas();
     const todasFotos: string[] = [];
     const nomes: string[] = [];
     for (const ev of porEvento) {
-      for (const id of ev.fotos) if (!todasFotos.includes(id)) todasFotos.push(id);
+      for (const id of ev.fotos) if (!todasFotos.includes(id) && !rej.has(id)) todasFotos.push(id);
       nomes.push(ev.eventoNome);
     }
     const label = nomes.length === 1 ? nomes[0] : `${nomes.length} eventos`;
     setFotos(todasFotos.slice(0, MAX_FOTOS));
     setEventoNome(label);
     setUsouIndice(true);
-    setFase("pronto");
+    setFase(todasFotos.length === 0 ? "vazio" : "pronto");
     void email;
   }, []);
 
@@ -225,8 +260,21 @@ export default function MinhasFotos() {
                 {eventoNome} · {fotos.length} possível{fotos.length !== 1 ? "is" : ""} foto{fotos.length !== 1 ? "s" : ""} sua{fotos.length !== 1 ? "s" : ""}
               </p>
               <p className="text-[10px] text-amber-600/80 mt-1">
-                💡 IA pode confundir — confirme em <strong>São minhas</strong>.
+                💡 IA pode confundir — confirme em <strong>São minhas</strong> ou clique no 👎 em fotos erradas.
               </p>
+              {rejeitadas.size > 0 && (
+                <button
+                  onClick={() => {
+                    try { localStorage.removeItem("fotos_rejeitadas_v1"); } catch {}
+                    setRejeitadas(new Set());
+                    window.dispatchEvent(new Event("fotos-rejeitadas-mudou"));
+                    toast.show("Sugestões restauradas", { type: "info" });
+                  }}
+                  className="text-[10px] text-[#2E7DD1] mt-1 hover:underline"
+                >
+                  Você marcou {rejeitadas.size} foto{rejeitadas.size > 1 ? "s" : ""} como "não sou eu" · Restaurar
+                </button>
+              )}
             </>
           )}
         </div>
@@ -248,7 +296,7 @@ export default function MinhasFotos() {
           </div>
         ) : (
           <div className="flex gap-3 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
-            {fotos.map(id => <MiniCard key={id} id={id} />)}
+            {fotos.map(id => <MiniCard key={id} id={id} onRejeitar={handleRejeitar} />)}
             <Link href="/resultado"
               className="flex-shrink-0 w-28 h-28 sm:w-32 sm:h-32 rounded-xl border-2 border-dashed border-[#2E7DD1]/35 flex flex-col items-center justify-center gap-1.5 text-[#2E7DD1] hover:bg-[#2E7DD1]/6 transition group">
               <ChevronRight size={22} className="group-hover:translate-x-0.5 transition-transform" />
