@@ -34,7 +34,7 @@ function normalizarFiltro(value?: string) {
 }
 
 const statusConfig: Record<string, { label: string; dot: string; bg: string }> = {
-  aberto:    { label: "Aberto",    dot: "bg-emerald-400", bg: "from-emerald-700 to-emerald-500" },
+  aberto:    { label: "Aberto",    dot: "bg-white", bg: "from-[#2E7DD1] to-[#7a3cff]" },
   privado:   { label: "Privado",   dot: "bg-amber-400",   bg: "from-amber-700 to-amber-500"     },
   encerrado: { label: "Encerrado", dot: "bg-slate-400",   bg: "from-slate-700 to-slate-500"     },
 };
