@@ -309,7 +309,10 @@ export default function EventoPage({ params }: { params: Promise<{ slug: string 
   }
 
   // Reset paginação ao mudar filtro ou fotos
-  useEffect(() => { setVisiveis(60); }, [filtroAtivo, fotos]);
+  useEffect(() => {
+    const id = window.setTimeout(() => setVisiveis(60), 0);
+    return () => window.clearTimeout(id);
+  }, [filtroAtivo, fotos]);
 
   // Sentinel — carrega mais ao chegar no fim
   useEffect(() => {
@@ -320,7 +323,7 @@ export default function EventoPage({ params }: { params: Promise<{ slug: string 
     }, { rootMargin: "400px" });
     obs.observe(el);
     return () => obs.disconnect();
-  }, [fotosFiltradas?.length]);
+  }, [fotos.length]);
 
   // Fotos filtradas conforme filtro ativo
   const fotosFiltradas = useMemo(() => {
