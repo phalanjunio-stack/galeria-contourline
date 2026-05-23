@@ -11,31 +11,42 @@ type Metrics = {
   shares: number;
 };
 
-const STORAGE_KEY = "event_card_metrics_v1";
 const EVENT_NAME = "event-card-metrics";
-
-function readAll(): Record<string, Metrics> {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}");
-  } catch {
-    return {};
-  }
-}
-
-function writeAll(data: Record<string, Metrics>) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-}
 
 function emptyMetrics(): Metrics {
   return { views: 0, likes: 0, shares: 0 };
 }
 
-export function bumpEventMetric(slug: string, metric: MetricKey) {
-  const data = readAll();
-  const atual = data[slug] ?? emptyMetrics();
-  data[slug] = { ...atual, [metric]: atual[metric] + 1 };
-  writeAll(data);
-  window.dispatchEvent(new CustomEvent(EVENT_NAME, { detail: { slug } }));
+function normalizeMetrics(value: unknown): Metrics {
+  if (!value || typeof value !== "object") return emptyMetrics();
+  const obj = value as Partial<Record<MetricKey, unknown>>;
+  return {
+    views: Number(obj.views ?? 0) || 0,
+    likes: Number(obj.likes ?? 0) || 0,
+    shares: Number(obj.shares ?? 0) || 0,
+  };
+}
+
+export async function bumpEventMetric(slug: string, metric: MetricKey) {
+  window.dispatchEvent(new CustomEvent(EVENT_NAME, { detail: { slug, optimistic: metric } }));
+
+  const res = await fetch("/api/eventos/metricas", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ slug, metric }),
+  });
+
+  if (!res.ok) return;
+  const data = normalizeMetrics(await res.json());
+  window.dispatchEvent(new CustomEvent(EVENT_NAME, { detail: { slug, metrics: data } }));
+}
+
+async function fetchMetrics(slug: string): Promise<Metrics> {
+  const res = await fetch(`/api/eventos/metricas?slug=${encodeURIComponent(slug)}`, {
+    cache: "no-store",
+  });
+  if (!res.ok) return emptyMetrics();
+  return normalizeMetrics(await res.json());
 }
 
 function fmt(n: number) {
@@ -52,25 +63,43 @@ export default function EventCardMetrics({ slug, compact = false }: Props) {
   const [metrics, setMetrics] = useState<Metrics>(() => emptyMetrics());
 
   useEffect(() => {
-    function carregar() {
-      setMetrics(readAll()[slug] ?? emptyMetrics());
+    let cancelado = false;
+
+    async function iniciar() {
+      const data = await fetchMetrics(slug);
+      if (!cancelado) setMetrics(data);
+
+      const viewedKey = `event_card_viewed_${slug}`;
+      if (!sessionStorage.getItem(viewedKey)) {
+        sessionStorage.setItem(viewedKey, "1");
+        void bumpEventMetric(slug, "views");
+      }
     }
 
-    carregar();
-
-    const viewedKey = `event_card_viewed_${slug}`;
-    if (!sessionStorage.getItem(viewedKey)) {
-      sessionStorage.setItem(viewedKey, "1");
-      bumpEventMetric(slug, "views");
-    }
+    void iniciar();
 
     function onMetric(event: Event) {
-      const detail = (event as CustomEvent<{ slug?: string }>).detail;
-      if (!detail?.slug || detail.slug === slug) carregar();
+      const detail = (event as CustomEvent<{ slug?: string; optimistic?: MetricKey; metrics?: Metrics }>).detail;
+      if (!detail?.slug || detail.slug !== slug) return;
+
+      if (detail.metrics) {
+        setMetrics(detail.metrics);
+        return;
+      }
+
+      if (detail.optimistic) {
+        setMetrics((current) => ({
+          ...current,
+          [detail.optimistic as MetricKey]: current[detail.optimistic as MetricKey] + 1,
+        }));
+      }
     }
 
     window.addEventListener(EVENT_NAME, onMetric);
-    return () => window.removeEventListener(EVENT_NAME, onMetric);
+    return () => {
+      cancelado = true;
+      window.removeEventListener(EVENT_NAME, onMetric);
+    };
   }, [slug]);
 
   const itemClass = compact

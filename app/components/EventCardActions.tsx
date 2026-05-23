@@ -15,7 +15,7 @@ export default function EventCardActions({ slug, nome }: Props) {
 
   function curtir() {
     setCurtido((v) => {
-      if (!v) bumpEventMetric(slug, "likes");
+      if (!v) void bumpEventMetric(slug, "likes");
       return !v;
     });
   }
@@ -32,7 +32,7 @@ export default function EventCardActions({ slug, nome }: Props) {
         setCopiado(true);
         window.setTimeout(() => setCopiado(false), 1800);
       }
-      bumpEventMetric(slug, "shares");
+      void bumpEventMetric(slug, "shares");
     } catch {
       // Usuario cancelou o compartilhamento nativo.
     }
