@@ -1,6 +1,6 @@
 "use client";
-import { useEffect, useState, useCallback } from "react";
-import { Filter, Calendar, Search, ScanFace, ChevronRight, X, Scan } from "lucide-react";
+import { useEffect, useMemo, useState, useCallback } from "react";
+import { Filter, Calendar, Search, ScanFace, ChevronRight, X, Scan, SlidersHorizontal } from "lucide-react";
 import Link from "next/link";
 import type { EventoItem } from "@/app/api/eventos/route";
 import {
@@ -25,6 +25,8 @@ const categorias = [
   "Outros",
 ];
 
+type OrdemEventos = "recentes" | "antigas" | "maisFotos" | "az";
+
 function normalizarFiltro(value?: string) {
   return (value ?? "")
     .normalize("NFD")
@@ -45,6 +47,7 @@ export default function EventosPage() {
   const [loading,  setLoading]  = useState(true);
   const [busca,    setBusca]    = useState("");
   const [categoria, setCategoria] = useState("Todos");
+  const [ordem, setOrdem] = useState<OrdemEventos>("recentes");
 
   // Banner "Encontramos você"
   const [matches,       setMatches]       = useState<MatchEvento[]>([]);
@@ -166,16 +169,38 @@ export default function EventosPage() {
     });
   }, [buscarMinhasFotos]);
 
-  const filtroBusca = normalizarFiltro(busca);
-  const filtroCategoria = normalizarFiltro(categoria);
-  const filtrados = eventos.filter((e) => {
+  const filtrados = useMemo(() => {
+    const filtroBusca = normalizarFiltro(busca);
+    const filtroCategoria = normalizarFiltro(categoria);
+    const resultado = eventos.filter((e) => {
     const bateBusca = normalizarFiltro(e.nome).includes(filtroBusca)
       || !!e.tags?.some((tag) => normalizarFiltro(tag).includes(filtroBusca));
     const bateCategoria = categoria === "Todos"
       || normalizarFiltro(e.categoria) === filtroCategoria
       || !!e.tags?.some((tag) => normalizarFiltro(tag) === filtroCategoria);
     return bateBusca && bateCategoria;
-  });
+    });
+    return [...resultado].sort((a, b) => {
+      if (ordem === "az") return a.nome.localeCompare(b.nome, "pt-BR");
+      if (ordem === "maisFotos") return (b.total_fotos ?? 0) - (a.total_fotos ?? 0);
+      const dataA = new Date(a.data || a.criado_em || 0).getTime();
+      const dataB = new Date(b.data || b.criado_em || 0).getTime();
+      return ordem === "antigas" ? dataA - dataB : dataB - dataA;
+    });
+  }, [eventos, busca, categoria, ordem]);
+
+  const eventosComDias = filtrados.filter((e) => (e.dias?.length ?? 0) > 1);
+  const eventosSimples = filtrados.filter((e) => (e.dias?.length ?? 0) <= 1);
+  const filtrosAtivos = busca.trim() !== "" || categoria !== "Todos" || ordem !== "recentes";
+
+  function totalCategoria(cat: string) {
+    if (cat === "Todos") return eventos.length;
+    const filtro = normalizarFiltro(cat);
+    return eventos.filter((e) =>
+      normalizarFiltro(e.categoria) === filtro
+      || !!e.tags?.some((tag) => normalizarFiltro(tag) === filtro)
+    ).length;
+  }
 
   const totalFotos = matches.reduce((s, m) => s + m.fotos.length, 0);
 
@@ -265,38 +290,64 @@ export default function EventosPage() {
         </div>
       )}
 
-      {/* Filtros */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 mb-8 flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Buscar evento..."
-            value={busca}
-            onChange={(e) => setBusca(e.target.value)}
-            className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 bg-[#EFF5FF] text-sm focus:outline-none focus:border-[#2E7DD1] transition"
-          />
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-gray-200 bg-[#EFF5FF] text-sm text-gray-600 cursor-pointer hover:border-[#2E7DD1] transition">
-            <Calendar size={15} className="text-[#2E7DD1]" /><span>Data</span>
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 mb-8">
+        <div className="grid gap-3 lg:grid-cols-[1fr_190px_190px_auto]">
+          <div className="relative">
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Buscar por nome, tag ou categoria..."
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              className="w-full pl-9 pr-4 py-3 rounded-xl border border-gray-200 bg-[#EFF5FF] text-sm focus:outline-none focus:border-[#2E7DD1] transition"
+            />
           </div>
-          <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-gray-200 bg-[#EFF5FF] text-sm text-gray-600 cursor-pointer hover:border-[#2E7DD1] transition">
-            <Filter size={15} className="text-[#2E7DD1]" /><span>Filtros</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Categorias */}
-      <div className="flex gap-2 overflow-x-auto pb-2 mb-8">
-        {categorias.map((cat) => (
-          <button key={cat}
-            onClick={() => setCategoria(cat)}
-            className={`px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap shrink-0 transition
-              ${categoria === cat ? "gradient-primary text-white shadow" : "bg-white border border-gray-200 text-[#1A4A80] hover:border-[#2E7DD1]"}`}>
-            {cat}
+          <label className="relative">
+            <Filter size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#2E7DD1]" />
+            <select
+              value={categoria}
+              onChange={(e) => setCategoria(e.target.value)}
+              className="w-full appearance-none pl-9 pr-8 py-3 rounded-xl border border-gray-200 bg-[#EFF5FF] text-sm font-semibold text-[#1A4A80] outline-none focus:border-[#2E7DD1]"
+            >
+              {categorias.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
+            </select>
+          </label>
+          <label className="relative">
+            <Calendar size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#2E7DD1]" />
+            <select
+              value={ordem}
+              onChange={(e) => setOrdem(e.target.value as OrdemEventos)}
+              className="w-full appearance-none pl-9 pr-8 py-3 rounded-xl border border-gray-200 bg-[#EFF5FF] text-sm font-semibold text-[#1A4A80] outline-none focus:border-[#2E7DD1]"
+            >
+              <option value="recentes">Mais recentes</option>
+              <option value="antigas">Mais antigos</option>
+              <option value="maisFotos">Mais fotos</option>
+              <option value="az">A-Z</option>
+            </select>
+          </label>
+          <button
+            type="button"
+            onClick={() => { setBusca(""); setCategoria("Todos"); setOrdem("recentes"); }}
+            disabled={!filtrosAtivos}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 px-4 py-3 text-sm font-bold text-[#1A4A80] transition hover:border-[#2E7DD1] hover:bg-[#EFF5FF] disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <SlidersHorizontal size={15} /> Limpar
           </button>
-        ))}
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-2">
+          {categorias.map((cat) => {
+            const total = totalCategoria(cat);
+            return (
+              <button key={cat}
+                onClick={() => setCategoria(cat)}
+                className={`px-3.5 py-2 rounded-full text-xs font-bold whitespace-nowrap transition
+                  ${categoria === cat ? "gradient-primary text-white shadow" : "bg-[#EFF5FF] border border-gray-200 text-[#1A4A80] hover:border-[#2E7DD1]"}`}>
+                {cat} <span className={categoria === cat ? "text-white/75" : "text-gray-400"}>{total}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Loading com skeleton */}
@@ -312,18 +363,43 @@ export default function EventosPage() {
       {/* Grid */}
       {!loading && filtrados.length > 0 && (
         <>
-          <p className="text-gray-500 text-sm mb-5">{filtrados.length} eventos encontrados</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-5">
-            {filtrados.map((e) => {
-              const encontrado = matches.some(m => m.evento.id === e.id);
-              const isMultiDia = (e.dias?.length ?? 0) > 1;
-
-              if (isMultiDia) {
-                return <MultiDayEventCard key={e.id} evento={e} slug={e.id} />;
-              }
-              return <SingleEventCard key={e.id} evento={e} slug={e.id} encontrado={encontrado} />;
-            })}
+          <div className="mb-5 flex items-end justify-between gap-3">
+            <p className="text-gray-500 text-sm">{filtrados.length} eventos encontrados</p>
+            {eventosComDias.length > 0 && (
+              <p className="text-xs font-semibold text-[#2E7DD1]">{eventosComDias.length} com programacao por dias</p>
+            )}
           </div>
+
+          {eventosComDias.length > 0 && (
+            <section className="mb-10">
+              <div className="mb-4">
+                <h2 className="text-lg font-black text-[#0D2B4E]">Eventos com varios dias</h2>
+                <p className="text-xs text-gray-500">Congressos, treinamentos e encontros com programacao separada por dia.</p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                {eventosComDias.map((e) => (
+                  <MultiDayEventCard key={e.id} evento={e} slug={e.id} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {eventosSimples.length > 0 && (
+            <section>
+              {eventosComDias.length > 0 && (
+                <div className="mb-4">
+                  <h2 className="text-lg font-black text-[#0D2B4E]">Outros eventos</h2>
+                  <p className="text-xs text-gray-500">Eventos com pasta unica ou um dia principal.</p>
+                </div>
+              )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-5">
+                {eventosSimples.map((e) => {
+                  const encontrado = matches.some(m => m.evento.id === e.id);
+                  return <SingleEventCard key={e.id} evento={e} slug={e.id} encontrado={encontrado} />;
+                })}
+              </div>
+            </section>
+          )}
         </>
       )}
     </div>
