@@ -207,7 +207,7 @@ export default function EventosPage() {
   return (
     <div className="max-w-6xl mx-auto px-4 lg:px-8 py-8">
       <div className="mb-8">
-        <h1 className="text-2xl lg:text-3xl font-bold text-[#0D2B4E] mb-1">Eventos</h1>
+        <h1 className="text-2xl lg:text-3xl font-semibold text-[#0D2B4E] mb-1">Eventos</h1>
         <p className="text-gray-500 text-sm">Encontre o evento e suas fotos</p>
       </div>
 
@@ -373,7 +373,7 @@ export default function EventosPage() {
           {eventosComDias.length > 0 && (
             <section className="mb-10">
               <div className="mb-4">
-                <h2 className="text-lg font-black text-[#0D2B4E]">Eventos com varios dias</h2>
+                <h2 className="text-lg font-semibold text-[#0D2B4E]">Eventos com varios dias</h2>
                 <p className="text-xs text-gray-500">Congressos, treinamentos e encontros com programacao separada por dia.</p>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
@@ -388,7 +388,7 @@ export default function EventosPage() {
             <section>
               {eventosComDias.length > 0 && (
                 <div className="mb-4">
-                  <h2 className="text-lg font-black text-[#0D2B4E]">Outros eventos</h2>
+                  <h2 className="text-lg font-semibold text-[#0D2B4E]">Outros eventos</h2>
                   <p className="text-xs text-gray-500">Eventos com pasta unica ou um dia principal.</p>
                 </div>
               )}
