@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Calendar, Camera, ChevronRight, FolderOpen, Layers, ScanFace } from "lucide-react";
 import type { EventoItem } from "@/app/api/eventos/route";
+import EventCardActions from "@/app/components/EventCardActions";
 
 type CapaPreview = {
   id: string;
@@ -104,13 +105,13 @@ export default function MultiDayEventCard({ evento, slug }: Props) {
   }, [capasDrive, capasIniciais]);
 
   return (
-    <article className="group relative overflow-hidden rounded-[1.35rem] bg-gradient-to-br from-[#2E7DD1] via-[#5578FF] to-[#8A3FFC] p-[1.5px] shadow-[0_16px_42px_rgba(13,43,78,0.13)] transition-all duration-300 hover:-translate-y-0.5 hover:from-[#8A3FFC] hover:via-[#2E7DD1] hover:to-[#00A3FF] hover:shadow-[0_22px_55px_rgba(79,70,229,0.20)]">
-      <div className="rounded-[1.25rem] bg-white p-3.5">
+    <article className="group relative overflow-hidden rounded-lg bg-gradient-to-br from-[#2E7DD1] via-[#5578FF] to-[#8A3FFC] p-[1.5px] shadow-[0_16px_42px_rgba(13,43,78,0.13)] transition-all duration-300 hover:-translate-y-0.5 hover:from-[#8A3FFC] hover:via-[#2E7DD1] hover:to-[#00A3FF] hover:shadow-[0_22px_55px_rgba(79,70,229,0.20)]">
+      <div className="rounded-[7px] bg-white p-3.5">
         <div className="mb-3 flex items-center justify-between gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-[#1E63FF] to-[#8A3FFC] px-3 py-1.5 text-xs font-extrabold text-white shadow-md shadow-blue-500/15">
+          <span className="inline-flex items-center gap-1.5 rounded-md bg-gradient-to-r from-[#1E63FF] to-[#8A3FFC] px-3 py-1.5 text-xs font-extrabold text-white shadow-md shadow-blue-500/15">
             <Layers size={13} /> {totalDias} dias
           </span>
-          <span className="rounded-xl bg-[#EFF6FF] px-2.5 py-1.5 text-[10px] font-bold text-[#2E7DD1]">
+          <span className="rounded-md bg-[#EFF6FF] px-2.5 py-1.5 text-[10px] font-bold text-[#2E7DD1]">
             Por dia
           </span>
         </div>
@@ -124,7 +125,7 @@ export default function MultiDayEventCard({ evento, slug }: Props) {
               <Link
                 key={`${capa?.id ?? "placeholder"}-${index}`}
                 href={dia ? `/eventos/${slug}?dia=${dia.id}` : `/eventos/${slug}`}
-                className="group/foto relative aspect-[5/4] overflow-hidden rounded-xl bg-gradient-to-br from-[#DCEBFF] to-[#F0E7FF] ring-1 ring-[#D7E6FA]"
+                className="group/foto relative aspect-[5/4] overflow-hidden rounded-md bg-gradient-to-br from-[#DCEBFF] to-[#F0E7FF] ring-1 ring-[#D7E6FA]"
               >
                 {capa ? (
                   <img
@@ -140,7 +141,7 @@ export default function MultiDayEventCard({ evento, slug }: Props) {
                 )}
 
                 <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#07182f]/78 via-[#07182f]/26 to-transparent px-2 pb-2 pt-8">
-                  <span className="mb-1 inline-flex rounded-full bg-white/95 px-2 py-0.5 text-[10px] font-extrabold text-[#185BAB] shadow-sm">
+                  <span className="mb-1 inline-flex rounded-md bg-white/95 px-2 py-0.5 text-[10px] font-extrabold text-[#185BAB] shadow-sm">
                     Dia {index + 1}
                   </span>
                   {dia && (
@@ -159,10 +160,11 @@ export default function MultiDayEventCard({ evento, slug }: Props) {
           })}
         </div>
 
-        <div className="mt-3">
+        <div className="mt-3 flex items-start justify-between gap-3">
           <h3 className="text-lg font-black leading-tight text-[#071C3A] line-clamp-2">
             {evento.nome}
           </h3>
+          <EventCardActions slug={slug} nome={evento.nome} />
         </div>
 
         <div className="mt-3 border-t border-[#DDE8F7] pt-3">
@@ -174,10 +176,10 @@ export default function MultiDayEventCard({ evento, slug }: Props) {
                 <Link
                   key={dia.id}
                   href={`/eventos/${slug}?dia=${dia.id}`}
-                  className="rounded-xl border border-[#DCE7F5] bg-[#FBFDFF] p-2 transition hover:border-[#2E7DD1]/45 hover:bg-[#F4F9FF]"
+                  className="rounded-md border border-[#DCE7F5] bg-[#FBFDFF] p-2 transition hover:border-[#2E7DD1]/45 hover:bg-[#F4F9FF]"
                 >
                   <div className="flex items-center gap-1.5">
-                    <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-gradient-to-br from-[#2E7DD1] to-[#8A3FFC] text-xs font-black text-white shadow-sm">
+                    <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-gradient-to-br from-[#2E7DD1] to-[#8A3FFC] text-xs font-black text-white shadow-sm">
                       {index + 1}
                     </span>
                     <div className="min-w-0">
@@ -185,7 +187,7 @@ export default function MultiDayEventCard({ evento, slug }: Props) {
                       <span className="block truncate text-[10px] text-[#6D7F98]">{fmtData(dia.data)}</span>
                     </div>
                   </div>
-                  <span className="mt-2 inline-flex max-w-full items-center gap-1 rounded-full bg-[#EFF6FF] px-2 py-1 text-[10px] font-bold text-[#2E7DD1]">
+                  <span className="mt-2 inline-flex max-w-full items-center gap-1 rounded-md bg-[#EFF6FF] px-2 py-1 text-[10px] font-bold text-[#2E7DD1]">
                     {fotosDia > 0 ? (
                       <>
                         <Camera size={10} /> {fotosDia.toLocaleString("pt-BR")}
@@ -205,7 +207,7 @@ export default function MultiDayEventCard({ evento, slug }: Props) {
         <div className="mt-3 grid grid-cols-2 gap-2">
           <Link
             href={`/eventos/${slug}`}
-            className="flex h-10 items-center justify-center gap-1.5 rounded-xl border border-[#BFD2EC] bg-white text-xs font-black text-[#0D2B4E] transition hover:bg-[#F4F8FF]"
+            className="flex h-10 items-center justify-center gap-1.5 rounded-md border border-[#BFD2EC] bg-white text-xs font-black text-[#0D2B4E] transition hover:bg-[#F4F8FF]"
           >
             <FolderOpen size={14} />
             Ver dias
@@ -213,7 +215,7 @@ export default function MultiDayEventCard({ evento, slug }: Props) {
           </Link>
           <Link
             href={`/eventos/${slug}?view=minhas`}
-            className="flex h-10 items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-[#1E63FF] to-[#8A3FFC] text-xs font-black text-white shadow-lg shadow-blue-600/20 transition hover:brightness-105"
+            className="flex h-10 items-center justify-center gap-1.5 rounded-md bg-gradient-to-r from-[#1E63FF] to-[#8A3FFC] text-xs font-black text-white shadow-lg shadow-blue-600/20 transition hover:brightness-105"
           >
             <ScanFace size={14} />
             Minhas fotos
