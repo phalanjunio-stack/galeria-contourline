@@ -422,6 +422,149 @@ html[data-theme="dark"] .tb-notif-row:hover    { background: rgba(91,164,229,0.1
 }
 .glow-card:hover::after { opacity: 0.4; }
 
+/* Card de evento com varios dias: light/dark controlado sem diagonais no card */
+.event-card-multi {
+  position: relative;
+  isolation: isolate;
+  background: #ffffff;
+  border-color: #d7e6fa;
+  color: #071c3a;
+}
+
+.event-card-multi::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 14px;
+  right: 14px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #2e7dd1, #7c3aed, transparent);
+  opacity: 0;
+  transform: translateX(-55%);
+  pointer-events: none;
+}
+
+.event-card-multi:hover {
+  border-color: rgba(124, 58, 237, 0.52);
+  box-shadow: 0 12px 34px rgba(46, 125, 209, 0.16);
+}
+
+.event-card-multi:hover::after {
+  opacity: 1;
+  animation: event-card-line 1.8s linear infinite;
+}
+
+.event-card-title {
+  color: #071c3a;
+}
+
+.event-card-muted {
+  color: #6d7f98;
+}
+
+.event-card-muted-chip {
+  background: #eff6ff;
+  color: #2e7dd1;
+}
+
+.event-card-photo-tile {
+  background: #eff5ff;
+  --tw-ring-color: #d7e6fa;
+}
+
+.event-card-separator {
+  border-color: #dde8f7;
+}
+
+.event-card-day-strip {
+  background: #ffffff;
+  border-color: #e5edf8;
+}
+
+.event-card-day-strip > :not([hidden]) ~ :not([hidden]) {
+  border-color: #e5edf8;
+}
+
+.event-card-day-link:hover {
+  background: #f4f9ff;
+}
+
+.event-card-secondary-button {
+  background: #ffffff;
+  border-color: #bfd2ec;
+  color: #0d2b4e;
+}
+
+.event-card-secondary-button:hover {
+  background: #f4f8ff;
+}
+
+html[data-theme="dark"] .event-card-multi {
+  background: #102a44;
+  border-color: #3b5b82;
+  color: #ffffff;
+}
+
+html[data-theme="dark"] .event-card-multi:hover {
+  border-color: rgba(140, 195, 255, 0.55);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.34);
+}
+
+html[data-theme="dark"] .event-card-title {
+  color: #ffffff;
+}
+
+html[data-theme="dark"] .event-card-muted {
+  color: rgba(255, 255, 255, 0.62);
+}
+
+html[data-theme="dark"] .event-card-muted-chip {
+  background: rgba(255, 255, 255, 0.10);
+  color: #9bcbff;
+}
+
+html[data-theme="dark"] .event-card-photo-tile {
+  background: rgba(255, 255, 255, 0.05);
+  --tw-ring-color: rgba(255, 255, 255, 0.15);
+}
+
+html[data-theme="dark"] .event-card-separator {
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+html[data-theme="dark"] .event-card-day-strip {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+html[data-theme="dark"] .event-card-day-strip > :not([hidden]) ~ :not([hidden]) {
+  border-color: rgba(255, 255, 255, 0.10);
+}
+
+html[data-theme="dark"] .event-card-day-link:hover {
+  background: rgba(255, 255, 255, 0.10);
+}
+
+html[data-theme="dark"] .event-card-secondary-button {
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.20);
+  color: #ffffff;
+}
+
+html[data-theme="dark"] .event-card-secondary-button:hover {
+  background: rgba(255, 255, 255, 0.10);
+}
+
+@keyframes event-card-line {
+  to { transform: translateX(55%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .event-card-multi:hover::after {
+    animation: none;
+  }
+}
+
 /* ── Dim overlay (escurece o fundo ao abrir modais) ─────────────────────── */
 .page-dim {
   position: fixed;

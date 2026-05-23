@@ -93,12 +93,12 @@ export default function MultiDayEventCard({ evento, slug }: Props) {
   }, [capasDrive, capasIniciais]);
 
   return (
-    <article className="overflow-hidden rounded-xl border border-[#D7E6FA] bg-white p-3.5 shadow-sm transition hover:-translate-y-0.5 hover:border-[#7C3AED]/50 hover:shadow-[0_10px_30px_rgba(46,125,209,0.16)] dark:border-[#3B5B82] dark:bg-[#102A44] dark:hover:border-[#8CC3FF]/50">
+    <article className="event-card-multi overflow-hidden rounded-xl border p-3.5 shadow-sm transition hover:-translate-y-0.5">
       <div className="mb-3 flex items-center justify-between gap-2">
         <span className="inline-flex items-center gap-1.5 rounded-md bg-gradient-to-r from-[#2E7DD1] to-[#7C3AED] px-3 py-1.5 text-xs font-medium text-white">
           <Layers size={13} /> {totalDias} dias
         </span>
-        <span className="rounded-md bg-[#EFF6FF] px-2.5 py-1.5 text-[10px] font-medium text-[#2E7DD1] dark:bg-white/10 dark:text-[#9BCBFF]">
+        <span className="event-card-muted-chip rounded-md px-2.5 py-1.5 text-[10px] font-medium">
           Por dia
         </span>
       </div>
@@ -112,7 +112,7 @@ export default function MultiDayEventCard({ evento, slug }: Props) {
             <Link
               key={`${capa?.id ?? "placeholder"}-${index}`}
               href={dia ? `/eventos/${slug}?dia=${dia.id}` : `/eventos/${slug}`}
-                className="group/foto relative aspect-[4/5] overflow-hidden rounded-md bg-[#EFF5FF] ring-1 ring-[#D7E6FA] dark:bg-white/5 dark:ring-white/15"
+              className="group/foto event-card-photo-tile relative aspect-[4/5] overflow-hidden rounded-md ring-1"
             >
               {capa ? (
                 <img
@@ -154,36 +154,36 @@ export default function MultiDayEventCard({ evento, slug }: Props) {
       </div>
 
       <div className="mt-3 flex items-start justify-between gap-3">
-        <h3 className="line-clamp-2 text-lg font-semibold leading-tight text-[#071C3A] dark:text-white">
+        <h3 className="event-card-title line-clamp-2 text-lg font-semibold leading-tight">
           {evento.nome}
         </h3>
         <EventCardActions slug={slug} nome={evento.nome} />
       </div>
 
-        <div className="mt-3 border-t border-[#DDE8F7] pt-3 dark:border-white/15">
-          <div className="grid grid-cols-3 divide-x divide-[#E5EDF8] rounded-md border border-[#E5EDF8] bg-white dark:divide-white/10 dark:border-white/12 dark:bg-transparent">
+        <div className="event-card-separator mt-3 border-t pt-3">
+          <div className="event-card-day-strip grid grid-cols-3 divide-x rounded-md border">
             {dias.slice(0, 3).map((dia, index) => {
               const fotosDia = dia.total_fotos ?? 0;
               return (
                 <Link
                   key={dia.id}
                   href={`/eventos/${slug}?dia=${dia.id}`}
-                  className="p-2 transition hover:bg-[#F4F9FF] dark:hover:bg-white/10"
+                  className="event-card-day-link p-2 transition"
                 >
                   <div className="flex items-center gap-1.5">
-                  <span className="grid h-6 w-6 shrink-0 place-items-center rounded-md bg-[#EEF4FF] text-xs font-medium text-[#2E7DD1] dark:bg-white/10 dark:text-[#9BCBFF]">
+                  <span className="grid h-6 w-6 shrink-0 place-items-center rounded-md bg-gradient-to-br from-[#2E7DD1] to-[#7C3AED] text-xs font-medium text-white shadow-sm">
                     {index + 1}
                   </span>
                   <div className="min-w-0">
-                    <strong className="block truncate text-xs font-medium text-[#0D2B4E] dark:text-white">
+                    <strong className="event-card-title block truncate text-xs font-medium">
                       Dia {index + 1}
                     </strong>
-                    <span className="block truncate text-[10px] font-normal text-[#6D7F98] dark:text-white/60">
+                    <span className="event-card-muted block truncate text-[10px] font-normal">
                       {fmtData(dia.data)}
                     </span>
                   </div>
                 </div>
-                <span className="mt-2 inline-flex max-w-full items-center gap-1 text-[10px] font-normal text-[#2E7DD1] dark:text-[#9BCBFF]">
+                <span className="mt-2 inline-flex max-w-full items-center gap-1 text-[10px] font-normal text-[#2E7DD1]">
                   {fotosDia > 0 ? (
                     <>
                       <Camera size={10} /> {fotosDia.toLocaleString("pt-BR")}
@@ -203,7 +203,7 @@ export default function MultiDayEventCard({ evento, slug }: Props) {
       <div className="mt-3 grid grid-cols-2 gap-2">
         <Link
           href={`/eventos/${slug}`}
-          className="flex h-10 items-center justify-center gap-1.5 rounded-md border border-[#BFD2EC] bg-white text-xs font-medium text-[#0D2B4E] transition hover:bg-[#F4F8FF] dark:border-white/20 dark:bg-transparent dark:text-white dark:hover:bg-white/10"
+          className="event-card-secondary-button flex h-10 items-center justify-center gap-1.5 rounded-md border text-xs font-medium transition"
         >
           <FolderOpen size={14} />
           Ver dias
