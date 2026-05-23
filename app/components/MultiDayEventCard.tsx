@@ -1,13 +1,53 @@
 "use client";
+
 import Link from "next/link";
-import { Calendar, MapPin, Camera, Layers, ChevronRight, ScanFace } from "lucide-react";
+import {
+  Calendar,
+  Camera,
+  ChevronRight,
+  Clock3,
+  FolderOpen,
+  Layers,
+  ScanFace,
+} from "lucide-react";
 import type { EventoItem } from "@/app/api/eventos/route";
+
+type CapaPreview = {
+  id: string;
+  position: string;
+  alt: string;
+};
 
 function fmtData(iso: string) {
   if (!iso) return "";
   try {
     return new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
-  } catch { return iso; }
+  } catch {
+    return iso;
+  }
+}
+
+function statusInfo(status?: string) {
+  const normalizado = (status ?? "aberto").toLowerCase();
+
+  if (normalizado.includes("encerr") || normalizado.includes("fech")) {
+    return {
+      label: "Encerrado",
+      className: "bg-gray-100 text-gray-600 border-gray-200 dark:bg-white/10 dark:text-gray-300 dark:border-white/10",
+    };
+  }
+
+  if (normalizado.includes("priv")) {
+    return {
+      label: "Privado",
+      className: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-200 dark:border-amber-400/20",
+    };
+  }
+
+  return {
+    label: "Aberto",
+    className: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-400/10 dark:text-emerald-200 dark:border-emerald-300/20",
+  };
 }
 
 interface Props {
@@ -19,75 +59,147 @@ export default function MultiDayEventCard({ evento, slug }: Props) {
   const dias = evento.dias ?? [];
   const totalDias = dias.length;
   const totalFotos = dias.reduce((s, d) => s + (d.total_fotos ?? 0), 0) || evento.total_fotos;
+  const status = statusInfo(evento.status);
+  const fallback: CapaPreview | null = evento.capa_id
+    ? {
+        id: evento.capa_id,
+        position: evento.capa_position ?? "center",
+        alt: evento.nome,
+      }
+    : null;
+
+  const capas: Array<CapaPreview | null> = dias.slice(0, 3).map((dia) => {
+    if (dia.capa_id) {
+      return {
+        id: dia.capa_id,
+        position: dia.capa_position ?? "center",
+        alt: dia.titulo || evento.nome,
+      };
+    }
+
+    return fallback;
+  });
+
+  while (capas.length < 3) capas.push(fallback);
 
   return (
-    <article className="group relative bg-white dark:bg-[#0a1a2f]/80 border border-[#2E7DD1]/15 dark:border-[#5BA4E5]/15 rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5">
-      {/* Capa clicável */}
-      <Link href={`/eventos/${slug}`} className="block relative aspect-[4/3] bg-[#07182f] overflow-hidden">
-        {evento.capa_id ? (
-          <img src={`/api/thumb?id=${evento.capa_id}&sz=600`} alt={evento.nome}
-            style={{ objectPosition: evento.capa_position ?? "center" }}
-            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-        ) : (
-          <div className="absolute inset-0 grid grid-cols-2 grid-rows-2 gap-1 p-1">
-            {[0, 1, 2, 3].map(i => (
-              <div key={i} className="rounded-md bg-gradient-to-br from-[#2E7DD1]/70 to-[#7a3cff]/50" />
-            ))}
-          </div>
-        )}
-        <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-white via-white/72 to-transparent dark:from-[#0a1a2f] dark:via-[#0a1a2f]/72" />
-        <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#2E7DD1]/18 via-[#7a3cff]/10 to-transparent" />
-        <span className="absolute top-2.5 left-2.5 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gradient-to-r from-[#2E7DD1] to-[#7a3cff] text-white text-[11px] font-bold shadow-md">
-          <Layers size={11} /> {totalDias} dias
+    <article className="group rounded-[1.35rem] border border-[#B8D5F8] bg-white p-4 shadow-[0_18px_45px_rgba(13,43,78,0.10)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_24px_60px_rgba(13,43,78,0.16)] dark:border-white/10 dark:bg-[#07182f]">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-[#1E63FF] to-[#8A3FFC] px-3 py-1.5 text-xs font-extrabold text-white shadow-md">
+          <Layers size={13} /> {totalDias} dias
         </span>
-      </Link>
 
-      <div className="relative -mt-10 p-4 pt-0 space-y-3">
-        <h3 className="font-bold text-[#0D2B4E] dark:text-white text-base leading-tight line-clamp-2">
+        <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-extrabold ${status.className}`}>
+          <span className="h-2 w-2 rounded-full bg-current" />
+          {status.label}
+        </span>
+      </div>
+
+      <div className="grid grid-cols-3 gap-2">
+        {capas.map((capa, index) => (
+          <Link
+            key={`${capa?.id ?? "placeholder"}-${index}`}
+            href={dias[index] ? `/eventos/${slug}?dia=${dias[index].id}` : `/eventos/${slug}`}
+            className="relative aspect-[4/3] overflow-hidden rounded-xl bg-gradient-to-br from-[#DCEBFF] to-[#F0E7FF]"
+          >
+            {capa ? (
+              <img
+                src={`/api/thumb?id=${capa.id}&sz=640`}
+                alt={capa.alt}
+                style={{ objectPosition: capa.position }}
+                className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+              />
+            ) : (
+              <div className="absolute inset-0 grid place-items-center text-[#2E7DD1]/55">
+                <Camera size={24} />
+              </div>
+            )}
+            <div className="absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-[#07182f]/45 to-transparent" />
+            {dias[index] && (
+              <span className="absolute bottom-2 left-2 rounded-full bg-white/92 px-2 py-0.5 text-[10px] font-extrabold text-[#185BAB] shadow-sm">
+                Dia {index + 1}
+              </span>
+            )}
+          </Link>
+        ))}
+      </div>
+
+      <div className="mt-4">
+        <h3 className="text-xl font-black leading-tight text-[#071C3A] line-clamp-2 dark:text-white">
           {evento.nome}
         </h3>
 
-        <div className="space-y-1.5 text-xs text-gray-500 dark:text-gray-400">
-          <div className="flex items-center gap-1.5">
-            <Calendar size={12} />
-            <span>{fmtData(evento.data)}{evento.data_fim ? ` a ${fmtData(evento.data_fim)}` : ""}</span>
-          </div>
-          {evento.local && (
-            <div className="flex items-center gap-1.5">
-              <MapPin size={12} />
-              <span className="line-clamp-1">{evento.local}</span>
-            </div>
-          )}
-          <div className="flex items-center gap-1.5">
-            <Camera size={12} />
-            <span>{totalFotos.toLocaleString("pt-BR")} fotos</span>
-          </div>
+        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-[#5F708A] dark:text-gray-300">
+          <span className="inline-flex items-center gap-1.5">
+            <Calendar size={15} />
+            {fmtData(evento.data)}{evento.data_fim ? ` a ${fmtData(evento.data_fim)}` : ""}
+          </span>
+          <span className="hidden h-4 w-px bg-[#D7E2F0] sm:block dark:bg-white/10" />
+          <span className="inline-flex items-center gap-1.5">
+            <Camera size={15} />
+            {totalFotos.toLocaleString("pt-BR")} fotos
+          </span>
+        </div>
+      </div>
+
+      <div className="mt-4 border-t border-[#DDE8F7] pt-4 dark:border-white/10">
+        <div className="mb-3 flex items-center gap-2 text-sm font-black text-[#071C3A] dark:text-white">
+          <Calendar size={16} className="text-[#1E63FF]" />
+          Dias do evento
         </div>
 
-        {/* Mini timeline */}
-        <div className="grid grid-cols-3 gap-1.5 -mx-1 border-y border-gray-100 dark:border-white/5 py-2.5">
-          {dias.slice(0, 3).map((d, i) => (
-            <Link key={d.id} href={`/eventos/${slug}?dia=${d.id}`}
-              className="text-[10px] text-center hover:bg-[#EFF5FF] dark:hover:bg-white/5 rounded-md py-1 transition">
-              <strong className="block text-[#0D2B4E] dark:text-white text-[11px]">Dia {i + 1}</strong>
-              <span className="text-gray-400">{fmtData(d.data)}</span>
-              <span className="block text-[9px] mt-0.5 text-[#2E7DD1] dark:text-[#5BA4E5] font-semibold">
-                {(d.total_fotos ?? 0).toLocaleString("pt-BR")} fotos
-              </span>
-            </Link>
-          ))}
-        </div>
+        <div className="grid grid-cols-3 gap-2">
+          {dias.slice(0, 3).map((dia, index) => {
+            const fotosDia = dia.total_fotos ?? 0;
 
-        <div className="grid grid-cols-2 gap-2">
-          <Link href={`/eventos/${slug}`}
-            className="h-10 rounded-xl border border-gray-200 dark:border-white/10 text-[#0D2B4E] dark:text-white text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-gray-50 dark:hover:bg-white/5 transition">
-            Ver evento <ChevronRight size={12} />
-          </Link>
-          <Link href={`/eventos/${slug}?view=minhas`}
-            className="h-10 rounded-xl bg-gradient-to-r from-[#2E7DD1] to-[#7a3cff] text-white text-xs font-bold flex items-center justify-center gap-1.5 hover:opacity-90 transition shadow">
-            <ScanFace size={12} /> Minhas fotos
-          </Link>
+            return (
+              <Link
+                key={dia.id}
+                href={`/eventos/${slug}?dia=${dia.id}`}
+                className="rounded-xl border border-[#DCE7F5] bg-[#F8FBFF] p-2.5 transition hover:border-[#2E7DD1]/45 hover:bg-[#EFF6FF] dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-gradient-to-br from-[#2E7DD1] to-[#8A3FFC] text-sm font-black text-white shadow-sm">
+                    {index + 1}
+                  </span>
+                  <div className="min-w-0">
+                    <strong className="block truncate text-sm text-[#0D2B4E] dark:text-white">Dia {index + 1}</strong>
+                    <span className="block truncate text-[11px] text-[#6D7F98] dark:text-gray-400">{fmtData(dia.data)}</span>
+                  </div>
+                </div>
+                <span className="mt-2 inline-flex max-w-full items-center gap-1 rounded-full bg-white px-2 py-1 text-[10px] font-bold text-[#2E7DD1] shadow-sm dark:bg-[#07182f] dark:text-[#8CC3FF]">
+                  {fotosDia > 0 ? (
+                    <>
+                      <Camera size={10} /> {fotosDia.toLocaleString("pt-BR")} fotos
+                    </>
+                  ) : (
+                    <>
+                      <Clock3 size={10} /> Aguardando
+                    </>
+                  )}
+                </span>
+              </Link>
+            );
+          })}
         </div>
+      </div>
+
+      <div className="mt-4 grid grid-cols-2 gap-3">
+        <Link
+          href={`/eventos/${slug}`}
+          className="flex h-12 items-center justify-center gap-2 rounded-xl border border-[#BFD2EC] bg-white text-sm font-black text-[#0D2B4E] transition hover:bg-[#F4F8FF] dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:bg-white/10"
+        >
+          <FolderOpen size={17} />
+          Ver dias
+          <ChevronRight size={15} />
+        </Link>
+        <Link
+          href={`/eventos/${slug}?view=minhas`}
+          className="flex h-12 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#1E63FF] to-[#8A3FFC] text-sm font-black text-white shadow-lg shadow-blue-600/20 transition hover:brightness-105"
+        >
+          <ScanFace size={17} />
+          Minhas fotos
+        </Link>
       </div>
     </article>
   );
