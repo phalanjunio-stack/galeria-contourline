@@ -45,10 +45,10 @@ export default function EventCardActions({ slug, nome }: Props) {
         onClick={curtir}
         title={curtido ? "Curtido" : "Curtir evento"}
         aria-label={curtido ? "Curtido" : "Curtir evento"}
-        className={`grid h-8 w-8 place-items-center rounded-md border text-xs transition ${
+        className={`grid h-7 w-7 place-items-center rounded-md text-xs transition ${
           curtido
-            ? "border-red-200 bg-red-50 text-red-600"
-            : "border-[#D6E4F5] bg-white text-[#2E7DD1] hover:border-[#2E7DD1] hover:bg-[#EFF6FF] dark:border-white/20 dark:bg-white/8 dark:text-[#8CC3FF] dark:hover:bg-white/15"
+            ? "text-red-600"
+            : "text-[#2E7DD1] hover:bg-[#EFF6FF] dark:text-[#8CC3FF] dark:hover:bg-white/10"
         }`}
       >
         <Heart size={14} fill={curtido ? "currentColor" : "none"} />
@@ -58,7 +58,7 @@ export default function EventCardActions({ slug, nome }: Props) {
         href={`/eventos/${slug}#comentarios`}
         title="Comentar"
         aria-label="Comentar"
-        className="grid h-8 w-8 place-items-center rounded-md border border-[#D6E4F5] bg-white text-[#2E7DD1] transition hover:border-[#2E7DD1] hover:bg-[#EFF6FF] dark:border-white/20 dark:bg-white/8 dark:text-[#8CC3FF] dark:hover:bg-white/15"
+        className="grid h-7 w-7 place-items-center rounded-md text-[#2E7DD1] transition hover:bg-[#EFF6FF] dark:text-[#8CC3FF] dark:hover:bg-white/10"
       >
         <MessageCircle size={14} />
       </a>
@@ -68,7 +68,7 @@ export default function EventCardActions({ slug, nome }: Props) {
         onClick={compartilhar}
         title={copiado ? "Link copiado" : "Compartilhar"}
         aria-label={copiado ? "Link copiado" : "Compartilhar"}
-        className="grid h-8 w-8 place-items-center rounded-md border border-[#D6E4F5] bg-white text-[#2E7DD1] transition hover:border-[#2E7DD1] hover:bg-[#EFF6FF] dark:border-white/20 dark:bg-white/8 dark:text-[#8CC3FF] dark:hover:bg-white/15"
+        className="grid h-7 w-7 place-items-center rounded-md text-[#2E7DD1] transition hover:bg-[#EFF6FF] dark:text-[#8CC3FF] dark:hover:bg-white/10"
       >
         <Share2 size={14} />
       </button>

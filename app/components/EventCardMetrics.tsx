@@ -103,12 +103,12 @@ export default function EventCardMetrics({ slug, compact = false }: Props) {
   }, [slug]);
 
   const itemClass = compact
-    ? "gap-0.5 px-1.5 py-0.5 text-[9px]"
+    ? "gap-0.5 px-1 py-0.5 text-[9px]"
     : "gap-1 px-2 py-1 text-[10px]";
   const iconSize = compact ? 10 : 12;
 
   return (
-    <div className="inline-flex items-center gap-1 rounded-md bg-[#07182f]/74 p-1 text-white shadow backdrop-blur-sm">
+    <div className="inline-flex items-center gap-1 rounded-md bg-black/45 p-0.5 text-white backdrop-blur-sm">
       <span className={`inline-flex items-center font-bold ${itemClass}`}>
         <Eye size={iconSize} /> {fmt(metrics.views)}
       </span>
