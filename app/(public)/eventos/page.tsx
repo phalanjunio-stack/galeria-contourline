@@ -376,7 +376,7 @@ export default function EventosPage() {
                 <h2 className="text-lg font-black text-[#0D2B4E]">Eventos com varios dias</h2>
                 <p className="text-xs text-gray-500">Congressos, treinamentos e encontros com programacao separada por dia.</p>
               </div>
-              <div className="grid grid-cols-1 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
                 {eventosComDias.map((e) => (
                   <MultiDayEventCard key={e.id} evento={e} slug={e.id} />
                 ))}

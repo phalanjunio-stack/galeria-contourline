@@ -2,14 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import {
-  Calendar,
-  Camera,
-  ChevronRight,
-  FolderOpen,
-  Layers,
-  ScanFace,
-} from "lucide-react";
+import { Calendar, Camera, ChevronRight, FolderOpen, Layers, ScanFace } from "lucide-react";
 import type { EventoItem } from "@/app/api/eventos/route";
 
 type CapaPreview = {
@@ -27,29 +20,6 @@ function fmtData(iso: string) {
   }
 }
 
-function statusInfo(status?: string) {
-  const normalizado = (status ?? "aberto").toLowerCase();
-
-  if (normalizado.includes("encerr") || normalizado.includes("fech")) {
-    return {
-      label: "Encerrado",
-      className: "bg-gray-100 text-gray-600 border-gray-200 dark:bg-white/10 dark:text-gray-300 dark:border-white/10",
-    };
-  }
-
-  if (normalizado.includes("priv")) {
-    return {
-      label: "Privado",
-      className: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-200 dark:border-amber-400/20",
-    };
-  }
-
-  return {
-    label: "Aberto",
-    className: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-400/10 dark:text-emerald-200 dark:border-emerald-300/20",
-  };
-}
-
 interface Props {
   evento: EventoItem;
   slug: string;
@@ -58,8 +28,6 @@ interface Props {
 export default function MultiDayEventCard({ evento, slug }: Props) {
   const dias = useMemo(() => evento.dias ?? [], [evento.dias]);
   const totalDias = dias.length;
-  const totalFotos = dias.reduce((s, d) => s + (d.total_fotos ?? 0), 0) || evento.total_fotos;
-  const status = statusInfo(evento.status);
   const fallback: CapaPreview | null = useMemo(() => (
     evento.capa_id
       ? {
@@ -71,7 +39,7 @@ export default function MultiDayEventCard({ evento, slug }: Props) {
   ), [evento.capa_id, evento.capa_position, evento.nome]);
 
   const capasIniciais: Array<CapaPreview | null> = useMemo(() => {
-    const previews: Array<CapaPreview | null> = dias.slice(0, 3).map((dia) => {
+    const previews = dias.slice(0, 3).map((dia) => {
       if (dia.capa_id) {
         return {
           id: dia.capa_id,
@@ -136,122 +104,121 @@ export default function MultiDayEventCard({ evento, slug }: Props) {
   }, [capasDrive, capasIniciais]);
 
   return (
-    <article className="group rounded-[1.75rem] border border-[#D4E3F7] bg-white p-5 shadow-[0_22px_70px_rgba(13,43,78,0.12)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_30px_85px_rgba(13,43,78,0.18)] sm:p-6">
-      <div className="mb-5 flex items-center justify-between gap-3">
-        <span className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-[#1E63FF] to-[#8A3FFC] px-4 py-2 text-sm font-extrabold text-white shadow-lg shadow-blue-500/20">
-          <Layers size={16} /> {totalDias} dias
-        </span>
-
-        <span className={`inline-flex items-center gap-2 rounded-2xl border px-4 py-2 text-sm font-extrabold ${status.className}`}>
-          <span className="h-2 w-2 rounded-full bg-current" />
-          {status.label}
-        </span>
-      </div>
-
-      <div className="grid grid-cols-3 gap-3">
-        {capas.map((capa, index) => (
-          <Link
-            key={`${capa?.id ?? "placeholder"}-${index}`}
-            href={dias[index] ? `/eventos/${slug}?dia=${dias[index].id}` : `/eventos/${slug}`}
-            className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-gradient-to-br from-[#DCEBFF] to-[#F0E7FF]"
-          >
-            {capa ? (
-              <img
-                src={`/api/thumb?id=${capa.id}&sz=640`}
-                alt={capa.alt}
-                style={{ objectPosition: capa.position }}
-                className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-              />
-            ) : (
-              <div className="absolute inset-0 grid place-items-center bg-gradient-to-br from-[#EAF3FF] to-[#F5EDFF] text-[#2E7DD1]/55">
-                <Camera size={30} />
-              </div>
-            )}
-            {dias[index] && (
-              <span className="absolute bottom-3 left-3 rounded-full bg-white/95 px-3 py-1 text-xs font-extrabold text-[#185BAB] shadow-sm">
-                Dia {index + 1}
-              </span>
-            )}
-          </Link>
-        ))}
-      </div>
-
-      <div className="mt-4">
-        <h3 className="max-w-3xl text-2xl font-black leading-tight text-[#071C3A] line-clamp-2">
-          {evento.nome}
-        </h3>
-
-        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-base text-[#5F708A]">
-          <span className="inline-flex items-center gap-1.5">
-            <Calendar size={18} />
-            {fmtData(evento.data)}{evento.data_fim ? ` a ${fmtData(evento.data_fim)}` : ""}
+    <article className="group relative overflow-hidden rounded-[1.35rem] bg-gradient-to-br from-[#2E7DD1] via-[#5578FF] to-[#8A3FFC] p-[1.5px] shadow-[0_16px_42px_rgba(13,43,78,0.13)] transition-all duration-300 hover:-translate-y-0.5 hover:from-[#8A3FFC] hover:via-[#2E7DD1] hover:to-[#00A3FF] hover:shadow-[0_22px_55px_rgba(79,70,229,0.20)]">
+      <div className="rounded-[1.25rem] bg-white p-3.5">
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-[#1E63FF] to-[#8A3FFC] px-3 py-1.5 text-xs font-extrabold text-white shadow-md shadow-blue-500/15">
+            <Layers size={13} /> {totalDias} dias
           </span>
-          <span className="hidden h-5 w-px bg-[#D7E2F0] sm:block" />
-          <span className="inline-flex items-center gap-1.5">
-            <Camera size={18} />
-            {totalFotos.toLocaleString("pt-BR")} fotos
+          <span className="rounded-xl bg-[#EFF6FF] px-2.5 py-1.5 text-[10px] font-bold text-[#2E7DD1]">
+            Por dia
           </span>
         </div>
-      </div>
 
-      <div className="mt-5 border-t border-[#DDE8F7] pt-5">
-        <div className="mb-3 flex items-center gap-2 text-base font-black text-[#071C3A]">
-          <Calendar size={18} className="text-[#1E63FF]" />
-          Dias do evento
-        </div>
-
-        <div className="grid grid-cols-3 gap-3">
-          {dias.slice(0, 3).map((dia, index) => {
-            const fotosDia = dia.total_fotos ?? 0;
+        <div className="grid grid-cols-3 gap-2">
+          {capas.map((capa, index) => {
+            const dia = dias[index];
+            const fotosDia = dia?.total_fotos ?? 0;
 
             return (
               <Link
-                key={dia.id}
-                href={`/eventos/${slug}?dia=${dia.id}`}
-                className="rounded-2xl border border-[#DCE7F5] bg-[#FBFDFF] p-4 transition hover:border-[#2E7DD1]/45 hover:bg-[#F4F9FF]"
+                key={`${capa?.id ?? "placeholder"}-${index}`}
+                href={dia ? `/eventos/${slug}?dia=${dia.id}` : `/eventos/${slug}`}
+                className="group/foto relative aspect-[5/4] overflow-hidden rounded-xl bg-gradient-to-br from-[#DCEBFF] to-[#F0E7FF] ring-1 ring-[#D7E6FA]"
               >
-                <div className="flex items-center gap-2">
-                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-gradient-to-br from-[#2E7DD1] to-[#8A3FFC] text-base font-black text-white shadow-sm">
-                    {index + 1}
-                  </span>
-                  <div className="min-w-0">
-                    <strong className="block truncate text-base text-[#0D2B4E]">Dia {index + 1}</strong>
-                    <span className="block truncate text-sm text-[#6D7F98]">{fmtData(dia.data)}</span>
+                {capa ? (
+                  <img
+                    src={`/api/thumb?id=${capa.id}&sz=640`}
+                    alt={capa.alt}
+                    style={{ objectPosition: capa.position }}
+                    className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover/foto:scale-105"
+                  />
+                ) : (
+                  <div className="absolute inset-0 grid place-items-center bg-gradient-to-br from-[#EAF3FF] to-[#F5EDFF] text-[#2E7DD1]/55">
+                    <Camera size={22} />
                   </div>
-                </div>
-                <span className="mt-3 inline-flex max-w-full items-center gap-1 rounded-full bg-[#EFF6FF] px-3 py-1.5 text-xs font-bold text-[#2E7DD1]">
-                  {fotosDia > 0 ? (
-                    <>
-                      <Camera size={12} /> {fotosDia.toLocaleString("pt-BR")} fotos
-                    </>
-                  ) : (
-                    <>
-                      <ChevronRight size={12} /> Ver dia
-                    </>
+                )}
+
+                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#07182f]/78 via-[#07182f]/26 to-transparent px-2 pb-2 pt-8">
+                  <span className="mb-1 inline-flex rounded-full bg-white/95 px-2 py-0.5 text-[10px] font-extrabold text-[#185BAB] shadow-sm">
+                    Dia {index + 1}
+                  </span>
+                  {dia && (
+                    <div className="space-y-0.5 text-[10px] font-semibold text-white/90">
+                      <span className="flex items-center gap-1">
+                        <Calendar size={10} /> {fmtData(dia.data)}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Camera size={10} /> {fotosDia.toLocaleString("pt-BR")} fotos
+                      </span>
+                    </div>
                   )}
-                </span>
+                </div>
               </Link>
             );
           })}
         </div>
-      </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-3">
-        <Link
-          href={`/eventos/${slug}`}
-          className="flex h-14 items-center justify-center gap-2 rounded-2xl border border-[#BFD2EC] bg-white text-base font-black text-[#0D2B4E] transition hover:bg-[#F4F8FF]"
-        >
-          <FolderOpen size={17} />
-          Ver dias do evento
-          <ChevronRight size={15} />
-        </Link>
-        <Link
-          href={`/eventos/${slug}?view=minhas`}
-          className="flex h-14 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#1E63FF] to-[#8A3FFC] text-base font-black text-white shadow-lg shadow-blue-600/20 transition hover:brightness-105"
-        >
-          <ScanFace size={17} />
-          Buscar minhas fotos
-        </Link>
+        <div className="mt-3">
+          <h3 className="text-lg font-black leading-tight text-[#071C3A] line-clamp-2">
+            {evento.nome}
+          </h3>
+        </div>
+
+        <div className="mt-3 border-t border-[#DDE8F7] pt-3">
+          <div className="grid grid-cols-3 gap-2">
+            {dias.slice(0, 3).map((dia, index) => {
+              const fotosDia = dia.total_fotos ?? 0;
+
+              return (
+                <Link
+                  key={dia.id}
+                  href={`/eventos/${slug}?dia=${dia.id}`}
+                  className="rounded-xl border border-[#DCE7F5] bg-[#FBFDFF] p-2 transition hover:border-[#2E7DD1]/45 hover:bg-[#F4F9FF]"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-gradient-to-br from-[#2E7DD1] to-[#8A3FFC] text-xs font-black text-white shadow-sm">
+                      {index + 1}
+                    </span>
+                    <div className="min-w-0">
+                      <strong className="block truncate text-xs text-[#0D2B4E]">Dia {index + 1}</strong>
+                      <span className="block truncate text-[10px] text-[#6D7F98]">{fmtData(dia.data)}</span>
+                    </div>
+                  </div>
+                  <span className="mt-2 inline-flex max-w-full items-center gap-1 rounded-full bg-[#EFF6FF] px-2 py-1 text-[10px] font-bold text-[#2E7DD1]">
+                    {fotosDia > 0 ? (
+                      <>
+                        <Camera size={10} /> {fotosDia.toLocaleString("pt-BR")}
+                      </>
+                    ) : (
+                      <>
+                        <ChevronRight size={10} /> Ver
+                      </>
+                    )}
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <Link
+            href={`/eventos/${slug}`}
+            className="flex h-10 items-center justify-center gap-1.5 rounded-xl border border-[#BFD2EC] bg-white text-xs font-black text-[#0D2B4E] transition hover:bg-[#F4F8FF]"
+          >
+            <FolderOpen size={14} />
+            Ver dias
+            <ChevronRight size={13} />
+          </Link>
+          <Link
+            href={`/eventos/${slug}?view=minhas`}
+            className="flex h-10 items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-[#1E63FF] to-[#8A3FFC] text-xs font-black text-white shadow-lg shadow-blue-600/20 transition hover:brightness-105"
+          >
+            <ScanFace size={14} />
+            Minhas fotos
+          </Link>
+        </div>
       </div>
     </article>
   );
