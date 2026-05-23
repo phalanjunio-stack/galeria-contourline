@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Heart, MessageCircle, Share2 } from "lucide-react";
+import { bumpEventMetric } from "@/app/components/EventCardMetrics";
 
 interface Props {
   slug: string;
@@ -11,6 +12,13 @@ interface Props {
 export default function EventCardActions({ slug, nome }: Props) {
   const [curtido, setCurtido] = useState(false);
   const [copiado, setCopiado] = useState(false);
+
+  function curtir() {
+    setCurtido((v) => {
+      if (!v) bumpEventMetric(slug, "likes");
+      return !v;
+    });
+  }
 
   async function compartilhar() {
     const url = `${window.location.origin}/eventos/${slug}`;
@@ -24,6 +32,7 @@ export default function EventCardActions({ slug, nome }: Props) {
         setCopiado(true);
         window.setTimeout(() => setCopiado(false), 1800);
       }
+      bumpEventMetric(slug, "shares");
     } catch {
       // Usuario cancelou o compartilhamento nativo.
     }
@@ -33,13 +42,13 @@ export default function EventCardActions({ slug, nome }: Props) {
     <div className="flex items-center gap-1.5">
       <button
         type="button"
-        onClick={() => setCurtido((v) => !v)}
+        onClick={curtir}
         title={curtido ? "Curtido" : "Curtir evento"}
         aria-label={curtido ? "Curtido" : "Curtir evento"}
         className={`grid h-8 w-8 place-items-center rounded-md border text-xs transition ${
           curtido
             ? "border-red-200 bg-red-50 text-red-600"
-            : "border-[#D6E4F5] bg-white text-[#2E7DD1] hover:border-[#2E7DD1] hover:bg-[#EFF6FF]"
+            : "border-[#D6E4F5] bg-white text-[#2E7DD1] hover:border-[#2E7DD1] hover:bg-[#EFF6FF] dark:border-white/20 dark:bg-white/8 dark:text-[#8CC3FF] dark:hover:bg-white/15"
         }`}
       >
         <Heart size={14} fill={curtido ? "currentColor" : "none"} />
@@ -49,7 +58,7 @@ export default function EventCardActions({ slug, nome }: Props) {
         href={`/eventos/${slug}#comentarios`}
         title="Comentar"
         aria-label="Comentar"
-        className="grid h-8 w-8 place-items-center rounded-md border border-[#D6E4F5] bg-white text-[#2E7DD1] transition hover:border-[#2E7DD1] hover:bg-[#EFF6FF]"
+        className="grid h-8 w-8 place-items-center rounded-md border border-[#D6E4F5] bg-white text-[#2E7DD1] transition hover:border-[#2E7DD1] hover:bg-[#EFF6FF] dark:border-white/20 dark:bg-white/8 dark:text-[#8CC3FF] dark:hover:bg-white/15"
       >
         <MessageCircle size={14} />
       </a>
@@ -59,7 +68,7 @@ export default function EventCardActions({ slug, nome }: Props) {
         onClick={compartilhar}
         title={copiado ? "Link copiado" : "Compartilhar"}
         aria-label={copiado ? "Link copiado" : "Compartilhar"}
-        className="grid h-8 w-8 place-items-center rounded-md border border-[#D6E4F5] bg-white text-[#2E7DD1] transition hover:border-[#2E7DD1] hover:bg-[#EFF6FF]"
+        className="grid h-8 w-8 place-items-center rounded-md border border-[#D6E4F5] bg-white text-[#2E7DD1] transition hover:border-[#2E7DD1] hover:bg-[#EFF6FF] dark:border-white/20 dark:bg-white/8 dark:text-[#8CC3FF] dark:hover:bg-white/15"
       >
         <Share2 size={14} />
       </button>

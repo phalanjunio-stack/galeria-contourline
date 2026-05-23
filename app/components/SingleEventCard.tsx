@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Calendar, Camera, ScanFace } from "lucide-react";
 import type { EventoItem } from "@/app/api/eventos/route";
 import EventCardActions from "@/app/components/EventCardActions";
+import EventCardMetrics from "@/app/components/EventCardMetrics";
 
 const statusConfig: Record<string, { bg: string; dot: string; label: string }> = {
   aberto: { bg: "from-[#2E7DD1] to-[#7a3cff]", dot: "bg-white", label: "Aberto" },
@@ -54,6 +55,10 @@ export default function SingleEventCard({ evento, slug, encontrado }: Props) {
             <ScanFace size={10} /> Voce esta aqui
           </div>
         )}
+
+        <div className="absolute bottom-14 right-2.5 z-20">
+          <EventCardMetrics slug={slug} />
+        </div>
 
         <div className="absolute bottom-0 left-0 right-0 p-3">
           <h3 className="mb-1.5 line-clamp-2 text-sm font-bold leading-tight text-white">{evento.nome}</h3>
