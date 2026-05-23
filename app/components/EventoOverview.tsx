@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { Calendar, MapPin, Camera, Users, Layers, ScanFace, ChevronRight, Sparkles } from "lucide-react";
+import { Calendar, Camera, Layers, ScanFace, ChevronRight, Sparkles } from "lucide-react";
 import type { EventoItem, EventoDia } from "@/app/api/eventos/route";
 
 function fmtData(iso: string) {
@@ -8,12 +8,6 @@ function fmtData(iso: string) {
   try {
     return new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
   } catch { return iso; }
-}
-
-function fmtCurto(iso: string) {
-  if (!iso) return "";
-  try { return new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }); }
-  catch { return iso; }
 }
 
 interface Props {
@@ -73,9 +67,10 @@ export default function EventoOverview({ evento, slug, minhasFotosPorDia = {} }:
       </div>
 
       {/* Cards dos dias */}
-      <h2 className="text-xl font-bold text-[#0D2B4E] dark:text-white mb-4 flex items-center gap-2">
-        <Layers size={18} className="text-[#2E7DD1]" /> Escolha um dia
-      </h2>
+      <div className="mb-4 inline-flex items-center gap-2 rounded-2xl bg-white/90 px-4 py-2 shadow-sm ring-1 ring-[#2E7DD1]/10 dark:bg-[#0a1a2f]/80">
+        <Layers size={18} className="text-[#2E7DD1]" />
+        <h2 className="text-xl font-bold text-[#0D2B4E] dark:text-white">Escolha um dia</h2>
+      </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {dias.map((d, i) => <DiaCard key={d.id} dia={d} ordem={i + 1} slug={slug} minhas={minhasFotosPorDia[d.id]} />)}
       </div>

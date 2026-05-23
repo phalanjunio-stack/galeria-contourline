@@ -303,6 +303,48 @@ export default function EditarEventoPage({ params }: { params: Promise<{ id: str
             ))}
           </div>
         )}
+
+        {dias.some((dia) => dia.capa_id) && (
+          <div className="mt-6 border-t border-gray-100 pt-5">
+            <h3 className="mb-3 text-sm font-bold text-[#0D2B4E]">Capa e foco dos dias</h3>
+            <div className="grid gap-4">
+              {dias.map((dia, i) => dia.capa_id ? (
+                <div key={`${dia.id}-capa`} className="rounded-2xl border border-[#2E7DD1]/10 bg-[#F8FBFF] p-4">
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-bold text-[#0D2B4E]">{dia.titulo || `Dia ${i + 1}`}</p>
+                      <p className="text-xs text-gray-500">Ajusta somente o card deste dia na pagina do evento.</p>
+                    </div>
+                    <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-bold text-[#2E7DD1] shadow-sm">Dia {i + 1}</span>
+                  </div>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <FocalPointPicker
+                      fotoId={dia.capa_id}
+                      value={dia.capa_position ?? "center"}
+                      onChange={(v) => setDias(dias.map((d, j) => j === i ? { ...d, capa_position: v } : d))}
+                      aspect="16/10"
+                    />
+                    <div>
+                      <p className="mb-2 text-xs font-bold uppercase tracking-wider text-[#1A4A80]">Preview do dia</p>
+                      <div className="relative aspect-[16/10] overflow-hidden rounded-xl border border-gray-200 bg-[#07182f]">
+                        <img
+                          src={`/api/thumb?id=${dia.capa_id}&sz=600`}
+                          alt=""
+                          className="absolute inset-0 h-full w-full object-cover"
+                          style={{ objectPosition: dia.capa_position ?? "center" }}
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-[#0D2B4E]/60 via-transparent to-transparent" />
+                        <span className="absolute bottom-3 left-3 rounded-full bg-gradient-to-r from-[#2E7DD1] to-[#7a3cff] px-2.5 py-1 text-xs font-bold text-white shadow">
+                          Dia {i + 1}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : null)}
+            </div>
+          </div>
+        )}
       </section>
 
       <section className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
