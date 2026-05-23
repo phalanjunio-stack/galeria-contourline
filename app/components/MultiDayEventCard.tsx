@@ -35,14 +35,14 @@ export default function MultiDayEventCard({ evento, slug }: Props) {
             ))}
           </div>
         )}
-        {/* Gradiente leve apenas no fundo para legibilidade do badge */}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0D2B4E]/55 via-transparent to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-white via-white/72 to-transparent dark:from-[#0a1a2f] dark:via-[#0a1a2f]/72" />
+        <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#2E7DD1]/18 via-[#7a3cff]/10 to-transparent" />
         <span className="absolute top-2.5 left-2.5 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gradient-to-r from-[#2E7DD1] to-[#7a3cff] text-white text-[11px] font-bold shadow-md">
           <Layers size={11} /> {totalDias} dias
         </span>
       </Link>
 
-      <div className="p-4 space-y-3">
+      <div className="relative -mt-10 p-4 pt-0 space-y-3">
         <h3 className="font-bold text-[#0D2B4E] dark:text-white text-base leading-tight line-clamp-2">
           {evento.nome}
         </h3>
