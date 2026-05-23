@@ -25,31 +25,21 @@ export default function EventoOverview({ evento, slug, minhasFotosPorDia = {} }:
     <div className="w-full max-w-7xl mx-auto px-4 lg:px-8 py-6">
       {/* Resumo */}
       <div className="grid lg:grid-cols-3 gap-4 mb-8">
-        <div className="lg:col-span-2 bg-gradient-to-br from-[#0D2B4E] to-[#1A4A80] rounded-2xl p-6 text-white shadow-lg">
-          <div className="flex items-center gap-2 mb-3">
-            <Sparkles size={16} className="text-[#5BA4E5]" />
-            <span className="text-[11px] font-bold text-[#5BA4E5] uppercase tracking-wider">Resumo</span>
+        <div className="lg:col-span-2 rounded-2xl border border-[#2E7DD1]/15 bg-white/90 p-4 shadow-sm dark:bg-[#0a1a2f]/80">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Sparkles size={15} className="text-[#2E7DD1]" />
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[#1A4A80] dark:text-[#5BA4E5]">Resumo</span>
+            </div>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              IA ativa
+            </span>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <div>
-              <div className="text-3xl font-black">{dias.length}</div>
-              <div className="text-xs text-white/60">dia{dias.length !== 1 ? "s" : ""} de evento</div>
-            </div>
-            <div>
-              <div className="text-3xl font-black">{totalFotos.toLocaleString("pt-BR")}</div>
-              <div className="text-xs text-white/60">fotos disponíveis</div>
-            </div>
-            <div>
-              <div className="text-3xl font-black">{minhasTotal}</div>
-              <div className="text-xs text-white/60">suas fotos</div>
-            </div>
-            <div>
-              <div className="text-xl font-black text-emerald-300 flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                IA ativa
-              </div>
-              <div className="text-xs text-white/60">reconhecimento facial</div>
-            </div>
+          <div className="grid grid-cols-3 gap-2">
+            <ResumoStat value={dias.length.toString()} label={`dia${dias.length !== 1 ? "s" : ""}`} />
+            <ResumoStat value={totalFotos.toLocaleString("pt-BR")} label="fotos" />
+            <ResumoStat value={minhasTotal.toString()} label="suas fotos" />
           </div>
         </div>
 
@@ -74,6 +64,15 @@ export default function EventoOverview({ evento, slug, minhasFotosPorDia = {} }:
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {dias.map((d, i) => <DiaCard key={d.id} dia={d} ordem={i + 1} slug={slug} minhas={minhasFotosPorDia[d.id]} />)}
       </div>
+    </div>
+  );
+}
+
+function ResumoStat({ value, label }: { value: string; label: string }) {
+  return (
+    <div className="rounded-xl bg-[#EFF5FF] px-3 py-3 text-center ring-1 ring-[#2E7DD1]/10 dark:bg-white/5">
+      <div className="text-xl font-black leading-none text-[#0D2B4E] dark:text-white">{value}</div>
+      <div className="mt-1 text-[11px] font-semibold text-gray-500 dark:text-white/55">{label}</div>
     </div>
   );
 }
