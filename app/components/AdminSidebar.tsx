@@ -4,13 +4,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, Calendar, Image as ImgIcon,
-  HardDrive, Users, Settings, LogOut, ScanFace, Activity, Server,
+  HardDrive, Users, Settings, LogOut, ScanFace, Activity, Server, MessageCircle,
 } from "lucide-react";
 
 const navItems = [
   { href: "/admin",                  label: "Dashboard",         icon: LayoutDashboard },
   { href: "/admin/eventos",          label: "Eventos",           icon: Calendar },
   { href: "/admin/fotos",            label: "Fotos",             icon: ImgIcon },
+  { href: "/admin/comentarios",      label: "Comentários",       icon: MessageCircle },
   { href: "/admin/drive",            label: "Google Drive",      icon: HardDrive },
   { href: "/admin/reconhecimento-servidor", label: "Reconhecimento IA", icon: ScanFace },
   { href: "/admin/usuarios",         label: "Usuários",          icon: Users },

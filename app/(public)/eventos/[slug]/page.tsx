@@ -11,6 +11,7 @@ import type { EventoItem, EventoDia } from "@/app/api/eventos/route";
 import FotoCard from "@/app/components/FotoCard";
 import Lightbox from "@/app/components/Lightbox";
 import EventoOverview from "@/app/components/EventoOverview";
+import ComentariosPanel from "@/app/components/ComentariosPanel";
 import { AnimatePresence } from "framer-motion";
 import GaleriaLoading from "@/app/components/GaleriaLoading";
 import GaleriaToolbar, { type ToolbarState, QUALITY_PX } from "@/app/components/GaleriaToolbar";
@@ -402,6 +403,9 @@ export default function EventoPage({ params }: { params: Promise<{ slug: string 
 
   return (
     <div>
+      {/* Painel de comentários (sidebar hover desktop, FAB mobile) */}
+      <ComentariosPanel eventoId={evento.id} eventoNome={evento.nome} />
+
       {/* Capa */}
       <div className="h-48 lg:h-72 relative flex items-end overflow-hidden">
         {/* Colagem espalhada como fundo */}
