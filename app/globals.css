@@ -55,6 +55,18 @@ html[data-theme="dark"] ::selection {
 html[data-theme="dark"] .bg-white        { background-color: var(--surface-card) !important; }
 html[data-theme="dark"] .bg-gray-50      { background-color: var(--surface-muted) !important; }
 html[data-theme="dark"] .bg-\[\#EFF5FF\] { background-color: rgba(46,125,209,0.10) !important; }
+/* Bordas hardcoded em azul claro também precisam virar tom dark */
+html[data-theme="dark"] [class*="border-\[\#2E7DD1\]"]  { border-color: rgba(91,164,229,0.25) !important; }
+html[data-theme="dark"] .bg-amber-50  { background-color: rgba(245,158,11,0.10) !important; }
+html[data-theme="dark"] .bg-emerald-50 { background-color: rgba(16,185,129,0.10) !important; }
+html[data-theme="dark"] .bg-red-50    { background-color: rgba(239,68,68,0.10)  !important; }
+html[data-theme="dark"] .bg-blue-50,
+html[data-theme="dark"] .bg-purple-50 { background-color: rgba(46,125,209,0.10) !important; }
+/* "São minhas" pill com bg-white/95 dentro de overlay escuro fica certo —
+   só ajusta texto interno pro tema */
+html[data-theme="dark"] .text-amber-700   { color: #fcd34d !important; }
+html[data-theme="dark"] .text-emerald-700 { color: #6ee7b7 !important; }
+html[data-theme="dark"] .text-red-700     { color: #fca5a5 !important; }
 html[data-theme="dark"] .bg-\[\#F5F7FA\] { background-color: var(--surface-muted) !important; }
 html[data-theme="dark"] .border-gray-100,
 html[data-theme="dark"] .border-gray-200 { border-color: var(--surface-border) !important; }
@@ -481,8 +493,10 @@ html[data-theme="dark"] .tb-notif-row:hover    { background: rgba(91,164,229,0.1
   border-color: #e5edf8;
 }
 
+/* divide-x do Tailwind aplica border-left nos siblings — sobrescrever com !important
+   pra não brigar com a cor padrão (gray-200) que no dark fica como linha preta */
 .event-card-day-strip > :not([hidden]) ~ :not([hidden]) {
-  border-color: #e5edf8;
+  border-left-color: #e5edf8 !important;
 }
 
 .event-card-day-link:hover {
@@ -538,7 +552,7 @@ html[data-theme="dark"] .event-card-day-strip {
 }
 
 html[data-theme="dark"] .event-card-day-strip > :not([hidden]) ~ :not([hidden]) {
-  border-color: rgba(255, 255, 255, 0.10);
+  border-left-color: rgba(255, 255, 255, 0.08) !important;
 }
 
 html[data-theme="dark"] .event-card-day-link:hover {
