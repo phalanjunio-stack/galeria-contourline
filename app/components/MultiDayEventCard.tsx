@@ -95,12 +95,18 @@ export default function MultiDayEventCard({ evento, slug }: Props) {
   return (
     <article className="event-card-multi overflow-hidden rounded-xl border p-3.5 shadow-sm transition hover:-translate-y-0.5">
       <div className="mb-3 flex items-center justify-between gap-2">
-        <span className="inline-flex items-center gap-1.5 rounded-md bg-gradient-to-r from-[#2E7DD1] to-[#7C3AED] px-3 py-1.5 text-xs font-medium text-white">
-          <Layers size={13} /> {totalDias} dias
-        </span>
-        <span className="event-card-muted-chip rounded-md px-2.5 py-1.5 text-[10px] font-medium">
-          Por dia
-        </span>
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="inline-flex items-center gap-1.5 rounded-md bg-gradient-to-r from-[#2E7DD1] to-[#7C3AED] px-3 py-1.5 text-xs font-medium text-white shrink-0">
+            <Layers size={13} /> {totalDias} dias
+          </span>
+          <span className="event-card-muted-chip rounded-md px-2.5 py-1.5 text-[10px] font-medium shrink-0">
+            Por dia
+          </span>
+        </div>
+        {/* Métricas do card no header — antes ficavam absolute na primeira foto */}
+        <div className="shrink-0">
+          <EventCardMetrics slug={slug} compact />
+        </div>
       </div>
 
       <div className="grid grid-cols-3 gap-1.5">
@@ -124,12 +130,6 @@ export default function MultiDayEventCard({ evento, slug }: Props) {
               ) : (
                 <div className="absolute inset-0 grid place-items-center text-[#2E7DD1]/45">
                   <Camera size={22} />
-                </div>
-              )}
-
-              {index === 0 && (
-                <div className="absolute left-1 top-1 z-10">
-                  <EventCardMetrics slug={slug} compact />
                 </div>
               )}
 

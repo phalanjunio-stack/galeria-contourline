@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/* Tailwind v4 precisa de variant customizada pra reconhecer data-theme="dark".
+   Sem isso, todas as classes dark:bg-..., dark:text-... ficam inertes.
+   Com isso, dark:foo aplica quando html[data-theme="dark"] estiver setado. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 :root {
   --navy-900: #0D2B4E;
   --navy-700: #1A4A80;
@@ -493,10 +498,12 @@ html[data-theme="dark"] .tb-notif-row:hover    { background: rgba(91,164,229,0.1
   border-color: #e5edf8;
 }
 
-/* divide-x do Tailwind aplica border-left nos siblings — sobrescrever com !important
-   pra não brigar com a cor padrão (gray-200) que no dark fica como linha preta */
+/* divide-x do Tailwind v4 usa border-inline-start (logical property);
+   precisa sobrescrever AS DUAS pra ganhar tanto LTR quanto fallback.
+   Cor: roxo translucido pra dialogar com gradient dos numeros dos dias */
 .event-card-day-strip > :not([hidden]) ~ :not([hidden]) {
-  border-left-color: #e5edf8 !important;
+  border-left-color:         rgba(124, 58, 237, 0.30) !important;
+  border-inline-start-color: rgba(124, 58, 237, 0.30) !important;
 }
 
 .event-card-day-link:hover {
@@ -552,7 +559,8 @@ html[data-theme="dark"] .event-card-day-strip {
 }
 
 html[data-theme="dark"] .event-card-day-strip > :not([hidden]) ~ :not([hidden]) {
-  border-left-color: rgba(255, 255, 255, 0.08) !important;
+  border-left-color:         rgba(140, 100, 255, 0.38) !important;
+  border-inline-start-color: rgba(140, 100, 255, 0.38) !important;
 }
 
 html[data-theme="dark"] .event-card-day-link:hover {

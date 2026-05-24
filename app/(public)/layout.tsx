@@ -25,7 +25,7 @@ export const metadata: Metadata = {
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
     <ToastProvider>
-      <div className="min-h-screen bg-[#EFF5FF]">
+      <div className="min-h-screen bg-[#EFF5FF] dark:bg-[#0A1A2E]">
         <Sidebar />
 
         {/* Desktop: margem reage ao colapso da sidebar via MainContent client */}
