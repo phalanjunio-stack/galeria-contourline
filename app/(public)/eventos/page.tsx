@@ -12,6 +12,7 @@ import { lerRecognitionThresholdLocal } from "@/lib/recognition-thresholds";
 import { SkeletonEventos } from "@/app/components/Skeleton";
 import MultiDayEventCard from "@/app/components/MultiDayEventCard";
 import SingleEventCard from "@/app/components/SingleEventCard";
+import EventoEmAndamentoHero from "@/app/components/EventoEmAndamentoHero";
 
 const categorias = [
   "Todos",
@@ -210,6 +211,9 @@ export default function EventosPage() {
         <h1 className="text-2xl lg:text-3xl font-semibold text-[#0D2B4E] mb-1">Eventos</h1>
         <p className="text-gray-500 text-sm">Encontre o evento e suas fotos</p>
       </div>
+
+      {/* ── Hero "Evento em andamento" (só aparece se tiver um rolando hoje) ── */}
+      {!loading && eventos.length > 0 && <EventoEmAndamentoHero eventos={eventos} />}
 
       {/* ── Banner "Acho que é você" ─────────────────────────────── */}
       {!bannerFechado && matches.length > 0 && (
