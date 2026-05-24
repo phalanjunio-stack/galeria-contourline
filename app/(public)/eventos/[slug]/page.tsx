@@ -527,6 +527,8 @@ export default function EventoPage({ params }: { params: Promise<{ slug: string 
             <p className="text-[10px] text-amber-700/70 bg-amber-50/60 border border-amber-200/60 rounded-lg px-2 py-1 mb-2 inline-flex items-center gap-1">
               💡 A IA pode errar (luz, ângulo, maquiagem). Marque só as que são suas em <strong>São minhas</strong>.
             </p>
+            {/* Linha decorativa azul→roxo separando aviso das fotos */}
+            <div className="mb-3 h-px w-full bg-gradient-to-r from-[#2E7DD1] via-[#7C3AED] to-[#2E7DD1] opacity-60" />
 
             {/* Fotos em scroll horizontal — máx 8 no banner */}
             <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>

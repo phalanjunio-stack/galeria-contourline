@@ -245,6 +245,8 @@ export default function EventosPage() {
           <p className="text-[10px] text-amber-700/70 bg-amber-50/60 border border-amber-200/60 rounded-lg px-2 py-1 mb-3 inline-flex items-center gap-1">
             💡 A IA pode errar. Confira e marque as suas em <strong className="ml-0.5">São minhas</strong>.
           </p>
+          {/* Linha decorativa azul→roxo separando aviso dos blocos por evento */}
+          <div className="mb-4 h-px w-full bg-gradient-to-r from-[#2E7DD1] via-[#7C3AED] to-[#2E7DD1] opacity-60" />
 
           {/* Um bloco por evento */}
           <div className="space-y-4">

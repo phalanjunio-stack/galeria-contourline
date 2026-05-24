@@ -493,17 +493,37 @@ html[data-theme="dark"] .tb-notif-row:hover    { background: rgba(91,164,229,0.1
   border-color: #dde8f7;
 }
 
+/* Tira dos dias — borda externa colorida (gradient azul→roxo via box-shadow
+   pq border CSS não aceita gradient diretamente) + dividers internos sutis */
 .event-card-day-strip {
   background: #ffffff;
-  border-color: #e5edf8;
+  border-color: transparent !important;
+  background-clip: padding-box;
+  position: relative;
+}
+.event-card-day-strip::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, #2E7DD1 0%, #7C3AED 100%);
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  pointer-events: none;
+  opacity: 0.55;
 }
 
-/* divide-x do Tailwind v4 usa border-inline-start (logical property);
-   precisa sobrescrever AS DUAS pra ganhar tanto LTR quanto fallback.
-   Cor: roxo translucido pra dialogar com gradient dos numeros dos dias */
+/* Dividers internos: BEM sutis em todos os lados pra cobrir tanto
+   border-left (Tailwind v3) quanto border-inline-start/end (Tailwind v4) */
 .event-card-day-strip > :not([hidden]) ~ :not([hidden]) {
-  border-left-color:         rgba(124, 58, 237, 0.30) !important;
-  border-inline-start-color: rgba(124, 58, 237, 0.30) !important;
+  border-left-color:         rgba(124, 58, 237, 0.18) !important;
+  border-right-color:        rgba(124, 58, 237, 0.18) !important;
+  border-inline-start-color: rgba(124, 58, 237, 0.18) !important;
+  border-inline-end-color:   rgba(124, 58, 237, 0.18) !important;
 }
 
 .event-card-day-link:hover {
@@ -554,13 +574,17 @@ html[data-theme="dark"] .event-card-separator {
 }
 
 html[data-theme="dark"] .event-card-day-strip {
-  background: rgba(255, 255, 255, 0.04);
-  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+}
+html[data-theme="dark"] .event-card-day-strip::before {
+  opacity: 0.65;
 }
 
 html[data-theme="dark"] .event-card-day-strip > :not([hidden]) ~ :not([hidden]) {
-  border-left-color:         rgba(140, 100, 255, 0.38) !important;
-  border-inline-start-color: rgba(140, 100, 255, 0.38) !important;
+  border-left-color:         rgba(140, 100, 255, 0.20) !important;
+  border-right-color:        rgba(140, 100, 255, 0.20) !important;
+  border-inline-start-color: rgba(140, 100, 255, 0.20) !important;
+  border-inline-end-color:   rgba(140, 100, 255, 0.20) !important;
 }
 
 html[data-theme="dark"] .event-card-day-link:hover {
