@@ -161,13 +161,14 @@ export default function MultiDayEventCard({ evento, slug }: Props) {
       </div>
 
         <div className="event-card-separator mt-3 border-t pt-3">
-          <div className="event-card-day-strip grid grid-cols-3 divide-x rounded-md border">
+          <div className="event-card-day-strip grid grid-cols-3 rounded-md">
             {dias.slice(0, 3).map((dia, index) => {
               const fotosDia = dia.total_fotos ?? 0;
               return (
                 <Link
                   key={dia.id}
                   href={`/eventos/${slug}?dia=${dia.id}`}
+                  data-day-cell
                   className="event-card-day-link p-2 transition"
                 >
                   <div className="flex items-center gap-1.5">

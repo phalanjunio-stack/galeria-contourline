@@ -517,13 +517,16 @@ html[data-theme="dark"] .tb-notif-row:hover    { background: rgba(91,164,229,0.1
   opacity: 0.55;
 }
 
-/* Dividers internos: BEM sutis em todos os lados pra cobrir tanto
-   border-left (Tailwind v3) quanto border-inline-start/end (Tailwind v4) */
-.event-card-day-strip > :not([hidden]) ~ :not([hidden]) {
-  border-left-color:         rgba(124, 58, 237, 0.18) !important;
-  border-right-color:        rgba(124, 58, 237, 0.18) !important;
-  border-inline-start-color: rgba(124, 58, 237, 0.18) !important;
-  border-inline-end-color:   rgba(124, 58, 237, 0.18) !important;
+/* Dividers internos — Tailwind v4 divide-x foi removido do markup;
+   agora desenhamos linha sutil só nos siblings (não no primeiro filho).
+   Zerar QUALQUER border que vier de utility class por garantia. */
+.event-card-day-strip > [data-day-cell] {
+  border: 0 !important;
+  border-inline-start: 0 !important;
+  border-inline-end:   0 !important;
+}
+.event-card-day-strip > [data-day-cell] + [data-day-cell] {
+  box-shadow: inset 1px 0 0 0 rgba(124, 58, 237, 0.18);
 }
 
 .event-card-day-link:hover {
@@ -580,11 +583,8 @@ html[data-theme="dark"] .event-card-day-strip::before {
   opacity: 0.65;
 }
 
-html[data-theme="dark"] .event-card-day-strip > :not([hidden]) ~ :not([hidden]) {
-  border-left-color:         rgba(140, 100, 255, 0.20) !important;
-  border-right-color:        rgba(140, 100, 255, 0.20) !important;
-  border-inline-start-color: rgba(140, 100, 255, 0.20) !important;
-  border-inline-end-color:   rgba(140, 100, 255, 0.20) !important;
+html[data-theme="dark"] .event-card-day-strip > [data-day-cell] + [data-day-cell] {
+  box-shadow: inset 1px 0 0 0 rgba(140, 100, 255, 0.22);
 }
 
 html[data-theme="dark"] .event-card-day-link:hover {
