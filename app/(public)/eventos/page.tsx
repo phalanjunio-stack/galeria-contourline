@@ -153,7 +153,7 @@ export default function EventosPage() {
     } catch { /**/ }
 
     let listaCache: EventoItem[] = [];
-    fetch("/api/eventos")
+    fetch("/api/eventos", { cache: "no-store" })
       .then((r) => r.json())
       .then((data: EventoItem[]) => {
         const lista = Array.isArray(data) ? data : [];

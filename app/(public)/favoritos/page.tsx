@@ -264,7 +264,8 @@ export default function FavoritosPage() {
 
   // Carrega eventos recentes + fotos recentes
   useEffect(() => {
-    fetch("/api/eventos")
+    const FOTOS_CACHE_TTL = 5 * 60 * 1000;
+    fetch("/api/eventos", { cache: "no-store" })
       .then(r => r.ok ? r.json() : [])
       .then((lista: EventoItem[]) => {
         if (!Array.isArray(lista)) return;
@@ -276,16 +277,24 @@ export default function FavoritosPage() {
         if (primeiro) {
           const cacheKey = `fotos_${primeiro.folder_id}`;
           const cached   = localStorage.getItem(cacheKey);
+          let usouCache  = false;
           if (cached) {
-            const raw = JSON.parse(cached).fotos ?? [];
-            setFotosRecentes(raw.slice(0, 8).map((f: { id: string }) => f.id));
-          } else {
-            fetch(`/api/fotos?folderId=${primeiro.folder_id}`)
+            try {
+              const parsed = JSON.parse(cached);
+              const idade  = Date.now() - (parsed.ts ?? 0);
+              if (idade < FOTOS_CACHE_TTL && Array.isArray(parsed.fotos)) {
+                setFotosRecentes(parsed.fotos.slice(0, 8).map((f: { id: string }) => f.id));
+                usouCache = true;
+              }
+            } catch {}
+          }
+          if (!usouCache) {
+            fetch(`/api/fotos?folderId=${primeiro.folder_id}`, { cache: "no-store" })
               .then(r => r.ok ? r.json() : { fotos: [] })
               .then(d => {
                 const raw = d.fotos ?? [];
                 setFotosRecentes(raw.slice(0, 8).map((f: { id: string }) => f.id));
-                try { localStorage.setItem(cacheKey, JSON.stringify({ fotos: raw })); } catch {}
+                try { localStorage.setItem(cacheKey, JSON.stringify({ fotos: raw, ts: Date.now() })); } catch {}
               })
               .catch(() => {});
           }

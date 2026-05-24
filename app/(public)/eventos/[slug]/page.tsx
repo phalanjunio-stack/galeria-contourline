@@ -251,21 +251,25 @@ export default function EventoPage({ params }: { params: Promise<{ slug: string 
         if (!folderAtivo) { setLoading(false); return; }
 
         const cacheKey = `fotos_${folderAtivo}`;
+        const FOTOS_CACHE_TTL = 5 * 60 * 1000;
         let fotosCarregadas: DrivePhoto[] = [];
 
-        // 1. Carrega do cache local primeiro → exibe imediatamente
+        // 1. Carrega do cache local (com TTL) → exibe imediatamente
         try {
           const cached = localStorage.getItem(cacheKey);
           if (cached) {
             const { fotos: cachedFotos, ts } = JSON.parse(cached);
-            fotosCarregadas = cachedFotos;
-            setFotos(cachedFotos);
-            setLoading(false);
+            const idade = Date.now() - (ts ?? 0);
+            if (idade < FOTOS_CACHE_TTL && Array.isArray(cachedFotos)) {
+              fotosCarregadas = cachedFotos;
+              setFotos(cachedFotos);
+              setLoading(false);
+            }
           }
         } catch { /* ignora erros de localStorage */ }
 
         // 2. Sempre busca do Drive para garantir lista completa e atualizada
-        const fRes  = await fetch(`/api/fotos?folderId=${folderAtivo}`);
+        const fRes  = await fetch(`/api/fotos?folderId=${folderAtivo}`, { cache: "no-store" });
         const fData = await fRes.json();
         if (fData.error) {
           if (!fotosCarregadas.length) setErro(fData.error);

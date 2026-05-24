@@ -4,6 +4,11 @@ import { lerArquivoOculto, salvarArquivoOculto } from "@/lib/drive";
 import { lerEventosLocal, salvarEventosLocal } from "@/lib/eventos-cache";
 import { registrarAtividade } from "@/lib/atividade";
 
+// Sempre dinâmico — não cachear em build/runtime do Next.
+// Sem isso, /eventos e / (home) podem ver listas diferentes.
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 const ROOT_FOLDER = process.env.DRIVE_ROOT_FOLDER_ID!;
 
 export interface EventoDia {
@@ -80,7 +85,12 @@ export async function GET() {
   const session = await auth();
   // Usa token da sessão se disponível, senão usa token do .env ou cache local
   const eventos = await lerEventos(session?.accessToken);
-  return NextResponse.json(eventos);
+  return NextResponse.json(eventos, {
+    headers: {
+      "Cache-Control": "no-store, must-revalidate",
+      "Pragma": "no-cache",
+    },
+  });
 }
 
 // POST /api/eventos → cria novo evento

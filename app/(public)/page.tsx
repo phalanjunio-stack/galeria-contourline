@@ -370,7 +370,7 @@ export default function HomePage() {
 
   // Eventos
   useEffect(() => {
-    fetch("/api/eventos")
+    fetch("/api/eventos", { cache: "no-store" })
       .then(r => r.ok ? r.json() : [])
       .then((lista: EventoItem[]) => {
         if (!Array.isArray(lista)) return setEventos([]);

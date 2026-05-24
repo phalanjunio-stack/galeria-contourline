@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth, getAccessTokenFromEnv } from "@/auth";
 
+// Sempre dinâmico — admin pode adicionar fotos no Drive a qualquer momento
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 const DRIVE_API = "https://www.googleapis.com/drive/v3";
 
 // GET /api/fotos?folderId=xxx  → lista TODAS as fotos da pasta (com paginação)

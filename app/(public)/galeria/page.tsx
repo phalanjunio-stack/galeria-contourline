@@ -152,7 +152,10 @@ export default function GaleriaPage() {
   }
 
   useEffect(() => {
-    fetch("/api/eventos")
+    // Cache de fotos vale 5 minutos — depois disso refaz fetch pra pegar
+    // fotos novas que admin tenha adicionado no Drive.
+    const FOTOS_CACHE_TTL = 5 * 60 * 1000;
+    fetch("/api/eventos", { cache: "no-store" })
       .then(r => r.json())
       .then(async (lista: EventoItem[]) => {
         const ativos = lista.filter(e => e.folder_id && e.status === "aberto");
@@ -164,10 +167,19 @@ export default function GaleriaPage() {
             const cacheKey = `fotos_${ev.folder_id}`;
             let raw: { id: string; name: string }[] = [];
             const cached = localStorage.getItem(cacheKey);
+            let usarCache = false;
             if (cached) {
-              raw = JSON.parse(cached).fotos ?? [];
-            } else {
-              const res  = await fetch(`/api/fotos?folderId=${ev.folder_id}`);
+              try {
+                const parsed = JSON.parse(cached);
+                const idade = Date.now() - (parsed.ts ?? 0);
+                if (idade < FOTOS_CACHE_TTL && Array.isArray(parsed.fotos)) {
+                  raw = parsed.fotos;
+                  usarCache = true;
+                }
+              } catch { /* cache corrompido — refaz */ }
+            }
+            if (!usarCache) {
+              const res  = await fetch(`/api/fotos?folderId=${ev.folder_id}`, { cache: "no-store" });
               const data = await res.json();
               raw = data.fotos ?? [];
               localStorage.setItem(cacheKey, JSON.stringify({ fotos: raw, ts: Date.now() }));
