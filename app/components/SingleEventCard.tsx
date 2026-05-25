@@ -89,11 +89,17 @@ export default function SingleEventCard({ evento, slug, encontrado }: Props) {
               <span className="line-clamp-1">{evento.local}</span>
             </div>
           )}
-          <div className="flex items-center gap-2">
-            <Camera size={12} className="text-[#5F708A] dark:text-white/55" />
-            <span>{evento.total_fotos.toLocaleString("pt-BR")} fotos</span>
-            <Users size={12} className="ml-2 text-[#5F708A] dark:text-white/55" />
-            <span>{Math.max(0, Math.round((evento.total_fotos ?? 0) * 0.18)).toLocaleString("pt-BR")} pessoas</span>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="flex items-center gap-1.5">
+              <Camera size={12} className="text-[#5F708A] dark:text-white/55" />
+              {(evento.total_fotos ?? 0).toLocaleString("pt-BR")} fotos
+            </span>
+            {(evento.pessoas_encontradas ?? 0) > 0 && (
+              <span className="flex items-center gap-1.5 ml-1">
+                <Users size={12} className="text-[#5F708A] dark:text-white/55" />
+                {evento.pessoas_encontradas!.toLocaleString("pt-BR")} pessoas
+              </span>
+            )}
           </div>
         </div>
 

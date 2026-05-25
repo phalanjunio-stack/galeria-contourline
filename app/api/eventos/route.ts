@@ -45,6 +45,8 @@ export interface EventoItem {
   /** Dias internos — se vazio/undefined, evento é tratado como 1 dia (usa folder_id). */
   dias?: EventoDia[];
   criado_em: string;
+  /** Quantas pessoas distintas a IA achou — derivado de _matches_{id}.json em runtime. */
+  pessoas_encontradas?: number;
 }
 
 // Tenta ler do Drive; se falhar usa cache local
@@ -80,11 +82,42 @@ async function salvarEventos(eventos: EventoItem[], sessionToken?: string) {
   return false;
 }
 
+/* Cache em memória da contagem de pessoas por evento — TTL 60s.
+   Evita ler N arquivos do Drive em todo GET /api/eventos. */
+type PessoasCache = { ts: number; pessoas: number };
+const pessoasCache = new Map<string, PessoasCache>();
+const PESSOAS_TTL_MS = 60_000;
+
+async function contarPessoas(eventoId: string, folderId: string, token: string): Promise<number> {
+  const cached = pessoasCache.get(eventoId);
+  if (cached && Date.now() - cached.ts < PESSOAS_TTL_MS) return cached.pessoas;
+  try {
+    const data = await lerArquivoOculto<{ usuarios?: { email: string }[] }>(
+      folderId, `_matches_${eventoId}.json`, token
+    );
+    const n = Array.isArray(data?.usuarios) ? data!.usuarios.length : 0;
+    pessoasCache.set(eventoId, { ts: Date.now(), pessoas: n });
+    return n;
+  } catch {
+    return cached?.pessoas ?? 0;
+  }
+}
+
 // GET /api/eventos — público, sem necessidade de login
 export async function GET() {
   const session = await auth();
   // Usa token da sessão se disponível, senão usa token do .env ou cache local
   const eventos = await lerEventos(session?.accessToken);
+
+  // Enriquece com contagem real de pessoas (paralelo + cache 60s)
+  const token = (await getAccessTokenFromEnv()) ?? session?.accessToken;
+  if (token) {
+    await Promise.all(eventos.map(async (ev) => {
+      if (!ev.folder_id) return;
+      ev.pessoas_encontradas = await contarPessoas(ev.id, ev.folder_id, token);
+    }));
+  }
+
   return NextResponse.json(eventos, {
     headers: {
       "Cache-Control": "no-store, must-revalidate",

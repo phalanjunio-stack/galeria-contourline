@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
 import { Calendar, MapPin, ScanFace, FolderOpen, Camera, Users, Sparkles, Check, Circle } from "lucide-react";
 import type { EventoItem, EventoDia } from "@/app/api/eventos/route";
 
@@ -66,25 +65,11 @@ function statusDoDia(dia: EventoDia): "feito" | "ativo" | "futuro" {
 }
 
 export default function EventoEmAndamentoHero({ eventos }: Props) {
-  const [pessoas, setPessoas] = useState<number | null>(null);
   const evento = acharEventoEmAndamento(eventos);
-
-  // Carrega contagem de pessoas via /api/matches (sem bloquear render)
-  useEffect(() => {
-    if (!evento) return;
-    let cancelado = false;
-    fetch(`/api/matches?eventoId=${encodeURIComponent(evento.id)}`, { cache: "no-store" })
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        if (cancelado || !data) return;
-        const total = Array.isArray(data.usuarios) ? data.usuarios.length : 0;
-        setPessoas(total);
-      })
-      .catch(() => {});
-    return () => { cancelado = true; };
-  }, [evento]);
-
   if (!evento) return null;
+
+  // Contagem real vem direto do /api/eventos (server lê _matches_*.json)
+  const pessoas = evento.pessoas_encontradas ?? 0;
 
   const dias = evento.dias ?? [];
   const diaAtivoIdx = dias.findIndex(d => diaIso(d.data) === hojeIso());
@@ -167,7 +152,7 @@ export default function EventoEmAndamentoHero({ eventos }: Props) {
             />
             <Stat
               label="Pessoas encontradas"
-              value={pessoas === null ? "…" : pessoas.toLocaleString("pt-BR")}
+              value={pessoas.toLocaleString("pt-BR")}
               icon={<Users size={11} className="text-[#5BA4E5]" />}
             />
             <Stat
