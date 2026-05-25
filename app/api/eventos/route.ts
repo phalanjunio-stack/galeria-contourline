@@ -92,10 +92,21 @@ async function contarPessoas(eventoId: string, folderId: string, token: string):
   const cached = pessoasCache.get(eventoId);
   if (cached && Date.now() - cached.ts < PESSOAS_TTL_MS) return cached.pessoas;
   try {
-    const data = await lerArquivoOculto<{ usuarios?: { email: string }[] }>(
-      folderId, `_matches_${eventoId}.json`, token
+    // PRIORIDADE 1: _pessoas_{id}.json → clusters de TODAS as pessoas únicas detectadas
+    // (independente de ter perfil cadastrado). Esse é o número "real" no evento.
+    const pessoas = await lerArquivoOculto<{ clusters?: unknown[] }>(
+      folderId, `_pessoas_${eventoId}.json`, token
     );
-    const n = Array.isArray(data?.usuarios) ? data!.usuarios.length : 0;
+    let n = Array.isArray(pessoas?.clusters) ? pessoas!.clusters!.length : 0;
+
+    // FALLBACK: se ainda não tem clusters mas tem matches, usa contagem de matches
+    if (n === 0) {
+      const matches = await lerArquivoOculto<{ usuarios?: { email: string }[] }>(
+        folderId, `_matches_${eventoId}.json`, token
+      ).catch(() => null);
+      n = Array.isArray(matches?.usuarios) ? matches!.usuarios!.length : 0;
+    }
+
     pessoasCache.set(eventoId, { ts: Date.now(), pessoas: n });
     return n;
   } catch {
