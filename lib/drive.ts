@@ -99,21 +99,7 @@ export async function salvarArquivoOculto(
   const content = JSON.stringify(data, null, 2);
   const blob = new Blob([content], { type: "application/json" });
 
-  if (existingId) {
-    // Atualiza
-    const updateRes = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${existingId}?uploadType=media`, {
-      method: "PATCH",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
-      body: content,
-    });
-    if (!updateRes.ok) {
-      throw new Error(`Drive upload error: ${updateRes.status}`);
-    }
-  } else {
-    // Cria novo (oculto = nome começa com _)
+  async function criarNovo() {
     const meta = JSON.stringify({ name: fileName, parents: [folderId] });
     const formData = new FormData();
     formData.append("metadata", new Blob([meta], { type: "application/json" }));
@@ -125,8 +111,34 @@ export async function salvarArquivoOculto(
       body: formData,
     });
     if (!createRes.ok) {
-      throw new Error(`Drive upload error: ${createRes.status}`);
+      const detail = await createRes.text().catch(() => "");
+      throw new Error(`Drive create error: ${createRes.status} ${detail.slice(0, 200)}`);
     }
+  }
+
+  if (existingId) {
+    // Atualiza
+    const updateRes = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${existingId}?uploadType=media`, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: content,
+    });
+    if (!updateRes.ok) {
+      // 404/410 → arquivo sumiu entre search e PATCH (deletado por outra aba, caiu na lixeira, etc.)
+      // 403 → perdemos permissão no arquivo (foi gravado por conta diferente). Fallback: cria novo.
+      if (updateRes.status === 404 || updateRes.status === 410 || updateRes.status === 403) {
+        console.warn(`[drive] PATCH ${fileName} → ${updateRes.status}, criando novo arquivo`);
+        await criarNovo();
+        return;
+      }
+      const detail = await updateRes.text().catch(() => "");
+      throw new Error(`Drive upload error: ${updateRes.status} ${detail.slice(0, 200)}`);
+    }
+  } else {
+    await criarNovo();
   }
 }
 
