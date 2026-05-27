@@ -38,11 +38,11 @@ export default function ScrollToTop() {
     <button
       onClick={subir}
       aria-label="Voltar ao topo"
-      className="fixed bottom-28 right-4 lg:bottom-8 lg:right-6 z-50 w-11 h-11 rounded-full flex items-center justify-center shadow-lg transition-all duration-300"
+      className="fixed bottom-28 lg:bottom-8 left-1/2 z-50 w-11 h-11 rounded-full flex items-center justify-center shadow-lg transition-all duration-300"
       style={{
         background: "linear-gradient(135deg,#2E7DD1,#1A4A80)",
         opacity:    visivel ? 1 : 0,
-        transform:  visivel ? "translateY(0) scale(1)" : "translateY(16px) scale(0.85)",
+        transform:  visivel ? "translateX(-50%) translateY(0) scale(1)" : "translateX(-50%) translateY(16px) scale(0.85)",
         pointerEvents: visivel ? "auto" : "none",
         boxShadow: "0 4px 20px rgba(46,125,209,0.45)",
       }}
