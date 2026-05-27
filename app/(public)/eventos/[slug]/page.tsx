@@ -404,7 +404,7 @@ export default function EventoPage({ params }: { params: Promise<{ slug: string 
   return (
     <div>
       {/* Painel de comentários (sidebar hover desktop, FAB mobile) */}
-      <ComentariosPanel eventoId={evento.id} eventoNome={evento.nome} />
+      {evento && <ComentariosPanel eventoId={evento.id} eventoNome={evento.nome} />}
 
       {/* Capa */}
       <div className="h-48 lg:h-72 relative flex items-end overflow-hidden">
