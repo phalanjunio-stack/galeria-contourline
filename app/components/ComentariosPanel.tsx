@@ -68,13 +68,12 @@ export default function ComentariosPanel({ eventoId, eventoNome }: Props) {
   function abrir() {
     if (aberto) return;
     setAberto(true);
-    playSound("open");
+    try { playSound("open"); } catch {}
   }
   function fechar() {
-    if (!aberto) return;
     setAberto(false);
-    playSound("close");
     setErro("");
+    try { playSound("close"); } catch {}
   }
 
   async function enviar() {
