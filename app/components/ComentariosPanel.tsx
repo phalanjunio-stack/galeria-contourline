@@ -29,7 +29,6 @@ export default function ComentariosPanel({ eventoId, eventoNome }: Props) {
   const [mensagem, setMensagem] = useState("");
 
   const panelRef = useRef<HTMLDivElement>(null);
-  const hoverTimer = useRef<number | null>(null);
 
   // Carrega usuário salvo
   useEffect(() => {
@@ -76,15 +75,6 @@ export default function ComentariosPanel({ eventoId, eventoNome }: Props) {
     setAberto(false);
     playSound("close");
     setErro("");
-  }
-
-  // Desktop: borda direita reage a hover na tab
-  function onTabEnter() {
-    if (hoverTimer.current) window.clearTimeout(hoverTimer.current);
-    hoverTimer.current = window.setTimeout(() => abrir(), 180);
-  }
-  function onTabLeave() {
-    if (hoverTimer.current) window.clearTimeout(hoverTimer.current);
   }
 
   async function enviar() {
@@ -154,11 +144,7 @@ export default function ComentariosPanel({ eventoId, eventoNome }: Props) {
   return (
     <>
       {/* ─── Desktop: aba lateral fixa direita (hover abre) ─── */}
-      <div
-        className="hidden lg:block fixed top-1/2 -translate-y-1/2 right-0 z-40"
-        onMouseEnter={onTabEnter}
-        onMouseLeave={onTabLeave}
-      >
+      <div className="hidden lg:block fixed top-1/2 -translate-y-1/2 right-0 z-40">
         <button
           onClick={() => aberto ? fechar() : abrir()}
           aria-label={`Comentários (${totalAprovados})`}
@@ -205,11 +191,8 @@ export default function ComentariosPanel({ eventoId, eventoNome }: Props) {
           lg:top-0 lg:right-0 lg:h-full lg:w-[420px] lg:border-l lg:border-[#dde8f7]
           /* Mobile: bottom sheet 85vh */
           inset-x-0 bottom-0 max-h-[85vh] rounded-t-3xl lg:rounded-none
-          ${aberto ? "translate-y-0 lg:translate-y-0 lg:translate-x-0" : "translate-y-full lg:translate-y-0 lg:translate-x-full"}`}
-        onMouseLeave={() => {
-          // Desktop: fecha quando sai do painel
-          if (window.matchMedia("(min-width: 1024px)").matches) fechar();
-        }}
+          ${aberto ? "translate-y-0 lg:translate-y-0 lg:translate-x-0 pointer-events-auto" : "translate-y-full lg:translate-y-0 lg:translate-x-full pointer-events-none"}`}
+        aria-hidden={!aberto}
       >
         {/* Grip mobile */}
         <div className="lg:hidden mx-auto mt-2 mb-1 w-12 h-1.5 rounded-full bg-gray-300" />
