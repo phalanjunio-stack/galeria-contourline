@@ -51,7 +51,31 @@ function makeNoiseBuffer(ac: AudioContext, durationMs: number): AudioBuffer {
 }
 
 export type SwooshKind = "open" | "close";
-export type SoundKind  = SwooshKind | "whoosh" | "snap" | "ding" | "tap";
+export type SoundKind  = SwooshKind | "whoosh" | "snap" | "ding" | "tap" | "chatOpen" | "chatClose";
+
+// Helper local — nota com envelope suave (ataque + decay exponencial)
+function _envNote(
+  ac: AudioContext,
+  type: OscillatorType,
+  freq: number,
+  start: number,
+  dur: number,
+  peak = 0.2,
+  attack = 0.008,
+  freqEnd: number | null = null,
+) {
+  const o = ac.createOscillator();
+  const g = ac.createGain();
+  o.type = type;
+  o.frequency.setValueAtTime(freq, start);
+  if (freqEnd != null) o.frequency.exponentialRampToValueAtTime(freqEnd, start + dur);
+  g.gain.setValueAtTime(0.0001, start);
+  g.gain.linearRampToValueAtTime(peak, start + attack);
+  g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+  o.connect(g).connect(ac.destination);
+  o.start(start);
+  o.stop(start + dur + 0.02);
+}
 
 export function playSwoosh(kind: SwooshKind) {
   playSound(kind);
@@ -212,6 +236,21 @@ export function playSound(kind: SoundKind) {
       g.gain.exponentialRampToValueAtTime(0.0001, now + 0.07);
       osc.connect(g).connect(ac.destination);
       osc.start(now); osc.stop(now + 0.09);
+      break;
+    }
+
+    // ── chatOpen: dois pings ascendentes (Lá5 → Mi6) + sparkle ──────────────
+    case "chatOpen": {
+      _envNote(ac, "sine",  880, now,        0.18, 0.18, 0.008);
+      _envNote(ac, "sine", 1320, now + 0.06, 0.16, 0.16, 0.008);
+      _envNote(ac, "sine", 2200, now + 0.10, 0.10, 0.05, 0.006);
+      break;
+    }
+
+    // ── chatClose: sweep descendente 600→300Hz + shimmer breve ──────────────
+    case "chatClose": {
+      _envNote(ac, "sine",  600, now,        0.20, 0.28, 0.012, 300);
+      _envNote(ac, "sine", 1200, now + 0.02, 0.10, 0.05, 0.006);
       break;
     }
   }

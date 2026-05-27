@@ -68,12 +68,12 @@ export default function ComentariosPanel({ eventoId, eventoNome }: Props) {
   function abrir() {
     if (aberto) return;
     setAberto(true);
-    try { playSound("open"); } catch {}
+    try { playSound("chatOpen"); } catch {}
   }
   function fechar() {
     setAberto(false);
     setErro("");
-    try { playSound("close"); } catch {}
+    try { playSound("chatClose"); } catch {}
   }
 
   async function enviar() {
@@ -168,10 +168,10 @@ export default function ComentariosPanel({ eventoId, eventoNome }: Props) {
         </div>
       </div>
 
-      {/* ─── Overlay (mobile + desktop) ─── */}
+      {/* ─── Overlay leve (clica fora pra fechar; transparente no desktop) ─── */}
       {aberto && (
         <div
-          className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm lg:bg-black/10"
+          className="fixed inset-0 z-40 bg-black/20 lg:bg-transparent"
           onClick={fechar}
         />
       )}
@@ -179,12 +179,12 @@ export default function ComentariosPanel({ eventoId, eventoNome }: Props) {
       {/* ─── Painel principal ─── */}
       <aside
         ref={panelRef}
-        className={`fixed z-50 bg-white shadow-2xl flex flex-col transition-transform duration-300 ease-out
-          /* Mobile: bottom sheet 85vh */
-          inset-x-0 bottom-0 max-h-[85vh] rounded-t-3xl
-          /* Desktop: sidebar direita (sobrescreve inset/max-h) */
-          lg:inset-auto lg:top-0 lg:right-0 lg:bottom-0 lg:left-auto lg:h-full lg:max-h-none lg:w-[420px] lg:border-l lg:border-[#dde8f7] lg:rounded-none
-          ${aberto ? "translate-y-0 lg:translate-y-0 lg:translate-x-0 pointer-events-auto" : "translate-y-full lg:translate-y-0 lg:translate-x-full pointer-events-none"}`}
+        className={`cfab-panel fixed z-50 bg-white shadow-2xl flex flex-col border border-[#dde8f7]
+          /* Mobile: bottom sheet acima do FAB */
+          inset-x-3 bottom-44 max-h-[72vh] rounded-3xl
+          /* Desktop: popup flutuante ancorado acima do FAB (canto inferior direito) */
+          lg:inset-auto lg:left-auto lg:right-6 lg:bottom-[6.5rem] lg:top-auto lg:w-[420px] lg:h-[600px] lg:max-h-[calc(100vh-9rem)] lg:rounded-2xl
+          ${aberto ? "cfab-panel-open pointer-events-auto" : "pointer-events-none"}`}
         aria-hidden={!aberto}
       >
         {/* Grip mobile */}
