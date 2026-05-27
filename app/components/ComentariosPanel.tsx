@@ -142,37 +142,31 @@ export default function ComentariosPanel({ eventoId, eventoNome }: Props) {
 
   return (
     <>
-      {/* ─── Desktop: aba lateral fixa direita (hover abre) ─── */}
-      <div className="hidden lg:block fixed top-1/2 -translate-y-1/2 right-0 z-40">
-        <button
-          onClick={() => aberto ? fechar() : abrir()}
-          aria-label={`Comentários (${totalAprovados})`}
-          className="group flex items-center gap-2 rounded-l-2xl bg-gradient-to-br from-[#145dff] to-[#7d3cff] text-white pl-3 pr-2 py-4 shadow-[0_10px_25px_rgba(124,58,237,.35)] hover:pl-4 transition-all"
-          style={{ writingMode: "horizontal-tb" }}
-        >
-          <MessageCircle size={18} />
-          {totalAprovados > 0 && (
-            <span className="text-[11px] font-extrabold bg-white/25 rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
-              {totalAprovados}
-            </span>
-          )}
-          <span className="text-xs font-extrabold hidden xl:inline">Comentários</span>
-        </button>
+      {/* ─── FAB orb azul (desktop + mobile) ─── */}
+      <div className="fixed z-40 bottom-24 right-5 lg:bottom-8 lg:right-6">
+        <div className="cfab-wrap">
+          <span className="cfab-aura" />
+          <span className="cfab-halo" />
+          <span className="cfab-spark" style={{ ["--ang" as string]: "30deg",  ["--d" as string]: "1.8s", ["--del" as string]: "0s"   } as React.CSSProperties} />
+          <span className="cfab-spark" style={{ ["--ang" as string]: "100deg", ["--d" as string]: "2.2s", ["--del" as string]: ".35s" } as React.CSSProperties} />
+          <span className="cfab-spark" style={{ ["--ang" as string]: "175deg", ["--d" as string]: "1.6s", ["--del" as string]: ".7s"  } as React.CSSProperties} />
+          <span className="cfab-spark" style={{ ["--ang" as string]: "250deg", ["--d" as string]: "2.0s", ["--del" as string]: ".15s" } as React.CSSProperties} />
+          <span className="cfab-spark" style={{ ["--ang" as string]: "320deg", ["--d" as string]: "1.9s", ["--del" as string]: ".55s" } as React.CSSProperties} />
+          <button
+            type="button"
+            onClick={() => aberto ? fechar() : abrir()}
+            aria-label={`Comentários (${totalAprovados})`}
+            className="cfab-orb"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+              <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+            </svg>
+            {totalAprovados > 0 && (
+              <span className="cfab-badge">{totalAprovados > 9 ? "9+" : totalAprovados}</span>
+            )}
+          </button>
+        </div>
       </div>
-
-      {/* ─── Mobile: FAB no canto inferior direito ─── */}
-      <button
-        onClick={abrir}
-        aria-label={`Comentários (${totalAprovados})`}
-        className="lg:hidden fixed bottom-24 right-4 z-40 w-14 h-14 rounded-full bg-gradient-to-br from-[#145dff] to-[#7d3cff] text-white shadow-[0_10px_30px_rgba(124,58,237,.45)] flex items-center justify-center active:scale-95 transition"
-      >
-        <MessageCircle size={22} />
-        {totalAprovados > 0 && (
-          <span className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1.5 rounded-full bg-emerald-500 text-white text-[10px] font-black flex items-center justify-center border-2 border-white">
-            {totalAprovados > 9 ? "9+" : totalAprovados}
-          </span>
-        )}
-      </button>
 
       {/* ─── Overlay (mobile + desktop) ─── */}
       {aberto && (

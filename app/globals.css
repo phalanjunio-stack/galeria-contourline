@@ -647,3 +647,144 @@ html[data-theme="dark"] .event-card-secondary-button:hover {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
 }
+
+/* ============================================
+   CHAT FAB — orb azul com aura + halo + sparks
+   (portado do sitelocal/chat-ia)
+   ============================================ */
+.cfab-wrap {
+  position: relative;
+  width: 54px;
+  height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cfab-wrap::before {
+  content: "";
+  position: absolute;
+  inset: -18px -30px -30px -50px;
+  pointer-events: auto;
+  z-index: -1;
+}
+.cfab-orb {
+  position: relative;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #3B9AFF 0%, #1565D8 55%, #0A3D8F 100%);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(124,196,255,.5);
+  cursor: pointer;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.25),
+    inset 0 0 16px rgba(124,196,255,.3),
+    0 0 0 3px rgba(43,131,255,.15),
+    0 0 24px rgba(43,131,255,.7),
+    0 0 50px rgba(43,131,255,.45),
+    0 8px 24px rgba(0,0,0,.4);
+  opacity: 0.6;
+  transform: scale(0.9);
+  filter: saturate(0.85);
+  transition:
+    opacity 280ms cubic-bezier(.22,1,.36,1),
+    transform 280ms cubic-bezier(.34,1.56,.64,1),
+    filter 280ms,
+    box-shadow 280ms;
+}
+.cfab-wrap:hover .cfab-orb {
+  opacity: 1;
+  transform: scale(1);
+  filter: saturate(1);
+}
+.cfab-orb:active { transform: scale(.94); }
+.cfab-orb svg { width: 22px; height: 22px; }
+
+.cfab-aura,
+.cfab-halo,
+.cfab-spark {
+  opacity: 0;
+  transition: opacity 320ms ease;
+  pointer-events: none;
+}
+.cfab-wrap:hover .cfab-aura,
+.cfab-wrap:hover .cfab-halo,
+.cfab-wrap:hover .cfab-spark { opacity: 1; }
+
+.cfab-aura {
+  position: absolute;
+  inset: -20px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50%,
+    rgba(43,131,255,.60) 0%,
+    rgba(43,131,255,.28) 20%,
+    rgba(43,131,255,.10) 40%,
+    transparent 70%);
+  filter: blur(5px);
+  animation: cfab-aura-pulse 2.8s ease-in-out infinite;
+}
+@keyframes cfab-aura-pulse {
+  0%,100% { transform: scale(1);    opacity: .9; }
+  50%     { transform: scale(1.14); opacity: .6; }
+}
+.cfab-halo {
+  position: absolute;
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: radial-gradient(circle, transparent 55%, rgba(124,196,255,.65) 62%, transparent 72%);
+  animation: cfab-halo-spin 5s linear infinite;
+}
+@keyframes cfab-halo-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.cfab-spark {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #BCE0FF 0%, rgba(124,196,255,.85) 50%, transparent 100%);
+  box-shadow: 0 0 8px #7CC4FF, 0 0 16px rgba(43,131,255,.7);
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%,-50%);
+  animation: cfab-spark-orbit var(--d,2s) ease-in-out var(--del,0s) infinite;
+}
+@keyframes cfab-spark-orbit {
+  0%   { opacity: 0; transform: translate(-50%,-50%) rotate(var(--ang)) translateY(-10px) rotate(calc(var(--ang)*-1)) scale(.3); }
+  20%  { opacity: 1; }
+  65%  { opacity: 1; transform: translate(-50%,-50%) rotate(calc(var(--ang) + 100deg)) translateY(-26px) rotate(calc((var(--ang)+100deg)*-1)) scale(1); }
+  100% { opacity: 0; transform: translate(-50%,-50%) rotate(calc(var(--ang) + 210deg)) translateY(-34px) rotate(calc((var(--ang)+210deg)*-1)) scale(.2); }
+}
+
+.cfab-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #10B981;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 6px rgba(0,0,0,.25);
+  z-index: 2;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cfab-orb,
+  .cfab-aura,
+  .cfab-halo,
+  .cfab-spark { animation: none; transition: none; }
+}
+
