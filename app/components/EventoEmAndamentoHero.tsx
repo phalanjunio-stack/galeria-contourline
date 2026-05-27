@@ -91,16 +91,35 @@ export default function EventoEmAndamentoHero({ eventos }: Props) {
       {capaId && (
         <>
           <img
-            src={`/api/thumb?id=${capaId}&sz=1200`}
+            src={`/api/thumb?id=${capaId}&sz=1600`}
             alt=""
             aria-hidden
-            className="absolute inset-0 h-full w-full object-cover opacity-45"
-            style={{ objectPosition: evento.capa_position ?? "center" }}
+            className="absolute inset-0 h-full w-full object-cover"
+            style={{ objectPosition: evento.capa_position ?? "center right" }}
           />
-          {/* Gradiente da esquerda pra direita garantindo legibilidade do texto */}
+          {/* Camada 1 — fade horizontal: esquerda 100% opaca → direita translúcida */}
           <div
             className="absolute inset-0"
-            style={{ background: "linear-gradient(90deg, rgba(10,26,46,0.92) 0%, rgba(10,26,46,0.78) 45%, rgba(10,26,46,0.30) 100%)" }}
+            style={{
+              background:
+                "linear-gradient(90deg, rgba(10,26,46,1) 0%, rgba(10,26,46,0.96) 28%, rgba(10,26,46,0.65) 60%, rgba(10,26,46,0.15) 100%)",
+            }}
+          />
+          {/* Camada 2 — vinheta vertical: escurece topo/base, mantém meio com brilho */}
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background:
+                "linear-gradient(180deg, rgba(10,26,46,0.55) 0%, rgba(10,26,46,0) 30%, rgba(10,26,46,0) 70%, rgba(10,26,46,0.55) 100%)",
+            }}
+          />
+          {/* Camada 3 — máscara radial: foco na direita, dissolve nos cantos */}
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background:
+                "radial-gradient(ellipse 70% 90% at 85% 50%, transparent 0%, rgba(10,26,46,0.35) 70%, rgba(10,26,46,0.7) 100%)",
+            }}
           />
         </>
       )}
