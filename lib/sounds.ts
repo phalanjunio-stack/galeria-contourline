@@ -13,16 +13,41 @@
  */
 
 const STORAGE_KEY = "galeria-sounds";
+const VOL_KEY     = "galeria-sounds-vol";
 
 let ctx: AudioContext | null = null;
+let master: GainNode | null = null;
+let userGestured = false;
+
+// Marca primeira interação real do usuário — desbloqueia AudioContext
+if (typeof window !== "undefined") {
+  const markGesture = () => { userGestured = true; };
+  (["click", "keydown", "touchstart", "pointerdown"] as const).forEach(ev => {
+    window.addEventListener(ev, markGesture, { once: true, capture: true });
+  });
+}
+
+function getVol(): number {
+  if (typeof window === "undefined") return 0.35;
+  try {
+    const v = parseFloat(localStorage.getItem(VOL_KEY) ?? "0.35");
+    return isFinite(v) ? Math.max(0, Math.min(1, v)) : 0.35;
+  } catch { return 0.35; }
+}
 
 function getCtx(): AudioContext | null {
   if (typeof window === "undefined") return null;
+  if (!userGestured) return null; // evita warning de autoplay policy
   try {
     const W = window as typeof window & { webkitAudioContext?: typeof AudioContext };
     const AC = window.AudioContext || W.webkitAudioContext;
     if (!AC) return null;
-    if (!ctx) ctx = new AC();
+    if (!ctx) {
+      ctx = new AC();
+      master = ctx.createGain();
+      master.gain.value = getVol();
+      master.connect(ctx.destination);
+    }
     if (ctx.state === "suspended") ctx.resume().catch(() => {});
     return ctx;
   } catch {
@@ -30,14 +55,15 @@ function getCtx(): AudioContext | null {
   }
 }
 
+function dest(): AudioNode | null {
+  return master ?? ctx?.destination ?? null;
+}
+
 function soundsEnabled(): boolean {
   if (typeof window === "undefined") return false;
   try {
     const v = localStorage.getItem(STORAGE_KEY);
     if (v === "off") return false;
-  } catch {}
-  try {
-    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return false;
   } catch {}
   return true;
 }
@@ -72,7 +98,7 @@ function _envNote(
   g.gain.setValueAtTime(0.0001, start);
   g.gain.linearRampToValueAtTime(peak, start + attack);
   g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
-  o.connect(g).connect(ac.destination);
+  o.connect(g).connect(dest() ?? ac.destination);
   o.start(start);
   o.stop(start + dur + 0.02);
 }
@@ -103,7 +129,7 @@ export function playSound(kind: SoundKind) {
       noiseGain.gain.setValueAtTime(0, now);
       noiseGain.gain.linearRampToValueAtTime(0.18, now + 0.02);
       noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
-      noise.connect(filter).connect(noiseGain).connect(ac.destination);
+      noise.connect(filter).connect(noiseGain).connect(dest() ?? ac.destination);
       noise.start(now); noise.stop(now + duration + 0.02);
 
       const osc = ac.createOscillator();
@@ -114,7 +140,7 @@ export function playSound(kind: SoundKind) {
       oscGain.gain.setValueAtTime(0, now);
       oscGain.gain.linearRampToValueAtTime(0.06, now + 0.03);
       oscGain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
-      osc.connect(oscGain).connect(ac.destination);
+      osc.connect(oscGain).connect(dest() ?? ac.destination);
       osc.start(now); osc.stop(now + duration + 0.02);
       break;
     }
@@ -133,7 +159,7 @@ export function playSound(kind: SoundKind) {
       noiseGain.gain.setValueAtTime(0, now);
       noiseGain.gain.linearRampToValueAtTime(0.18, now + 0.02);
       noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
-      noise.connect(filter).connect(noiseGain).connect(ac.destination);
+      noise.connect(filter).connect(noiseGain).connect(dest() ?? ac.destination);
       noise.start(now); noise.stop(now + duration + 0.02);
 
       const osc = ac.createOscillator();
@@ -144,7 +170,7 @@ export function playSound(kind: SoundKind) {
       oscGain.gain.setValueAtTime(0, now);
       oscGain.gain.linearRampToValueAtTime(0.06, now + 0.03);
       oscGain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
-      osc.connect(oscGain).connect(ac.destination);
+      osc.connect(oscGain).connect(dest() ?? ac.destination);
       osc.start(now); osc.stop(now + duration + 0.02);
       break;
     }
@@ -163,7 +189,7 @@ export function playSound(kind: SoundKind) {
       g.gain.setValueAtTime(0, now);
       g.gain.linearRampToValueAtTime(0.22, now + 0.03);
       g.gain.exponentialRampToValueAtTime(0.0001, now + duration);
-      noise.connect(hp).connect(g).connect(ac.destination);
+      noise.connect(hp).connect(g).connect(dest() ?? ac.destination);
       noise.start(now); noise.stop(now + duration + 0.02);
       break;
     }
@@ -177,7 +203,7 @@ export function playSound(kind: SoundKind) {
       const g = ac.createGain();
       g.gain.setValueAtTime(0.3, now);
       g.gain.exponentialRampToValueAtTime(0.0001, now + 0.08);
-      osc.connect(g).connect(ac.destination);
+      osc.connect(g).connect(dest() ?? ac.destination);
       osc.start(now); osc.stop(now + 0.1);
 
       // Clique de impacto pequeno
@@ -189,7 +215,7 @@ export function playSound(kind: SoundKind) {
       const ng = ac.createGain();
       ng.gain.setValueAtTime(0.15, now);
       ng.gain.exponentialRampToValueAtTime(0.0001, now + 0.04);
-      noise.connect(lp).connect(ng).connect(ac.destination);
+      noise.connect(lp).connect(ng).connect(dest() ?? ac.destination);
       noise.start(now); noise.stop(now + 0.05);
       break;
     }
@@ -207,7 +233,7 @@ export function playSound(kind: SoundKind) {
         const g = ac.createGain();
         g.gain.setValueAtTime(amps[i], now);
         g.gain.exponentialRampToValueAtTime(0.0001, now + decays[i]);
-        osc.connect(g).connect(ac.destination);
+        osc.connect(g).connect(dest() ?? ac.destination);
         osc.start(now); osc.stop(now + decays[i] + 0.05);
       });
       // Ataque suave de impacto
@@ -220,7 +246,7 @@ export function playSound(kind: SoundKind) {
       const ng = ac.createGain();
       ng.gain.setValueAtTime(0.05, now);
       ng.gain.exponentialRampToValueAtTime(0.0001, now + 0.03);
-      noise.connect(lp).connect(ng).connect(ac.destination);
+      noise.connect(lp).connect(ng).connect(dest() ?? ac.destination);
       noise.start(now); noise.stop(now + 0.04);
       break;
     }
@@ -234,7 +260,7 @@ export function playSound(kind: SoundKind) {
       const g = ac.createGain();
       g.gain.setValueAtTime(0.12, now);
       g.gain.exponentialRampToValueAtTime(0.0001, now + 0.07);
-      osc.connect(g).connect(ac.destination);
+      osc.connect(g).connect(dest() ?? ac.destination);
       osc.start(now); osc.stop(now + 0.09);
       break;
     }
