@@ -20,6 +20,16 @@ function emptyMetrics(): Metrics {
   return { views: 0, likes: 0, shares: 0 };
 }
 
+// Throttle de logs: nao spammar EasyPanel com a mesma mensagem a cada view
+const _logThrottle = new Map<string, number>();
+function logOnce(key: string, ttlMs: number, fn: () => void) {
+  const now = Date.now();
+  const last = _logThrottle.get(key) ?? 0;
+  if (now - last < ttlMs) return;
+  _logThrottle.set(key, now);
+  fn();
+}
+
 function sanitizeSlug(value: unknown) {
   return typeof value === "string" ? value.trim().slice(0, 180) : "";
 }
@@ -52,7 +62,8 @@ export async function GET(req: NextRequest) {
     const index = await lerMetricas(token);
     return NextResponse.json(slug ? (index[slug] ?? emptyMetrics()) : index);
   } catch (err) {
-    console.error("[/api/eventos/metricas GET]", err);
+    logOnce("metricas-get", 60 * 60 * 1000, () =>
+      console.warn("[/api/eventos/metricas GET] degradado:", err instanceof Error ? err.message : err));
     return NextResponse.json(slug ? emptyMetrics() : {});
   }
 }
@@ -84,7 +95,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(next);
   } catch (err) {
-    console.error("[/api/eventos/metricas POST]", err);
+    logOnce("metricas-post", 60 * 60 * 1000, () =>
+      console.warn("[/api/eventos/metricas POST] degradado:", err instanceof Error ? err.message : err));
     return NextResponse.json(emptyMetrics());
   }
 }
