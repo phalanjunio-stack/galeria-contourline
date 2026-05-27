@@ -33,19 +33,34 @@ export async function GET(req: NextRequest) {
   if (!accessToken) return new NextResponse("Sem token de acesso", { status: 401 });
 
   try {
-    // "original" → arquivo completo via Files API (sem compressão de thumbnail)
-    const driveUrl = sz === "original"
-      ? `https://www.googleapis.com/drive/v3/files/${id}?alt=media`
-      : `https://drive.google.com/thumbnail?id=${id}&sz=w${sz}`;
+    let data: ArrayBuffer | null = null;
+    let type = "image/jpeg";
 
-    const res = await fetch(driveUrl, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
+    if (sz !== "original") {
+      // Tenta primeiro o thumbnail server da Google (rápido, mas exige thumb pre-gerada)
+      const thumbRes = await fetch(`https://drive.google.com/thumbnail?id=${id}&sz=w${sz}`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (thumbRes.ok) {
+        const ct = thumbRes.headers.get("content-type") ?? "";
+        // Drive ocasionalmente retorna 200 + text/html (pagina de erro). So aceita imagem real.
+        if (ct.startsWith("image/")) {
+          data = await thumbRes.arrayBuffer();
+          type = ct || "image/jpeg";
+        }
+      }
+    }
 
-    if (!res.ok) return new NextResponse("Erro ao buscar imagem", { status: res.status });
-
-    const data = await res.arrayBuffer();
-    const type = res.headers.get("content-type") ?? "image/jpeg";
+    // Fallback: arquivo completo via Files API — sempre funciona (uso de banda maior).
+    // Tambem usado p/ sz=original.
+    if (!data) {
+      const fullRes = await fetch(`https://www.googleapis.com/drive/v3/files/${id}?alt=media`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (!fullRes.ok) return new NextResponse("Erro ao buscar imagem", { status: fullRes.status });
+      data = await fullRes.arrayBuffer();
+      type = fullRes.headers.get("content-type") ?? "image/jpeg";
+    }
 
     // Salva no cache
     cache.set(cacheKey, { data, type, ts: Date.now() });
