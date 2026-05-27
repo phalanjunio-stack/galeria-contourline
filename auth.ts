@@ -50,26 +50,34 @@ async function trocarRefreshToken(refreshToken: string) {
   } catch { return null; }
 }
 
-// Obtém token sempre válido para acesso ao Drive server-side
+// Obtém token sempre válido para acesso ao Drive server-side.
+// Estratégia:
+//   1. GOOGLE_REFRESH_TOKEN do .env é fonte de verdade (conta dona da pasta raiz).
+//      Usa o disco SÓ como cache de access_token enquanto vale (evita 1 round-trip).
+//   2. Se o cache em disco veio de um refresh DIFERENTE do env (ex: login OAuth de
+//      outro admin que sobrescreveu o arquivo), ignora e renova com o env.
+//   3. Disco como fallback apenas se o env não estiver definido (raro).
 export async function getAccessTokenFromEnv(): Promise<string | null> {
   const agora = Math.floor(Date.now() / 1000);
-
-  // 1. Token em disco ainda válido?
+  const envRefresh = process.env.GOOGLE_REFRESH_TOKEN;
   const cached = await lerTokenDisco();
-  if (cached?.access_token && cached.expires_at > agora) {
+
+  // 1. Se o env existe E o disco tem token desse mesmo refresh, reusa enquanto valido
+  if (envRefresh && cached?.refresh_token === envRefresh
+      && cached.access_token && cached.expires_at > agora) {
     return cached.access_token;
   }
 
-  // 2. Renova com refresh_token salvo em disco
-  if (cached?.refresh_token) {
-    const novo = await trocarRefreshToken(cached.refresh_token);
+  // 2. Renova com env_refresh (fonte de verdade)
+  if (envRefresh) {
+    const novo = await trocarRefreshToken(envRefresh);
     if (novo) { await salvarTokenDisco(novo); return novo.access_token; }
   }
 
-  // 3. Fallback: GOOGLE_REFRESH_TOKEN do .env
-  const envRefresh = process.env.GOOGLE_REFRESH_TOKEN;
-  if (envRefresh) {
-    const novo = await trocarRefreshToken(envRefresh);
+  // 3. Sem env — cai pro disco (legado)
+  if (cached?.access_token && cached.expires_at > agora) return cached.access_token;
+  if (cached?.refresh_token) {
+    const novo = await trocarRefreshToken(cached.refresh_token);
     if (novo) { await salvarTokenDisco(novo); return novo.access_token; }
   }
 
