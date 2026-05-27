@@ -232,7 +232,8 @@ export default function EventoPage({ params }: { params: Promise<{ slug: string 
     async function load() {
       try {
         const res  = await fetch("/api/eventos");
-        const lista: EventoItem[] = await res.json();
+        const raw  = await res.json().catch(() => null);
+        const lista: EventoItem[] = Array.isArray(raw) ? raw : [];
         const ev   = lista.find((e) => e.id === slug || slug.startsWith(`${e.id}-`)) ?? null;
         const evComTotais = ev && !diaQuery && ev.dias?.length
           ? await carregarTotaisDias(ev)
@@ -361,6 +362,24 @@ export default function EventoPage({ params }: { params: Promise<{ slug: string 
   }
 
   const todasSel = selecionadas.size === fotos.length && fotos.length > 0;
+
+  // ── Evento não encontrado ─────────────────────────────────────────────────
+  if (!loading && !evento) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 px-6 gap-3 text-center">
+        <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center">
+          <Camera size={28} className="text-gray-400" />
+        </div>
+        <p className="font-semibold text-[#0D2B4E]">Evento não encontrado</p>
+        <p className="text-gray-400 text-sm max-w-sm">
+          O link pode estar incorreto ou o evento foi removido.
+        </p>
+        <Link href="/eventos" className="mt-2 inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl gradient-primary text-white text-sm font-semibold shadow hover:opacity-90 transition">
+          <ArrowLeft size={14} /> Ver todos os eventos
+        </Link>
+      </div>
+    );
+  }
 
   // ── Multi-dia sem ?dia: renderiza visão geral ─────────────────────────────
   const ehMultiDia = (evento?.dias?.length ?? 0) > 0;

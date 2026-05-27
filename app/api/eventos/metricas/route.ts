@@ -42,26 +42,27 @@ async function salvarMetricas(index: MetricsIndex, token: string) {
 }
 
 export async function GET(req: NextRequest) {
-  const session = await auth();
-  const token = await getToken(session?.accessToken);
-  if (!token) return NextResponse.json({ error: "Sem token do Drive" }, { status: 401 });
-
   const slug = sanitizeSlug(req.nextUrl.searchParams.get("slug"));
-  const index = await lerMetricas(token);
-
-  if (slug) {
-    return NextResponse.json(index[slug] ?? emptyMetrics());
+  try {
+    const session = await auth().catch(() => null);
+    const token = await getToken(session?.accessToken);
+    if (!token) {
+      return NextResponse.json(slug ? emptyMetrics() : {});
+    }
+    const index = await lerMetricas(token);
+    return NextResponse.json(slug ? (index[slug] ?? emptyMetrics()) : index);
+  } catch (err) {
+    console.error("[/api/eventos/metricas GET]", err);
+    return NextResponse.json(slug ? emptyMetrics() : {});
   }
-
-  return NextResponse.json(index);
 }
 
 export async function POST(req: NextRequest) {
-  const session = await auth();
-  const token = await getToken(session?.accessToken);
-  if (!token) return NextResponse.json({ error: "Sem token do Drive" }, { status: 401 });
-
   try {
+    const session = await auth().catch(() => null);
+    const token = await getToken(session?.accessToken);
+    if (!token) return NextResponse.json(emptyMetrics());
+
     const body = await req.json() as Record<string, unknown>;
     const slug = sanitizeSlug(body.slug);
     const metric = sanitizeMetric(body.metric);
@@ -83,6 +84,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(next);
   } catch (err) {
-    return NextResponse.json({ error: String(err) }, { status: 500 });
+    console.error("[/api/eventos/metricas POST]", err);
+    return NextResponse.json(emptyMetrics());
   }
 }
