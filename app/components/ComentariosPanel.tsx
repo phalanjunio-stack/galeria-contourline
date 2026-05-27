@@ -186,10 +186,10 @@ export default function ComentariosPanel({ eventoId, eventoNome }: Props) {
       <aside
         ref={panelRef}
         className={`fixed z-50 bg-white shadow-2xl flex flex-col transition-transform duration-300 ease-out
-          /* Desktop: sidebar direita */
-          lg:top-0 lg:right-0 lg:h-full lg:w-[420px] lg:border-l lg:border-[#dde8f7]
           /* Mobile: bottom sheet 85vh */
-          inset-x-0 bottom-0 max-h-[85vh] rounded-t-3xl lg:rounded-none
+          inset-x-0 bottom-0 max-h-[85vh] rounded-t-3xl
+          /* Desktop: sidebar direita (sobrescreve inset/max-h) */
+          lg:inset-auto lg:top-0 lg:right-0 lg:bottom-0 lg:left-auto lg:h-full lg:max-h-none lg:w-[420px] lg:border-l lg:border-[#dde8f7] lg:rounded-none
           ${aberto ? "translate-y-0 lg:translate-y-0 lg:translate-x-0 pointer-events-auto" : "translate-y-full lg:translate-y-0 lg:translate-x-full pointer-events-none"}`}
         aria-hidden={!aberto}
       >
