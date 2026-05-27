@@ -113,11 +113,17 @@ export default function MultiDayEventCard({ evento, slug }: Props) {
         {capas.map((capa, index) => {
           const dia = dias[index];
           const fotosDia = dia?.total_fotos ?? 0;
+          const ehUltimoComMais = index === 2 && totalDias > 3;
+          // Mostra +N = dias acessiveis via 'ver todos' (todos menos os 2 visiveis)
+          const sobrando = totalDias - 2;
 
           return (
             <Link
               key={`${capa?.id ?? "placeholder"}-${index}`}
-              href={dia ? `/eventos/${slug}?dia=${dia.id}` : `/eventos/${slug}`}
+              href={ehUltimoComMais
+                ? `/eventos/${slug}`
+                : (dia ? `/eventos/${slug}?dia=${dia.id}` : `/eventos/${slug}`)}
+              aria-label={ehUltimoComMais ? `Ver todos os ${totalDias} dias` : undefined}
               className="group/foto event-card-photo-tile relative aspect-[4/5] overflow-hidden rounded-md ring-1"
             >
               {capa ? (
@@ -133,21 +139,39 @@ export default function MultiDayEventCard({ evento, slug }: Props) {
                 </div>
               )}
 
-              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#07182f]/78 via-[#07182f]/28 to-transparent px-1.5 pb-1.5 pt-7">
-                <span className="mb-1 inline-flex rounded-md bg-white/95 px-2 py-0.5 text-[10px] font-medium text-[#185BAB] shadow-sm">
-                  Dia {index + 1}
-                </span>
-                {dia && (
-                  <div className="space-y-0.5 text-[10px] font-medium text-white/90">
-                    <span className="flex items-center gap-1">
-                      <Calendar size={10} /> {fmtData(dia.data)}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Camera size={10} /> {fotosDia.toLocaleString("pt-BR")} fotos
-                    </span>
+              {ehUltimoComMais ? (
+                /* Overlay "+N dias" — cobre a foto, mantém ela visível como background */
+                <>
+                  <div className="absolute inset-0 bg-gradient-to-br from-[#07182f]/85 via-[#0D2B4E]/80 to-[#2E7DD1]/70 backdrop-blur-[1px] transition-opacity duration-300 group-hover/foto:from-[#07182f]/90 group-hover/foto:to-[#2E7DD1]/80" />
+                  <div className="absolute inset-0 grid place-items-center text-center text-white">
+                    <div>
+                      <div className="text-3xl font-black leading-none tracking-tight">+{sobrando}</div>
+                      <div className="mt-1 text-[10px] font-bold uppercase tracking-wider opacity-90">
+                        {sobrando === 1 ? "dia" : "dias"}
+                      </div>
+                      <div className="mt-2 inline-flex items-center gap-0.5 text-[9px] font-semibold opacity-80">
+                        Ver todos <ChevronRight size={10} />
+                      </div>
+                    </div>
                   </div>
-                )}
-              </div>
+                </>
+              ) : (
+                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#07182f]/78 via-[#07182f]/28 to-transparent px-1.5 pb-1.5 pt-7">
+                  <span className="mb-1 inline-flex rounded-md bg-white/95 px-2 py-0.5 text-[10px] font-medium text-[#185BAB] shadow-sm">
+                    Dia {index + 1}
+                  </span>
+                  {dia && (
+                    <div className="space-y-0.5 text-[10px] font-medium text-white/90">
+                      <span className="flex items-center gap-1">
+                        <Calendar size={10} /> {fmtData(dia.data)}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Camera size={10} /> {fotosDia.toLocaleString("pt-BR")} fotos
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
             </Link>
           );
         })}
@@ -162,7 +186,7 @@ export default function MultiDayEventCard({ evento, slug }: Props) {
 
         <div className="event-card-separator mt-3 border-t pt-3">
           <div className="event-card-day-strip grid grid-cols-3 rounded-md">
-            {dias.slice(0, 3).map((dia, index) => {
+            {dias.slice(0, totalDias > 3 ? 2 : 3).map((dia, index) => {
               const fotosDia = dia.total_fotos ?? 0;
               return (
                 <Link
@@ -198,6 +222,31 @@ export default function MultiDayEventCard({ evento, slug }: Props) {
               </Link>
             );
           })}
+          {totalDias > 3 && (
+            <Link
+              href={`/eventos/${slug}`}
+              data-day-cell
+              aria-label={`Ver todos os ${totalDias} dias`}
+              className="event-card-day-link p-2 transition relative overflow-hidden"
+            >
+              <div className="flex items-center gap-1.5">
+                <span className="grid h-6 w-6 shrink-0 place-items-center rounded-md bg-gradient-to-br from-[#07182f] to-[#2E7DD1] text-xs font-black text-white shadow-sm">
+                  +{totalDias - 2}
+                </span>
+                <div className="min-w-0">
+                  <strong className="event-card-title block truncate text-xs font-medium">
+                    Ver todos
+                  </strong>
+                  <span className="event-card-muted block truncate text-[10px] font-normal">
+                    {totalDias} dias
+                  </span>
+                </div>
+              </div>
+              <span className="mt-2 inline-flex max-w-full items-center gap-1 text-[10px] font-semibold text-[#2E7DD1]">
+                <ChevronRight size={10} /> Abrir
+              </span>
+            </Link>
+          )}
         </div>
       </div>
 
