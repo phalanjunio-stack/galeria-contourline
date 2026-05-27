@@ -73,7 +73,14 @@ export default function EventoEmAndamentoHero({ eventos }: Props) {
 
   const dias = evento.dias ?? [];
   const diaAtivoIdx = dias.findIndex(d => diaIso(d.data) === hojeIso());
-  const capaId = (diaAtivoIdx >= 0 ? dias[diaAtivoIdx].capa_id : null) ?? evento.capa_id;
+  // Banner dedicado tem prioridade; depois cai pra capa do dia ativo; por fim capa do evento.
+  const bannerId = evento.banner_id ?? null;
+  const capaId   = bannerId
+    ?? (diaAtivoIdx >= 0 ? dias[diaAtivoIdx].capa_id : null)
+    ?? evento.capa_id;
+  const objectPosition = bannerId
+    ? (evento.banner_position ?? "center right")
+    : (evento.capa_position ?? "center right");
   const diaLabel = dias.length > 0 && diaAtivoIdx >= 0
     ? `Dia ${diaAtivoIdx + 1} de ${dias.length}`
     : null;
@@ -95,7 +102,7 @@ export default function EventoEmAndamentoHero({ eventos }: Props) {
             alt=""
             aria-hidden
             className="absolute inset-0 h-full w-full object-cover"
-            style={{ objectPosition: evento.capa_position ?? "center right" }}
+            style={{ objectPosition }}
           />
           {/* Camada 1 — fade horizontal: esquerda 100% opaca → direita translúcida */}
           <div

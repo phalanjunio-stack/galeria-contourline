@@ -5,7 +5,7 @@ import Link from "next/link";
 import {
   AlertCircle, ArrowLeft, Calendar, MapPin, Save, Loader2, Plus, X,
   Folder, Clock, CheckCircle, FileText, Sparkles,
-  ChevronDown, Trash2, ToggleLeft, ToggleRight,
+  ChevronDown, Trash2, ToggleLeft, ToggleRight, Image as ImageIcon, Upload,
 } from "lucide-react";
 import type { EventoItem, EventoDia } from "@/app/api/eventos/route";
 import FocalPointPicker from "@/app/components/FocalPointPicker";
@@ -33,8 +33,11 @@ export default function EditarEventoPage({ params }: { params: Promise<{ id: str
     nome: "", data: "", data_fim: "", local: "",
     categoria: "Evento", descricao: "", status: "aberto",
     folder_id: "", capa_position: "center",
+    banner_id: "" as string, banner_position: "center right",
     reconhecimento_facial: true, download_liberado: true,
   });
+  const [bannerUploading, setBannerUploading] = useState(false);
+  const [bannerErro, setBannerErro] = useState("");
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
   const [dias, setDias] = useState<EventoDia[]>([]);
@@ -69,6 +72,8 @@ export default function EditarEventoPage({ params }: { params: Promise<{ id: str
           status: atual.status ?? "aberto",
           folder_id: atual.folder_id ?? "",
           capa_position: atual.capa_position ?? "center",
+          banner_id: atual.banner_id ?? "",
+          banner_position: atual.banner_position ?? "center right",
           reconhecimento_facial: atual.reconhecimento_facial ?? true,
           download_liberado: atual.download_liberado ?? true,
         });
@@ -102,6 +107,46 @@ export default function EditarEventoPage({ params }: { params: Promise<{ id: str
     setDias(dias.map((d, j) => j === i ? { ...d, ...patch } : d));
   }
 
+  async function uploadBanner(file: File) {
+    setBannerErro("");
+    setBannerUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const r = await fetch(`/api/eventos/banner?id=${encodeURIComponent(id)}`, {
+        method: "POST",
+        body: fd,
+      });
+      const data = await r.json().catch(() => null);
+      if (!r.ok) throw new Error(data?.error || `Falha (${r.status})`);
+      if (!data?.banner_id) throw new Error("Resposta sem banner_id");
+      setForm(f => ({ ...f, banner_id: data.banner_id }));
+    } catch (e) {
+      setBannerErro(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBannerUploading(false);
+    }
+  }
+
+  async function removerBanner() {
+    if (!form.banner_id) return;
+    if (!confirm("Remover o banner deste evento?")) return;
+    setBannerErro("");
+    setBannerUploading(true);
+    try {
+      const r = await fetch(`/api/eventos/banner?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+      if (!r.ok) {
+        const data = await r.json().catch(() => null);
+        throw new Error(data?.error || `Falha (${r.status})`);
+      }
+      setForm(f => ({ ...f, banner_id: "" }));
+    } catch (e) {
+      setBannerErro(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBannerUploading(false);
+    }
+  }
+
   async function salvar() {
     setErro("");
     if (!form.nome || !form.data) { setErro("Preencha o nome e a data do evento."); return; }
@@ -118,6 +163,8 @@ export default function EditarEventoPage({ params }: { params: Promise<{ id: str
           descricao: form.descricao, status: form.status,
           folder_id: extrairFolderId(form.folder_id),
           capa_position: form.capa_position,
+          banner_id: form.banner_id || undefined,
+          banner_position: form.banner_position,
           reconhecimento_facial: form.reconhecimento_facial,
           download_liberado: form.download_liberado,
           dias: dias.length > 0
@@ -262,6 +309,92 @@ export default function EditarEventoPage({ params }: { params: Promise<{ id: str
                     />
                   </div>
                 </Field>
+              </div>
+            </div>
+          </section>
+
+          {/* 1.5 Banner do evento (hero "Evento em andamento") */}
+          <section className="bg-white/95 backdrop-blur-md border border-[#b6cbec]/80 rounded-[18px] shadow-[0_14px_36px_rgba(8,39,93,.13)] p-7">
+            <SectionHeader num="B" title="Banner do evento (hero da home)" />
+            <p className="text-[#415d86] text-sm mt-1 mb-4">
+              Imagem larga (flyer/arte) usada no banner <em>“Evento em andamento”</em> da home, com degradê dissolvendo na lateral esquerda. Não aparece na galeria de fotos.
+            </p>
+
+            <div className="grid gap-5 md:grid-cols-2">
+              {/* Coluna 1: upload + remover */}
+              <div className="flex flex-col gap-3">
+                <label className="relative inline-flex items-center justify-center gap-2 h-12 px-5 rounded-xl border-2 border-dashed border-[#bfd0ec] bg-[#f7fbff] hover:border-[#145dff] hover:bg-[#eef5ff] cursor-pointer transition text-sm font-extrabold text-[#061844]">
+                  {bannerUploading ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
+                  {bannerUploading ? "Enviando..." : (form.banner_id ? "Substituir banner" : "Enviar banner")}
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    className="absolute inset-0 opacity-0 cursor-pointer disabled:cursor-not-allowed"
+                    disabled={bannerUploading}
+                    onChange={e => {
+                      const f = e.target.files?.[0];
+                      if (f) uploadBanner(f);
+                      e.target.value = "";
+                    }}
+                  />
+                </label>
+                {form.banner_id && (
+                  <button
+                    type="button"
+                    onClick={removerBanner}
+                    disabled={bannerUploading}
+                    className="inline-flex items-center justify-center gap-1.5 h-10 px-4 rounded-lg border border-red-200 text-red-600 font-semibold text-xs hover:bg-red-50 transition disabled:opacity-50"
+                  >
+                    <Trash2 size={13} /> Remover banner
+                  </button>
+                )}
+                {bannerErro && (
+                  <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-700">
+                    {bannerErro}
+                  </div>
+                )}
+                {form.banner_id && (
+                  <FocalPointPicker
+                    fotoId={form.banner_id}
+                    value={form.banner_position}
+                    onChange={v => setForm({ ...form, banner_position: v })}
+                    aspect="3/1"
+                  />
+                )}
+                <p className="text-[11px] text-[#415d86]">
+                  Recomendado: 1600×600 (paisagem). Max 8MB. JPG, PNG, WEBP ou GIF.
+                </p>
+              </div>
+
+              {/* Coluna 2: preview com o degradê real do hero */}
+              <div>
+                <p className="text-xs font-extrabold text-[#061844] mb-2">Preview do hero</p>
+                <div
+                  className="relative aspect-[3/1] rounded-xl overflow-hidden border border-[#1F3A5F]"
+                  style={{ background: "linear-gradient(135deg, #0A1A2E 0%, #102A44 100%)" }}
+                >
+                  {form.banner_id ? (
+                    <>
+                      <img
+                        src={`/api/thumb?id=${form.banner_id}&sz=1200`}
+                        alt=""
+                        className="absolute inset-0 w-full h-full object-cover"
+                        style={{ objectPosition: form.banner_position }}
+                      />
+                      <div className="absolute inset-0" style={{ background: "linear-gradient(90deg, rgba(10,26,46,1) 0%, rgba(10,26,46,0.96) 28%, rgba(10,26,46,0.65) 60%, rgba(10,26,46,0.15) 100%)" }} />
+                      <div className="absolute inset-0 pointer-events-none" style={{ background: "linear-gradient(180deg, rgba(10,26,46,0.55) 0%, rgba(10,26,46,0) 30%, rgba(10,26,46,0) 70%, rgba(10,26,46,0.55) 100%)" }} />
+                      <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(ellipse 70% 90% at 85% 50%, transparent 0%, rgba(10,26,46,0.35) 70%, rgba(10,26,46,0.7) 100%)" }} />
+                      <div className="absolute left-4 bottom-3 text-white text-xs font-extrabold opacity-90">
+                        {form.nome || "Nome do evento"}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="absolute inset-0 grid place-items-center text-white/40 text-xs font-semibold gap-1.5">
+                      <ImageIcon size={20} />
+                      Sem banner — usa cor sólida
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </section>

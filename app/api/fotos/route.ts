@@ -24,7 +24,8 @@ export async function GET(req: NextRequest) {
     // Pagina até buscar todas as fotos (Drive retorna máx 1000 por página)
     do {
       const params = new URLSearchParams({
-        q: `'${folderId}' in parents and mimeType contains 'image/' and trashed = false`,
+        // Exclui _banner_* (banner do hero, nao faz parte da galeria)
+        q: `'${folderId}' in parents and mimeType contains 'image/' and trashed = false and not name contains '_banner_'`,
         fields: "nextPageToken, files(id,name)",
         pageSize: "1000",
         orderBy: "createdTime desc",

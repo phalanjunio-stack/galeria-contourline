@@ -42,6 +42,11 @@ export interface EventoItem {
   capa_id?: string;
   /** Foco da capa no card: "top left", "top", "center", etc. (CSS object-position). Default: "center" */
   capa_position?: string;
+  /** Banner dedicado pro hero "Evento em andamento" — separado da capa da galeria.
+   *  ID de arquivo no Drive (uploadado pelo admin como _banner_{id}.{ext}). */
+  banner_id?: string;
+  /** Foco do banner no hero (CSS object-position). Default: "center right" */
+  banner_position?: string;
   /** Dias internos — se vazio/undefined, evento é tratado como 1 dia (usa folder_id). */
   dias?: EventoDia[];
   criado_em: string;
