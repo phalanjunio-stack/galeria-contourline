@@ -34,6 +34,7 @@ export default function EditarEventoPage({ params }: { params: Promise<{ id: str
     categoria: "Evento", descricao: "", status: "aberto",
     folder_id: "", capa_position: "center",
     banner_id: "" as string, banner_position: "center right",
+    auto_dias_por_data: false,
     reconhecimento_facial: true, download_liberado: true,
   });
   const [bannerUploading, setBannerUploading] = useState(false);
@@ -74,6 +75,7 @@ export default function EditarEventoPage({ params }: { params: Promise<{ id: str
           capa_position: atual.capa_position ?? "center",
           banner_id: atual.banner_id ?? "",
           banner_position: atual.banner_position ?? "center right",
+          auto_dias_por_data: atual.auto_dias_por_data ?? false,
           reconhecimento_facial: atual.reconhecimento_facial ?? true,
           download_liberado: atual.download_liberado ?? true,
         });
@@ -165,6 +167,7 @@ export default function EditarEventoPage({ params }: { params: Promise<{ id: str
           capa_position: form.capa_position,
           banner_id: form.banner_id || undefined,
           banner_position: form.banner_position,
+          auto_dias_por_data: form.auto_dias_por_data,
           reconhecimento_facial: form.reconhecimento_facial,
           download_liberado: form.download_liberado,
           dias: dias.length > 0
@@ -431,15 +434,45 @@ export default function EditarEventoPage({ params }: { params: Promise<{ id: str
           <section className="bg-white/95 backdrop-blur-md border border-[#b6cbec]/80 rounded-[18px] shadow-[0_14px_36px_rgba(8,39,93,.13)] p-7">
             <div className="flex flex-wrap justify-between items-center gap-3 mb-2">
               <SectionHeader num={evento.capa_id ? "3" : "2"} title="Dias do evento" inline />
-              <button onClick={adicionarDia}
-                className="h-10 px-5 rounded-[10px] bg-gradient-to-br from-[#145dff] to-[#074ee6] text-white font-extrabold text-sm shadow-lg inline-flex items-center gap-1.5">
+              <button
+                onClick={adicionarDia}
+                disabled={form.auto_dias_por_data}
+                title={form.auto_dias_por_data ? "Desligue o modo automático pra adicionar dias manuais" : undefined}
+                className="h-10 px-5 rounded-[10px] bg-gradient-to-br from-[#145dff] to-[#074ee6] text-white font-extrabold text-sm shadow-lg inline-flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
                 <Plus size={14} strokeWidth={3} /> Adicionar dia
               </button>
             </div>
+
+            {/* Toggle: agrupar por data automaticamente */}
+            <label className={`mt-2 mb-4 flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition
+              ${form.auto_dias_por_data
+                ? "border-[#145dff] bg-gradient-to-br from-[#eef5ff] to-white shadow-sm"
+                : "border-[#dde8f7] hover:border-[#bfd0ec] hover:bg-[#f7fbff]"}`}>
+              <input
+                type="checkbox"
+                checked={form.auto_dias_por_data}
+                onChange={e => setForm({ ...form, auto_dias_por_data: e.target.checked })}
+                className="mt-0.5 h-5 w-5 rounded accent-[#145dff] shrink-0"
+              />
+              <div className="min-w-0">
+                <div className="text-sm font-extrabold text-[#061844]">
+                  ✨ Agrupar fotos por data automaticamente
+                </div>
+                <p className="text-xs text-[#415d86] mt-0.5 leading-relaxed">
+                  Joga TODAS as fotos na pasta principal e o sistema separa os dias pela
+                  data de captura (EXIF) ou criação. Não precisa criar subpastas manualmente.
+                  <strong className="text-[#145dff]"> Recomendado pra eventos multi-dia.</strong>
+                </p>
+              </div>
+            </label>
+
             <p className="text-[#415d86] text-sm mt-1 mb-4">
-              {dias.length === 0
-                ? "Evento de 1 dia. Adicione dias se for multi-dia — cada dia tem sua própria pasta no Drive."
-                : `${dias.length} dia(s) configurado(s).`}
+              {form.auto_dias_por_data
+                ? "Modo automático ligado — os dias aparecem aqui após o primeiro acesso público (cache 5min)."
+                : dias.length === 0
+                  ? "Evento de 1 dia. Adicione dias se for multi-dia — cada dia tem sua própria pasta no Drive."
+                  : `${dias.length} dia(s) configurado(s).`}
             </p>
 
             {dias.length > 0 && (

@@ -3,6 +3,7 @@ import { auth, getAccessTokenFromEnv } from "@/auth";
 import { lerArquivoOculto, salvarArquivoOculto } from "@/lib/drive";
 import { lerEventosLocal, salvarEventosLocal } from "@/lib/eventos-cache";
 import { registrarAtividade } from "@/lib/atividade";
+import { agruparPorData, type FotoComData } from "@/lib/auto-dias";
 
 // Sempre dinâmico — não cachear em build/runtime do Next.
 // Sem isso, /eventos e / (home) podem ver listas diferentes.
@@ -49,6 +50,9 @@ export interface EventoItem {
   banner_position?: string;
   /** Dias internos — se vazio/undefined, evento é tratado como 1 dia (usa folder_id). */
   dias?: EventoDia[];
+  /** Quando true, ignora 'dias' configurados manualmente e gera dias automaticamente
+   *  agrupando as fotos da folder_id principal por EXIF/createdTime. */
+  auto_dias_por_data?: boolean;
   criado_em: string;
   /** Quantas pessoas distintas a IA achou — derivado de _matches_{id}.json em runtime. */
   pessoas_encontradas?: number;
@@ -93,6 +97,77 @@ type PessoasCache = { ts: number; pessoas: number };
 const pessoasCache = new Map<string, PessoasCache>();
 const PESSOAS_TTL_MS = 60_000;
 
+/* Cache dos dias auto-detectados (uma chamada ao Drive lista todos os arquivos) — TTL 5min. */
+type DiasAutoCache = { ts: number; dias: EventoDia[] };
+const diasAutoCache = new Map<string, DiasAutoCache>();
+const DIAS_AUTO_TTL_MS = 5 * 60_000;
+
+const DRIVE_API = "https://www.googleapis.com/drive/v3";
+
+async function listarFotosComData(folderId: string, token: string): Promise<FotoComData[]> {
+  const todasFotos: FotoComData[] = [];
+  let pageToken: string | undefined;
+  type FotoRaw = {
+    id: string;
+    name: string;
+    createdTime?: string;
+    imageMediaMetadata?: { time?: string };
+  };
+  function extrairData(f: FotoRaw): string | null {
+    const exif = f.imageMediaMetadata?.time;
+    if (exif) {
+      const m = exif.match(/^(\d{4}):(\d{2}):(\d{2})/);
+      if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+    }
+    return f.createdTime ? f.createdTime.slice(0, 10) : null;
+  }
+  do {
+    const params = new URLSearchParams({
+      q: `'${folderId}' in parents and mimeType contains 'image/' and trashed = false and not name contains '_banner_'`,
+      fields: "nextPageToken, files(id,name,createdTime,imageMediaMetadata(time))",
+      pageSize: "1000",
+      orderBy: "name",
+    });
+    if (pageToken) params.set("pageToken", pageToken);
+    const res = await fetch(`${DRIVE_API}/files?${params}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) break;
+    const data = await res.json();
+    const files: FotoRaw[] = data.files ?? [];
+    todasFotos.push(...files.map(f => ({ id: f.id, name: f.name, data: extrairData(f) })));
+    pageToken = data.nextPageToken;
+  } while (pageToken);
+  return todasFotos;
+}
+
+async function diasAutoDoEvento(ev: EventoItem, token: string): Promise<EventoDia[]> {
+  if (!ev.folder_id) return [];
+  const cached = diasAutoCache.get(ev.id);
+  if (cached && Date.now() - cached.ts < DIAS_AUTO_TTL_MS) return cached.dias;
+  try {
+    const fotos = await listarFotosComData(ev.folder_id, token);
+    const dias = agruparPorData(ev.folder_id, fotos, {
+      inicio: ev.data?.slice(0, 10),
+      fim: (ev.data_fim ?? ev.data)?.slice(0, 10),
+    });
+    // Não enviamos as fotos inline aqui — só os dias com counts/capas
+    const enxutos: EventoDia[] = dias.map(d => ({
+      id: d.id,
+      titulo: d.titulo,
+      data: d.data,
+      folder_id: d.folder_id,
+      total_fotos: d.total_fotos,
+      capa_id: d.capa_id,
+      status: d.status,
+    }));
+    diasAutoCache.set(ev.id, { ts: Date.now(), dias: enxutos });
+    return enxutos;
+  } catch {
+    return cached?.dias ?? [];
+  }
+}
+
 async function contarPessoas(eventoId: string, folderId: string, token: string): Promise<number> {
   const cached = pessoasCache.get(eventoId);
   if (cached && Date.now() - cached.ts < PESSOAS_TTL_MS) return cached.pessoas;
@@ -131,6 +206,12 @@ export async function GET() {
     await Promise.all(eventos.map(async (ev) => {
       if (!ev.folder_id) return;
       ev.pessoas_encontradas = await contarPessoas(ev.id, ev.folder_id, token);
+      // Auto-detecta dias por data (EXIF/createdTime) quando o evento tem o flag ligado
+      // e nao tem dias configurados manualmente.
+      if (ev.auto_dias_por_data && (!ev.dias || ev.dias.length === 0)) {
+        const dias = await diasAutoDoEvento(ev, token);
+        if (dias.length > 0) ev.dias = dias;
+      }
     }));
   }
 

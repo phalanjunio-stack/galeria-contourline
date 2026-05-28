@@ -29,7 +29,7 @@ import { lerRecognitionThresholdLocal } from "@/lib/recognition-thresholds";
 
 type FiltroKey = "todas" | "minhas" | "favoritas";
 
-interface DrivePhoto { id: string; name: string; }
+interface DrivePhoto { id: string; name: string; data?: string | null; }
 interface FotoDesc { fotoId: string; rostos: { descriptor: number[] }[] }
 
 async function carregarTotaisDias(ev: EventoItem) {
@@ -268,7 +268,11 @@ export default function EventoPage({ params }: { params: Promise<{ slug: string 
         if (ehMultiDiaSemSelecao) { setLoading(false); return; }
         if (!folderAtivo) { setLoading(false); return; }
 
-        const cacheKey = `fotos_${folderAtivo}`;
+        // Em modo auto-dias o folder e compartilhado entre os dias — chave inclui o dia
+        const ehAutoDia = evComTotais?.auto_dias_por_data && diaSelecionado?.id.startsWith("dia-");
+        const cacheKey = ehAutoDia
+          ? `fotos_${folderAtivo}_${diaSelecionado!.id}`
+          : `fotos_${folderAtivo}`;
         const FOTOS_CACHE_TTL = 5 * 60 * 1000;
         let fotosCarregadas: DrivePhoto[] = [];
 
@@ -294,8 +298,16 @@ export default function EventoPage({ params }: { params: Promise<{ slug: string 
         } else {
           // Deduplicar por id e ordenar por nome (natural — IMG_2 antes de IMG_10)
           const raw: DrivePhoto[] = fData.fotos ?? [];
-          const novas = Array.from(new Map(raw.map(f => [f.id, f])).values())
+          let novas = Array.from(new Map(raw.map(f => [f.id, f])).values())
             .sort((a, b) => a.name.localeCompare(b.name, "pt-BR", { numeric: true, sensitivity: "base" }));
+
+          // Modo auto-dias: quando o dia selecionado tem id "dia-YYYY-MM-DD", filtra
+          // por foto.data. Pasta e a mesma do evento, mas mostra so as fotos daquele dia.
+          if (evComTotais?.auto_dias_por_data && diaSelecionado?.id.startsWith("dia-")) {
+            const dataAlvo = diaSelecionado.id.replace(/^dia-/, "");
+            novas = novas.filter(f => f.data === dataAlvo);
+          }
+
           // Só atualiza se vier fotos (evita piscar com lista menor que o cache)
           if (novas.length > 0) {
             setFotos(novas);

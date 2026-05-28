@@ -17,18 +17,38 @@ export async function GET(req: NextRequest) {
   const accessToken = (await getAccessTokenFromEnv()) ?? session?.accessToken;
   if (!accessToken) return NextResponse.json({ error: "Sem token de acesso" }, { status: 401 });
 
+  type FotoRaw = {
+    id: string;
+    name: string;
+    createdTime?: string;
+    imageMediaMetadata?: { time?: string };
+  };
+
+  /** Extrai data YYYY-MM-DD priorizando EXIF (imageMediaMetadata.time) e
+   *  caindo pra createdTime do Drive como fallback. */
+  function extrairData(f: FotoRaw): string | null {
+    const exif = f.imageMediaMetadata?.time;
+    if (exif) {
+      // Formato EXIF típico: "2026:05:26 14:32:01" → ISO local
+      const m = exif.match(/^(\d{4}):(\d{2}):(\d{2})/);
+      if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+    }
+    if (f.createdTime) {
+      // ISO 8601 — pega só a data (UTC). Suficiente p/ bucket por dia.
+      return f.createdTime.slice(0, 10);
+    }
+    return null;
+  }
+
   try {
-    const todasFotos: { id: string; name: string }[] = [];
+    const todasFotos: { id: string; name: string; data: string | null }[] = [];
     let pageToken: string | undefined;
 
-    // Pagina até buscar todas as fotos (Drive retorna máx 1000 por página)
     do {
       const params = new URLSearchParams({
-        // Exclui _banner_* (banner do hero, nao faz parte da galeria)
         q: `'${folderId}' in parents and mimeType contains 'image/' and trashed = false and not name contains '_banner_'`,
-        fields: "nextPageToken, files(id,name)",
+        fields: "nextPageToken, files(id,name,createdTime,imageMediaMetadata(time))",
         pageSize: "1000",
-        // Por nome (IMG_0001 → IMG_9999), ordem natural de captura da câmera
         orderBy: "name",
       });
       if (pageToken) params.set("pageToken", pageToken);
@@ -43,7 +63,12 @@ export async function GET(req: NextRequest) {
       }
 
       const data = await res.json();
-      todasFotos.push(...(data.files ?? []));
+      const files: FotoRaw[] = data.files ?? [];
+      todasFotos.push(...files.map(f => ({
+        id: f.id,
+        name: f.name,
+        data: extrairData(f),
+      })));
       pageToken = data.nextPageToken;
 
     } while (pageToken);
