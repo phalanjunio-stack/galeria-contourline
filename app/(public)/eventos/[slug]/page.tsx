@@ -218,7 +218,7 @@ export default function EventoPage({ params }: { params: Promise<{ slug: string 
         const idxData = await fetchDescritores(eventoId);
         if (idxData?.indexado && idxData.dados?.length) {
           const limiar = lerRecognitionThresholdLocal("usuario");
-          let achadas = 0;
+          const novasDescobertas: string[] = [];
           for (const foto of idxData.dados as FotoDesc[]) {
             let melhor = Infinity;
             for (const rosto of foto.rostos) {
@@ -227,14 +227,33 @@ export default function EventoPage({ params }: { params: Promise<{ slug: string 
             }
             if (melhor < limiar && !todasFotos.has(foto.fotoId)) {
               todasFotos.add(foto.fotoId);
-              achadas++;
+              novasDescobertas.push(foto.fotoId);
             }
           }
-          if (achadas > 0) atualizarUI();
+          if (novasDescobertas.length > 0) {
+            atualizarUI();
+            // Persiste no Drive (_mf_) com merge — proximo acesso (e outros
+            // devices) ja recebe essas fotos sem precisar re-computar.
+            if (email && evento?.nome) {
+              fetch("/api/meu/fotos", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  email,
+                  eventoId,
+                  eventoNome: evento.nome,
+                  fotoIds: Array.from(todasFotos),
+                  processadoEm: new Date().toISOString(),
+                  merge: true,
+                }),
+              }).catch(() => {}); // silencioso — nao bloqueia UI
+            }
+          }
         }
       }
     } catch { /**/ }
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [evento?.nome]);
 
   useEffect(() => {
     const id = window.setTimeout(() => {
@@ -585,9 +604,18 @@ export default function EventoPage({ params }: { params: Promise<{ slug: string 
                 Conferir ({minhasFotosEvento.length}) <ChevronRight size={13} />
               </button>
             </div>
-            <p className="text-[10px] text-amber-700/70 bg-amber-50/60 border border-amber-200/60 rounded-lg px-2 py-1 mb-2 inline-flex items-center gap-1">
-              💡 A IA pode errar (luz, ângulo, maquiagem). Marque só as que são suas em <strong>São minhas</strong>.
-            </p>
+            <div className="flex flex-wrap items-center gap-2 mb-2">
+              <p className="text-[10px] text-amber-700/70 bg-amber-50/60 border border-amber-200/60 rounded-lg px-2 py-1 inline-flex items-center gap-1">
+                💡 A IA pode errar (luz, ângulo, maquiagem). Marque só as que são suas em <strong>São minhas</strong>.
+              </p>
+              <Link
+                href="/cadastrar-rosto?adicionar=1"
+                className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-white border border-[#2E7DD1]/30 text-[10px] font-bold text-[#2E7DD1] hover:bg-[#2E7DD1] hover:text-white transition"
+                title="Cada selfie nova aumenta a chance de achar mais fotos suas"
+              >
+                <ScanFace size={11} /> Encontrar mais (+ selfie)
+              </Link>
+            </div>
             {/* Linha decorativa azul→roxo separando aviso das fotos */}
             <div className="mb-3 h-px w-full bg-gradient-to-r from-[#2E7DD1] via-[#7C3AED] to-[#2E7DD1] opacity-60" />
 
@@ -725,10 +753,18 @@ export default function EventoPage({ params }: { params: Promise<{ slug: string 
                 {filtroAtivo === "minhas"
                   ? <><ScanFace size={36} className="text-gray-300" />
                       <p className="font-semibold text-[#0D2B4E]">Nenhuma foto sua encontrada</p>
-                      <p className="text-gray-400 text-sm">Cadastre seu rosto para buscar automaticamente</p>
-                      <Link href="/cadastrar-rosto" className="mt-1 px-5 py-2.5 rounded-xl gradient-primary text-white text-sm font-semibold shadow hover:opacity-90 transition">
-                        Cadastrar meu rosto
-                      </Link></>
+                      <p className="text-gray-400 text-sm max-w-md">
+                        Cadastre seu rosto, ou se já cadastrou, adicione mais selfies em
+                        ângulos/iluminações diferentes pra aumentar a precisão.
+                      </p>
+                      <div className="flex flex-wrap gap-2 justify-center mt-1">
+                        <Link href="/cadastrar-rosto" className="px-5 py-2.5 rounded-xl gradient-primary text-white text-sm font-semibold shadow hover:opacity-90 transition">
+                          Cadastrar meu rosto
+                        </Link>
+                        <Link href="/cadastrar-rosto?adicionar=1" className="px-5 py-2.5 rounded-xl border-2 border-[#2E7DD1] text-[#2E7DD1] text-sm font-semibold hover:bg-[#EFF5FF] transition">
+                          + Outra selfie
+                        </Link>
+                      </div></>
                   : <><Heart size={36} className="text-gray-300" />
                       <p className="font-semibold text-[#0D2B4E]">Nenhuma foto favoritada</p>
                       <p className="text-gray-400 text-sm">Clique no coração de qualquer foto para salvar</p></>

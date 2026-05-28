@@ -8,7 +8,8 @@ import {
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useToast } from "@/app/components/ToastProvider";
-import { salvarDescriptor, salvarCacheMinhasFotos, lerDescriptors, menorDistancia } from "@/lib/minhasFotos";
+import { salvarDescriptor, adicionarDescriptor, salvarCacheMinhasFotos, lerDescriptors, menorDistancia } from "@/lib/minhasFotos";
+import { useSearchParams } from "next/navigation";
 import { fetchDescritores } from "@/lib/descritoresCache";
 import { lerRecognitionThresholdLocal } from "@/lib/recognition-thresholds";
 
@@ -54,7 +55,25 @@ function PassosCadastro({ atual }: { atual: 1 | 2 | 3 }) {
   );
 }
 
-function CabecalhoCadastro() {
+function CabecalhoCadastro({ modoAdicionar = false }: { modoAdicionar?: boolean }) {
+  if (modoAdicionar) {
+    return (
+      <header className="mb-5 grid gap-4 lg:grid-cols-[1fr_auto] lg:items-end">
+        <div>
+          <span className="mb-3 inline-flex items-center gap-2 rounded-full border border-emerald-300/40 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700">
+            <Zap size={13} /> Aumentar precisão
+          </span>
+          <h1 className="text-2xl font-black text-[#0D2B4E] lg:text-4xl">
+            Adicione mais uma selfie
+          </h1>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">
+            Cada selfie nova ajuda a IA a te reconhecer em ângulos, iluminação ou expressões diferentes.
+            Suas selfies anteriores continuam ativas — esta é somada ao seu perfil.
+          </p>
+        </div>
+      </header>
+    );
+  }
   return (
     <header className="mb-5 grid gap-4 lg:grid-cols-[1fr_auto] lg:items-end">
       <div>
@@ -76,6 +95,9 @@ function CabecalhoCadastro() {
 export default function CadastrarRostoPage() {
   const { data: session, status: sessionStatus } = useSession();
   const { toast } = useToast();
+  const searchParams = useSearchParams();
+  // Modo "adicionar" — somar uma selfie nova ao pool de descritores em vez de substituir.
+  const modoAdicionar = searchParams.get("adicionar") === "1";
 
   // Identificação
   const [etapa,          setEtapa]          = useState<EtapaID>("email");
@@ -375,17 +397,25 @@ export default function CadastrarRostoPage() {
       const faceapi = await loadFaceModels();
       setStatus("detecting");
 
-      const img       = await faceapi.fetchImage(src);
-      const detection = await faceapi
-        .detectSingleFace(img, detectorOptions(faceapi, 0.4))
+      const img = await faceapi.fetchImage(src);
+      // Detecta TODAS as faces e escolhe a maior (= mais perto da camera,
+      // provavelmente o usuario). Robusto a selfies com gente atras.
+      const todas = await faceapi
+        .detectAllFaces(img, detectorOptions(faceapi, 0.4))
         .withFaceLandmarks(false)
-        .withFaceDescriptor();
+        .withFaceDescriptors();
 
-      if (!detection) {
+      if (!todas?.length) {
         setStatus("error");
         setErrorMsg("Nenhum rosto detectado. Use uma selfie com rosto de frente, bem iluminado e ocupando boa parte da imagem.");
         return;
       }
+
+      // Pega a face com maior area (width * height)
+      const detection = todas.reduce((maior, cur) =>
+        (cur.detection.box.width * cur.detection.box.height) >
+        (maior.detection.box.width * maior.detection.box.height) ? cur : maior
+      );
 
       // Validação de qualidade
       const score = detection.detection.score;
@@ -408,8 +438,14 @@ export default function CadastrarRostoPage() {
       const thumbRastreio = await gerarThumb(src, 120);
       const emailUsuario  = session?.user?.email ?? usuarioSimples?.email ?? "";
 
-      // Salva descriptor + invalida caches antigos
-      salvarDescriptor(descriptorArr, emailUsuario || undefined);
+      // Salva descriptor: modo "adicionar" SOMA ao pool; padrao SUBSTITUI.
+      // Mais selfies salvas = mais chances de bater (a busca usa menorDistancia
+      // entre TODOS os descritores do usuario).
+      if (modoAdicionar) {
+        adicionarDescriptor(descriptorArr);
+      } else {
+        salvarDescriptor(descriptorArr, emailUsuario || undefined);
+      }
 
       // Carrega eventos enquanto o usuário vê o rosto detectado
       setStatus("buscando");
@@ -538,7 +574,7 @@ export default function CadastrarRostoPage() {
   /* ─────────────── IDENTIFICAÇÃO ─────────────── */
   if (!usuarioAtivo) return (
     <div className="mx-auto max-w-6xl px-4 py-8 lg:py-12">
-      <CabecalhoCadastro />
+      <CabecalhoCadastro modoAdicionar={modoAdicionar} />
       <PassosCadastro atual={1} />
       <div className="mt-5 grid gap-5 lg:grid-cols-[1fr_0.92fr]">
       <div className="w-full rounded-3xl border border-[#2E7DD1]/15 bg-white p-8 shadow-sm">
@@ -627,7 +663,7 @@ export default function CadastrarRostoPage() {
   /* ─────────────── UPLOAD + PROCESSAMENTO ─────────────── */
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 lg:py-12">
-      <CabecalhoCadastro />
+      <CabecalhoCadastro modoAdicionar={modoAdicionar} />
       <div className="mb-6">
         <PassosCadastro atual={2} />
       </div>
