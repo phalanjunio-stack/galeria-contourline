@@ -4,6 +4,10 @@ import { lerArquivoOculto } from "@/lib/drive";
 import { lerEventosLocal } from "@/lib/eventos-cache";
 import { getAccessTokenFromEnv } from "@/auth";
 
+// Nao prerender em build — dados vem do Drive em runtime
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 // Server-side: lê eventos direto do Drive (com fallback pro cache local).
 // Evita ida-volta HTTP pra gerar metadata.
 async function carregarEventos(): Promise<EventoItem[]> {

@@ -9,7 +9,6 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useToast } from "@/app/components/ToastProvider";
 import { salvarDescriptor, adicionarDescriptor, salvarCacheMinhasFotos, lerDescriptors, menorDistancia } from "@/lib/minhasFotos";
-import { useSearchParams } from "next/navigation";
 import { fetchDescritores } from "@/lib/descritoresCache";
 import { lerRecognitionThresholdLocal } from "@/lib/recognition-thresholds";
 
@@ -95,9 +94,15 @@ function CabecalhoCadastro({ modoAdicionar = false }: { modoAdicionar?: boolean 
 export default function CadastrarRostoPage() {
   const { data: session, status: sessionStatus } = useSession();
   const { toast } = useToast();
-  const searchParams = useSearchParams();
   // Modo "adicionar" — somar uma selfie nova ao pool de descritores em vez de substituir.
-  const modoAdicionar = searchParams.get("adicionar") === "1";
+  // Le de window.location.search no client (evita Suspense exigido pelo useSearchParams no Next 15).
+  const [modoAdicionar, setModoAdicionar] = useState(false);
+  useEffect(() => {
+    try {
+      const sp = new URLSearchParams(window.location.search);
+      setModoAdicionar(sp.get("adicionar") === "1");
+    } catch {}
+  }, []);
 
   // Identificação
   const [etapa,          setEtapa]          = useState<EtapaID>("email");
