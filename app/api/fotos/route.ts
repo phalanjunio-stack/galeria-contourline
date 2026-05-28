@@ -28,7 +28,8 @@ export async function GET(req: NextRequest) {
         q: `'${folderId}' in parents and mimeType contains 'image/' and trashed = false and not name contains '_banner_'`,
         fields: "nextPageToken, files(id,name)",
         pageSize: "1000",
-        orderBy: "createdTime desc",
+        // Por nome (IMG_0001 → IMG_9999), ordem natural de captura da câmera
+        orderBy: "name",
       });
       if (pageToken) params.set("pageToken", pageToken);
 

@@ -292,9 +292,10 @@ export default function EventoPage({ params }: { params: Promise<{ slug: string 
         if (fData.error) {
           if (!fotosCarregadas.length) setErro(fData.error);
         } else {
-          // Deduplicar por id antes de exibir
+          // Deduplicar por id e ordenar por nome (natural — IMG_2 antes de IMG_10)
           const raw: DrivePhoto[] = fData.fotos ?? [];
-          const novas = Array.from(new Map(raw.map(f => [f.id, f])).values());
+          const novas = Array.from(new Map(raw.map(f => [f.id, f])).values())
+            .sort((a, b) => a.name.localeCompare(b.name, "pt-BR", { numeric: true, sensitivity: "base" }));
           // Só atualiza se vier fotos (evita piscar com lista menor que o cache)
           if (novas.length > 0) {
             setFotos(novas);
