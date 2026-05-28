@@ -99,23 +99,39 @@ export default function EventoPage({ params }: { params: Promise<{ slug: string 
     try { localStorage.setItem(TOOLBAR_KEY, JSON.stringify(next)); } catch {}
   }
 
-  function gridClasses(): string {
-    if (toolbar.view === "mobile") return "columns-1";
-    if (toolbar.view === "list")   return "flex flex-col gap-2";
+  // Quantidade de colunas por breakpoint — usada pra distribuir o masonry row-wise via JS.
+  // Mantem a mesma curva visual do gridClasses() antigo, em formato numerico [base, sm, lg].
+  function colunasPorBreakpoint(): [number, number, number] {
+    if (toolbar.view === "mobile") return [1, 1, 1];
+    if (toolbar.view === "list")   return [1, 1, 1];
     const s = toolbar.size;
     if (toolbar.view === "compact") {
-      if (s <= 2) return "columns-3 sm:columns-5 lg:columns-7";
-      if (s <= 4) return "columns-3 sm:columns-4 lg:columns-6";
-      if (s <= 6) return "columns-2 sm:columns-4 lg:columns-5";
-      if (s <= 8) return "columns-2 sm:columns-3 lg:columns-4";
-      return "columns-2 sm:columns-3 lg:columns-3";
+      if (s <= 2) return [3, 5, 7];
+      if (s <= 4) return [3, 4, 6];
+      if (s <= 6) return [2, 4, 5];
+      if (s <= 8) return [2, 3, 4];
+      return [2, 3, 3];
     }
-    if (s <= 2) return "columns-2 sm:columns-4 lg:columns-6";
-    if (s <= 4) return "columns-2 sm:columns-3 lg:columns-5";
-    if (s <= 6) return "columns-2 sm:columns-3 lg:columns-4";
-    if (s <= 8) return "columns-1 sm:columns-2 lg:columns-3";
-    return "columns-1 sm:columns-2 lg:columns-2";
+    if (s <= 2) return [2, 4, 6];
+    if (s <= 4) return [2, 3, 5];
+    if (s <= 6) return [2, 3, 4];
+    if (s <= 8) return [1, 2, 3];
+    return [1, 2, 2];
   }
+
+  // Hook simples: detecta o breakpoint atual baseado no width do window (sm = 640, lg = 1024)
+  const [colsAtuais, setColsAtuais] = useState(2);
+  useEffect(() => {
+    function atualizar() {
+      const [base, sm, lg] = colunasPorBreakpoint();
+      const w = window.innerWidth;
+      setColsAtuais(w >= 1024 ? lg : w >= 640 ? sm : base);
+    }
+    atualizar();
+    window.addEventListener("resize", atualizar);
+    return () => window.removeEventListener("resize", atualizar);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [toolbar.view, toolbar.size]);
 
   // Filtro ativo — inicia em "minhas" se vier da lista com ?filtro=minhas (ou ?view=minhas)
   const filtroInicial = (searchParams.get("filtro") ?? searchParams.get("view")) as FiltroKey | null;
@@ -698,30 +714,67 @@ export default function EventoPage({ params }: { params: Promise<{ slug: string 
               </div>
             ) : (
               <>
-                <div className={`${gridClasses()} gap-3`}>
-                  {fotosFiltradas.slice(0, visiveis).map((foto, idx) => (
-                    <FotoCard
-                      key={foto.id}
-                      id={foto.id}
-                      name={foto.name}
-                      index={idx}
-                      masonry={toolbar.view !== "list"}
-                      mobilePortrait={toolbar.view !== "list" && toolbar.view !== "mobile"}
-                      selecionada={selecionadas.has(foto.id)}
-                      favoritada={favoritos.has(foto.id)}
-                      modoSelecao={modoSelecao}
-                      isCapa={foto.id === evento?.capa_id}
-                      isAdmin={isAdmin}
-                      onToggleSel={() => toggleSel(foto.id)}
-                      onToggleFav={() => toggleFav(foto.id)}
-                      onIniciarSelecao={() => { setModoSelecao(true); toggleSel(foto.id); }}
-                      onOpenLightbox={() => setLightboxIdx(idx)}
-                      onDefinirCapa={() => definirCapa(foto.id)}
-                      thumbSize={QUALITY_PX[toolbar.quality]}
-                      downloadUrl={`/api/download?id=${foto.id}&sz=${QUALITY_PX[toolbar.quality]}`}
-                    />
-                  ))}
-                </div>
+                {toolbar.view === "list" ? (
+                  // List: stack vertical simples
+                  <div className="flex flex-col gap-2">
+                    {fotosFiltradas.slice(0, visiveis).map((foto, idx) => (
+                      <FotoCard
+                        key={foto.id}
+                        id={foto.id}
+                        name={foto.name}
+                        index={idx}
+                        masonry={false}
+                        mobilePortrait={false}
+                        selecionada={selecionadas.has(foto.id)}
+                        favoritada={favoritos.has(foto.id)}
+                        modoSelecao={modoSelecao}
+                        isCapa={foto.id === evento?.capa_id}
+                        isAdmin={isAdmin}
+                        onToggleSel={() => toggleSel(foto.id)}
+                        onToggleFav={() => toggleFav(foto.id)}
+                        onIniciarSelecao={() => { setModoSelecao(true); toggleSel(foto.id); }}
+                        onOpenLightbox={() => setLightboxIdx(idx)}
+                        onDefinirCapa={() => definirCapa(foto.id)}
+                        thumbSize={QUALITY_PX[toolbar.quality]}
+                        downloadUrl={`/api/download?id=${foto.id}&sz=${QUALITY_PX[toolbar.quality]}`}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  // Masonry row-wise: distribui itens em N colunas pelo idx % N
+                  // preservando a sequencia visual da esquerda pra direita.
+                  <div className="flex gap-3 items-start">
+                    {Array.from({ length: colsAtuais }, (_, c) => (
+                      <div key={c} className="flex-1 min-w-0 flex flex-col gap-3">
+                        {fotosFiltradas.slice(0, visiveis)
+                          .map((foto, idx) => ({ foto, idx }))
+                          .filter(({ idx }) => idx % colsAtuais === c)
+                          .map(({ foto, idx }) => (
+                            <FotoCard
+                              key={foto.id}
+                              id={foto.id}
+                              name={foto.name}
+                              index={idx}
+                              masonry
+                              mobilePortrait={toolbar.view !== "mobile"}
+                              selecionada={selecionadas.has(foto.id)}
+                              favoritada={favoritos.has(foto.id)}
+                              modoSelecao={modoSelecao}
+                              isCapa={foto.id === evento?.capa_id}
+                              isAdmin={isAdmin}
+                              onToggleSel={() => toggleSel(foto.id)}
+                              onToggleFav={() => toggleFav(foto.id)}
+                              onIniciarSelecao={() => { setModoSelecao(true); toggleSel(foto.id); }}
+                              onOpenLightbox={() => setLightboxIdx(idx)}
+                              onDefinirCapa={() => definirCapa(foto.id)}
+                              thumbSize={QUALITY_PX[toolbar.quality]}
+                              downloadUrl={`/api/download?id=${foto.id}&sz=${QUALITY_PX[toolbar.quality]}`}
+                            />
+                          ))}
+                      </div>
+                    ))}
+                  </div>
+                )}
                 {/* Sentinel de paginação */}
                 {visiveis < fotosFiltradas.length && (
                   <div ref={sentinelRef} className="flex justify-center py-8">
