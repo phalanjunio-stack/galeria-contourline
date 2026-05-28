@@ -165,39 +165,43 @@ export default function EventoPage({ params }: { params: Promise<{ slug: string 
       if (sessao?.user) { nome = sessao.user.name ?? nome; email = sessao.user.email ?? email; }
       if (nome) setNomeUsuario(nome.split(" ")[0]);
 
+      // Conjunto unificado — sempre acumula de TODAS as fontes (union)
+      // ao inves de early-return na primeira que achar.
+      const todasFotos = new Set<string>();
+      const atualizarUI = () => {
+        if (todasFotos.size > 0) setMinhasFotosEvento(Array.from(todasFotos));
+      };
+
       // 2. Render imediato via cache local
       if (email) {
         const cached = lerCacheMinhasFotos(email);
         const evCache = cached?.porEvento.find(e => e.eventoId === eventoId);
-        if (evCache?.fotos.length) setMinhasFotosEvento(evCache.fotos);
+        evCache?.fotos.forEach(id => todasFotos.add(id));
+        atualizarUI();
       }
 
-      // 3. Fonte de verdade: Drive (via helper unificado)
+      // 3. Drive _mf_ (admin-confirmadas)
       if (email) {
         const fresh = await fetchMinhasFotos(email);
         const evFresh = fresh?.porEvento.find(e => e.eventoId === eventoId);
-        if (evFresh?.fotos.length) {
-          setMinhasFotosEvento(evFresh.fotos);
-          return;
-        }
+        evFresh?.fotos.forEach(id => todasFotos.add(id));
+        atualizarUI();
       }
 
-      // 4. Fallback: índice de matches por evento (caminho admin)
+      // 4. Indice de matches por evento (admin)
       if (email) {
-        const mRes = await fetch(`/api/matches?eventoId=${eventoId}`);
-        if (mRes.ok) {
-          const mData = await mRes.json();
-          if (mData?.usuarios) {
-            const eu = mData.usuarios.find((u: { email: string; fotosIds: string[] }) => u.email === email);
-            if (eu?.fotosIds?.length) {
-              setMinhasFotosEvento(eu.fotosIds);
-              return;
-            }
+        try {
+          const mRes = await fetch(`/api/matches?eventoId=${eventoId}`);
+          if (mRes.ok) {
+            const mData = await mRes.json();
+            const eu = mData?.usuarios?.find((u: { email: string; fotosIds: string[] }) => u.email === email);
+            eu?.fotosIds?.forEach((id: string) => todasFotos.add(id));
+            atualizarUI();
           }
-        }
+        } catch { /**/ }
       }
 
-      // 5. Fallback: compara descriptor salvo com índice do evento
+      // 5. Descriptor matching algoritmico (face-api, independente do admin)
       let descriptors = lerDescriptors();
       if (descriptors.length === 0 && email) {
         const perfilRes = await fetch(`/api/perfil?email=${encodeURIComponent(email)}`).catch(() => null);
@@ -209,21 +213,26 @@ export default function EventoPage({ params }: { params: Promise<{ slug: string 
           : [];
         descriptors = doPerfil.map((descriptor) => new Float32Array(descriptor));
       }
-      if (descriptors.length === 0) return;
-      const idxData = await fetchDescritores(eventoId);
-      if (!idxData?.indexado || !idxData.dados?.length) return;
 
-      const encontradas: string[] = [];
-      const limiar = lerRecognitionThresholdLocal("usuario");
-      for (const foto of idxData.dados as FotoDesc[]) {
-        let melhor = Infinity;
-        for (const rosto of foto.rostos) {
-          const distancia = menorDistancia(descriptors, rosto.descriptor);
-          if (distancia < melhor) melhor = distancia;
+      if (descriptors.length > 0) {
+        const idxData = await fetchDescritores(eventoId);
+        if (idxData?.indexado && idxData.dados?.length) {
+          const limiar = lerRecognitionThresholdLocal("usuario");
+          let achadas = 0;
+          for (const foto of idxData.dados as FotoDesc[]) {
+            let melhor = Infinity;
+            for (const rosto of foto.rostos) {
+              const distancia = menorDistancia(descriptors, rosto.descriptor);
+              if (distancia < melhor) melhor = distancia;
+            }
+            if (melhor < limiar && !todasFotos.has(foto.fotoId)) {
+              todasFotos.add(foto.fotoId);
+              achadas++;
+            }
+          }
+          if (achadas > 0) atualizarUI();
         }
-        if (melhor < limiar) encontradas.push(foto.fotoId);
       }
-      if (encontradas.length) setMinhasFotosEvento(encontradas);
     } catch { /**/ }
   }, []);
 

@@ -6,10 +6,14 @@ export interface RecognitionThresholds {
 
 export type RecognitionThresholdKey = keyof RecognitionThresholds;
 
+// Calibrados em produção:
+//   admin    = 0.48 — admin confirma manualmente, pode ser estrito
+//   usuario  = 0.55 — busca automatica no evento, +permissivo (mais matches)
+//   resultado= 0.60 — busca direta por rosto, ainda mais permissivo
 export const DEFAULT_RECOGNITION_THRESHOLDS: RecognitionThresholds = {
-  admin: 0.45,
-  usuario: 0.5,
-  resultado: 0.6,
+  admin: 0.48,
+  usuario: 0.55,
+  resultado: 0.60,
 };
 
 export const RECOGNITION_THRESHOLDS_KEY = "config_thresholds";
