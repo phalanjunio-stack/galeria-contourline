@@ -60,10 +60,11 @@ function Hero({ eventos }: { eventos: EventoItem[] }) {
         <div key={ev.id}
           className={`absolute inset-0 transition-opacity duration-[2000ms] ease-in-out ${i === idx ? "opacity-100" : "opacity-0"}`}>
           <img
-            src={`/api/thumb?id=${ev.capa_id}&sz=original`}
+            src={`/api/thumb?id=${ev.capa_id}&sz=1600`}
             alt=""
             className="w-full h-full object-cover"
             style={{ objectPosition: "75% 25%" }}
+            loading={i === idx ? "eager" : "lazy"}
           />
         </div>
       ))}
