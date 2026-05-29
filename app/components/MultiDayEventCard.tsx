@@ -16,7 +16,10 @@ type CapaPreview = {
 function fmtData(iso: string) {
   if (!iso) return "";
   try {
-    return new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
+    // Datas "YYYY-MM-DD" sem hora sao parseadas como UTC meia-noite, o que no
+    // Brasil (UTC-3) cai no dia anterior. Forca meio-dia local pra evitar o off-by-one.
+    const base = iso.length <= 10 ? `${iso}T12:00:00` : iso;
+    return new Date(base).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
   } catch {
     return iso;
   }
@@ -36,15 +39,15 @@ export default function MultiDayEventCard({ evento, slug }: Props) {
       : null
   ), [evento.capa_id, evento.capa_position, evento.nome]);
 
-  const capasIniciais: Array<CapaPreview | null> = useMemo(() => {
-    const previews = dias.slice(0, 3).map((dia) => (
+  // Mostra no maximo 3 tiles, UM por dia real — sem padding fantasma.
+  // (antes preenchia ate 3 com fallback, criando um "Dia 3" inexistente)
+  const capasIniciais: Array<CapaPreview | null> = useMemo(() => (
+    dias.slice(0, 3).map((dia) => (
       dia.capa_id
         ? { id: dia.capa_id, position: dia.capa_position ?? "center", alt: dia.titulo || evento.nome }
         : fallback
-    ));
-    while (previews.length < 3) previews.push(fallback);
-    return previews;
-  }, [dias, evento.nome, fallback]);
+    ))
+  ), [dias, evento.nome, fallback]);
 
   const [capasDrive, setCapasDrive] = useState<Array<CapaPreview | null>>([]);
 
@@ -109,7 +112,7 @@ export default function MultiDayEventCard({ evento, slug }: Props) {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-1.5">
+      <div className={`grid gap-1.5 ${capas.length <= 1 ? "grid-cols-1" : capas.length === 2 ? "grid-cols-2" : "grid-cols-3"}`}>
         {capas.map((capa, index) => {
           const dia = dias[index];
           const fotosDia = dia?.total_fotos ?? 0;

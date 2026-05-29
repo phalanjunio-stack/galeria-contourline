@@ -29,7 +29,8 @@ interface Props {
 
 function fmtData(iso: string) {
   try {
-    return new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
+    const base = iso.length <= 10 ? `${iso}T12:00:00` : iso;
+    return new Date(base).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
   } catch {
     return iso;
   }

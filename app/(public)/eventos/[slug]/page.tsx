@@ -464,8 +464,8 @@ export default function EventoPage({ params }: { params: Promise<{ slug: string 
               <div className="flex items-center gap-4 mt-2 text-white/70 text-sm">
                 <span className="flex items-center gap-1.5">
                   <Calendar size={14} />
-                  {new Date(evento.data).toLocaleDateString("pt-BR", { day: "2-digit", month: "long" })}
-                  {evento.data_fim && ` a ${new Date(evento.data_fim).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}`}
+                  {new Date(`${evento.data.slice(0,10)}T12:00:00`).toLocaleDateString("pt-BR", { day: "2-digit", month: "long" })}
+                  {evento.data_fim && ` a ${new Date(`${evento.data_fim.slice(0,10)}T12:00:00`).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}`}
                 </span>
               </div>
             )}
@@ -542,7 +542,7 @@ export default function EventoPage({ params }: { params: Promise<{ slug: string 
             <div className="flex items-center gap-4 mt-2">
               <span className="flex items-center gap-1.5 text-white/70 text-sm">
                 <Calendar size={14} />
-                {new Date(diaAtivo?.data ?? evento.data).toLocaleDateString("pt-BR", { day:"2-digit", month:"long", year:"numeric" })}
+                {new Date(`${(diaAtivo?.data ?? evento.data).slice(0,10)}T12:00:00`).toLocaleDateString("pt-BR", { day:"2-digit", month:"long", year:"numeric" })}
               </span>
               <span className="flex items-center gap-1.5 text-white/70 text-sm">
                 <Camera size={14} /> {fotos.length} fotos

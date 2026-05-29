@@ -6,7 +6,8 @@ import type { EventoItem, EventoDia } from "@/app/api/eventos/route";
 function fmtData(iso: string) {
   if (!iso) return "";
   try {
-    return new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
+    const base = iso.length <= 10 ? `${iso}T12:00:00` : iso;
+    return new Date(base).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
   } catch { return iso; }
 }
 
