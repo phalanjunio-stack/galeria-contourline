@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   ArrowLeft, User, ScanFace, Images, Loader2,
-  Calendar, Mail, Download, ExternalLink,
+  Calendar, Mail, ExternalLink, Check, Plus, Save, CheckCircle,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -25,7 +25,9 @@ interface EventoMatch {
   eventoId: string;
   eventoNome: string;
   processadoEm: string;
-  fotosIds: string[];
+  fotosIds: string[];      // candidatos da IA
+  folderId?: string;       // pasta do evento (pra navegar todas as fotos)
+  confirmadas?: string[];  // já salvas no _mf_ do usuário
 }
 
 function tempo(iso: string) {
@@ -61,6 +63,16 @@ export default function UsuarioGaleriaPage() {
   const [carregando, setCarregando] = useState(true);
   const [fotoSel,    setFotoSel]    = useState<string | null>(null);
 
+  // ── Curadoria ──────────────────────────────────────────────
+  // Seleção atual por evento (Set de fotoIds). Inicia com IA ∪ confirmadas.
+  const [selPorEvento, setSelPorEvento] = useState<Record<string, Set<string>>>({});
+  // Todas as fotos do evento (lazy — carrega ao clicar "Adicionar fotos")
+  const [todasFotos, setTodasFotos] = useState<Record<string, { id: string; name: string }[]>>({});
+  const [carregandoTodas, setCarregandoTodas] = useState(false);
+  const [modoAdicionar, setModoAdicionar] = useState(false);
+  const [salvando, setSalvando] = useState(false);
+  const [salvoFlag, setSalvoFlag] = useState(false);
+
   useEffect(() => {
     async function carregar() {
       try {
@@ -75,32 +87,52 @@ export default function UsuarioGaleriaPage() {
         const evRes = await fetch("/api/eventos");
         const evLista = evRes.ok ? await evRes.json() : [];
 
-        // Para cada evento, verifica se tem match salvo para este usuário
+        // Confirmadas (o que ja esta no _mf_ do usuario)
+        const mfRes = await fetch(`/api/meu/fotos?email=${encodeURIComponent(emailParam)}`).catch(() => null);
+        const mfData = mfRes?.ok ? await mfRes.json() : null;
+        const confirmadasPorEvento = new Map<string, string[]>();
+        if (mfData?.eventos) {
+          for (const e of mfData.eventos as { eventoId: string; fotoIds: string[] }[]) {
+            confirmadasPorEvento.set(e.eventoId, e.fotoIds ?? []);
+          }
+        }
+
+        // Para cada evento: candidatos da IA (matches) + confirmadas
         const evMatches: EventoMatch[] = [];
+        const selInicial: Record<string, Set<string>> = {};
         await Promise.all(
-          (evLista as { id: string; nome: string }[]).map(async (ev) => {
+          (evLista as { id: string; nome: string; folder_id?: string }[]).map(async (ev) => {
             try {
+              let iaFotos: string[] = [];
+              let processadoEm = "";
               const mRes = await fetch(`/api/matches?eventoId=${ev.id}`);
-              if (!mRes.ok) return;
-              const data = await mRes.json();
-              if (!data) return;
-              const userMatch = data.usuarios?.find(
-                (u: { email: string; fotosIds: string[] }) => u.email === emailParam
-              );
-              if (userMatch && userMatch.fotosIds?.length > 0) {
-                evMatches.push({
-                  eventoId:    ev.id,
-                  eventoNome:  ev.nome,
-                  processadoEm: data.processadoEm,
-                  fotosIds:    userMatch.fotosIds,
-                });
+              if (mRes.ok) {
+                const data = await mRes.json();
+                const userMatch = data?.usuarios?.find(
+                  (u: { email: string; fotosIds: string[] }) => u.email === emailParam
+                );
+                if (userMatch?.fotosIds?.length) { iaFotos = userMatch.fotosIds; processadoEm = data.processadoEm; }
               }
+              const confirmadas = confirmadasPorEvento.get(ev.id) ?? [];
+              // Só lista o evento se houver candidatos OU confirmadas
+              if (iaFotos.length === 0 && confirmadas.length === 0) return;
+              evMatches.push({
+                eventoId: ev.id,
+                eventoNome: ev.nome,
+                processadoEm,
+                fotosIds: iaFotos,
+                folderId: ev.folder_id,
+                confirmadas,
+              });
+              // Seleção inicial = IA ∪ confirmadas
+              selInicial[ev.id] = new Set<string>([...iaFotos, ...confirmadas]);
             } catch { /**/ }
           })
         );
 
         evMatches.sort((a, b) => b.processadoEm.localeCompare(a.processadoEm));
         setEventos(evMatches);
+        setSelPorEvento(selInicial);
         if (evMatches.length > 0) setEventoAtivo(evMatches[0].eventoId);
       } catch { /**/ }
       setCarregando(false);
@@ -109,7 +141,56 @@ export default function UsuarioGaleriaPage() {
   }, [emailParam]);
 
   const eventoSelecionado = eventos.find(e => e.eventoId === eventoAtivo);
-  const totalFotos = eventos.reduce((acc, e) => acc + e.fotosIds.length, 0);
+  const totalFotos = eventos.reduce((acc, e) => acc + (selPorEvento[e.eventoId]?.size ?? e.fotosIds.length), 0);
+
+  const selAtual = selPorEvento[eventoAtivo] ?? new Set<string>();
+
+  function toggleFoto(id: string) {
+    setSelPorEvento(prev => {
+      const atual = new Set(prev[eventoAtivo] ?? []);
+      if (atual.has(id)) atual.delete(id); else atual.add(id);
+      return { ...prev, [eventoAtivo]: atual };
+    });
+  }
+
+  async function carregarTodasFotos() {
+    if (!eventoSelecionado?.folderId) return;
+    if (todasFotos[eventoAtivo]) { setModoAdicionar(true); return; }
+    setCarregandoTodas(true);
+    try {
+      const r = await fetch(`/api/fotos?folderId=${encodeURIComponent(eventoSelecionado.folderId)}`, { cache: "no-store" });
+      const data = await r.json();
+      const lista = Array.isArray(data?.fotos) ? data.fotos : [];
+      setTodasFotos(prev => ({ ...prev, [eventoAtivo]: lista }));
+      setModoAdicionar(true);
+    } catch { /**/ }
+    finally { setCarregandoTodas(false); }
+  }
+
+  async function salvarSelecao() {
+    if (!eventoSelecionado) return;
+    setSalvando(true);
+    try {
+      const fotoIds = Array.from(selPorEvento[eventoAtivo] ?? []);
+      await fetch("/api/meu/fotos", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: emailParam,
+          eventoId: eventoSelecionado.eventoId,
+          eventoNome: eventoSelecionado.eventoNome,
+          fotoIds,
+          processadoEm: new Date().toISOString(),
+          merge: false, // substitui a seleção daquele evento pela curada
+        }),
+      });
+      // Atualiza confirmadas localmente
+      setEventos(prev => prev.map(e => e.eventoId === eventoAtivo ? { ...e, confirmadas: fotoIds } : e));
+      setSalvoFlag(true);
+      setTimeout(() => setSalvoFlag(false), 2500);
+    } catch { /**/ }
+    finally { setSalvando(false); }
+  }
 
   if (carregando) return (
     <div className="flex items-center justify-center min-h-[60vh] gap-3 text-[#2E7DD1]">
@@ -242,7 +323,7 @@ export default function UsuarioGaleriaPage() {
           <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
             {eventos.map(ev => (
               <button key={ev.eventoId}
-                onClick={() => setEventoAtivo(ev.eventoId)}
+                onClick={() => { setEventoAtivo(ev.eventoId); setModoAdicionar(false); }}
                 className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition ${
                   eventoAtivo === ev.eventoId
                     ? "gradient-primary text-white shadow"
@@ -254,59 +335,94 @@ export default function UsuarioGaleriaPage() {
                   eventoAtivo === ev.eventoId
                     ? "bg-white/25 text-white"
                     : "bg-gray-100 text-gray-500"
-                }`}>{ev.fotosIds.length}</span>
+                }`}>{selPorEvento[ev.eventoId]?.size ?? ev.fotosIds.length}</span>
               </button>
             ))}
           </div>
 
           {eventoSelecionado && (
             <>
-              <div className="flex items-center justify-between mb-3">
+              {/* Toolbar de curadoria */}
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
                 <p className="text-sm text-gray-500">
-                  <span className="font-semibold text-[#0D2B4E]">{eventoSelecionado.fotosIds.length}</span> foto{eventoSelecionado.fotosIds.length !== 1 ? "s" : ""} em <em>{eventoSelecionado.eventoNome}</em>
+                  <span className="font-semibold text-[#0D2B4E]">{selAtual.size}</span> selecionada{selAtual.size !== 1 ? "s" : ""} em <em>{eventoSelecionado.eventoNome}</em>
+                  {eventoSelecionado.fotosIds.length > 0 && (
+                    <span className="text-gray-400"> · {eventoSelecionado.fotosIds.length} sugeridas pela IA</span>
+                  )}
                 </p>
-                <span className="text-[11px] text-gray-300">
-                  Indexado {tempo(eventoSelecionado.processadoEm)}
-                </span>
+                <div className="flex items-center gap-2">
+                  {eventoSelecionado.folderId && (
+                    <button
+                      onClick={() => modoAdicionar ? setModoAdicionar(false) : carregarTodasFotos()}
+                      disabled={carregandoTodas}
+                      className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#2E7DD1] text-[#2E7DD1] text-xs font-bold hover:bg-[#EFF5FF] transition disabled:opacity-50"
+                    >
+                      {carregandoTodas ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />}
+                      {modoAdicionar ? "Ver só selecionadas" : "Adicionar fotos do evento"}
+                    </button>
+                  )}
+                  <button
+                    onClick={salvarSelecao}
+                    disabled={salvando}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-br from-[#2E7DD1] to-[#1A4A80] text-white text-xs font-extrabold shadow hover:shadow-md transition disabled:opacity-50"
+                  >
+                    {salvando ? <Loader2 size={13} className="animate-spin" /> : salvoFlag ? <CheckCircle size={13} /> : <Save size={13} />}
+                    {salvando ? "Salvando…" : salvoFlag ? "Salvo!" : "Salvar seleção"}
+                  </button>
+                </div>
               </div>
 
-              {/* Grade de fotos */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {eventoSelecionado.fotosIds.map(id => (
-                  <div key={id}
-                    className="group relative rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all cursor-pointer border border-gray-100"
-                    onClick={() => setFotoSel(id === fotoSel ? null : id)}>
-                    <div className="aspect-[4/3] bg-[#EFF5FF]">
-                      <img
-                        src={`/api/thumb?id=${id}&sz=400`}
-                        alt=""
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        loading="lazy"
-                      />
-                    </div>
-                    {/* Ações no hover */}
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-3">
-                      <a
-                        href={`/api/thumb?id=${id}&sz=1200`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={e => e.stopPropagation()}
-                        className="w-9 h-9 rounded-full bg-white/90 flex items-center justify-center text-[#0D2B4E] hover:bg-white transition shadow"
-                        title="Ver em tamanho maior">
-                        <ExternalLink size={14} />
-                      </a>
-                      <a
-                        href={`/api/thumb?id=${id}&sz=1200`}
-                        download
-                        onClick={e => e.stopPropagation()}
-                        className="w-9 h-9 rounded-full bg-white/90 flex items-center justify-center text-[#0D2B4E] hover:bg-white transition shadow"
-                        title="Baixar foto">
-                        <Download size={14} />
-                      </a>
-                    </div>
+              <p className="text-[11px] text-gray-400 mb-3">
+                {modoAdicionar
+                  ? "Clique nas fotos pra marcar/desmarcar. As marcadas (✓) viram as fotos desse usuário."
+                  : "Estas são as fotos selecionadas. Clique pra desmarcar uma errada, ou use “Adicionar fotos do evento”."}
+              </p>
+
+              {/* Grade — em modo adicionar mostra TODAS; senão só as selecionadas */}
+              {(() => {
+                const lista = modoAdicionar
+                  ? (todasFotos[eventoAtivo] ?? []).map(f => f.id)
+                  : Array.from(selAtual);
+                if (lista.length === 0) {
+                  return <p className="text-sm text-gray-400 py-8 text-center">Nenhuma foto {modoAdicionar ? "no evento" : "selecionada"}.</p>;
+                }
+                return (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                    {lista.map(id => {
+                      const sel = selAtual.has(id);
+                      const ehIA = eventoSelecionado.fotosIds.includes(id);
+                      return (
+                        <div key={id}
+                          className={`group relative rounded-2xl overflow-hidden shadow-sm transition-all cursor-pointer border-2 ${
+                            sel ? "border-[#2E7DD1] ring-2 ring-[#2E7DD1]/30" : "border-transparent opacity-60 hover:opacity-100"}`}
+                          onClick={() => toggleFoto(id)}>
+                          <div className="aspect-[4/3] bg-[#EFF5FF]">
+                            <img src={`/api/thumb?id=${id}&sz=400`} alt=""
+                              className="w-full h-full object-cover" loading="lazy" />
+                          </div>
+                          {/* Marca de seleção */}
+                          <div className={`absolute top-2 left-2 w-6 h-6 rounded-full flex items-center justify-center shadow ${
+                            sel ? "bg-[#2E7DD1] text-white" : "bg-white/80 text-gray-400"}`}>
+                            {sel ? <Check size={14} strokeWidth={3} /> : <Plus size={14} />}
+                          </div>
+                          {ehIA && (
+                            <span className="absolute top-2 right-2 text-[8px] font-black bg-purple-600 text-white px-1.5 py-0.5 rounded">IA</span>
+                          )}
+                          {/* Ações */}
+                          <div className="absolute bottom-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition">
+                            <button
+                              onClick={e => { e.stopPropagation(); setFotoSel(id); }}
+                              className="w-7 h-7 rounded-full bg-white/90 flex items-center justify-center text-[#0D2B4E] hover:bg-white shadow"
+                              title="Ampliar">
+                              <ExternalLink size={12} />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                ))}
-              </div>
+                );
+              })()}
             </>
           )}
         </>
