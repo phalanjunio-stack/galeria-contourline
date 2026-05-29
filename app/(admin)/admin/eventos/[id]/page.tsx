@@ -6,6 +6,7 @@ import {
   AlertCircle, ArrowLeft, Calendar, MapPin, Save, Loader2, Plus, X,
   Folder, Clock, CheckCircle, FileText, Sparkles,
   ChevronDown, Trash2, ToggleLeft, ToggleRight, Image as ImageIcon, Upload,
+  ScanFace,
 } from "lucide-react";
 import type { EventoItem, EventoDia } from "@/app/api/eventos/route";
 import FocalPointPicker from "@/app/components/FocalPointPicker";
@@ -217,7 +218,13 @@ export default function EditarEventoPage({ params }: { params: Promise<{ id: str
             <p className="text-[#415d86] text-sm mt-0.5">Atualize informações, capa, dias e permissões</p>
           </div>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-3 flex-wrap">
+          <Link
+            href={`/admin/eventos/${id}/pessoas`}
+            className="h-12 px-6 rounded-xl border-2 border-[#7C3AED] bg-gradient-to-br from-[#f5f0ff] to-white text-[#7C3AED] font-extrabold text-sm flex items-center gap-2 hover:shadow-md hover:bg-[#f5f0ff] transition"
+          >
+            <ScanFace size={16} /> Identificar pessoas
+          </Link>
           <Link href="/admin/eventos" className="h-12 px-6 rounded-xl border border-[#b9cbea] bg-gradient-to-b from-[#f9fbff] to-[#edf4ff] text-[#061844] font-extrabold text-sm flex items-center hover:shadow-md transition">
             Cancelar
           </Link>
