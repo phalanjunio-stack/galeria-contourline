@@ -55,6 +55,12 @@ export default function MultiDayEventCard({ evento, slug }: Props) {
     let cancelado = false;
     const diasPreview = dias.slice(0, 3);
 
+    // Em modo auto-dias TODOS os dias compartilham a pasta principal — buscar
+    // por folder_id daria a MESMA 1a foto pra cada dia (e o dedupe por id
+    // anularia as capas repetidas). A API ja entrega a capa correta por data,
+    // entao nao sobrescrevemos.
+    if (evento.auto_dias_por_data) return;
+
     async function carregarPreviews() {
       const resultados = await Promise.all(
         diasPreview.map(async (dia) => {
@@ -82,7 +88,7 @@ export default function MultiDayEventCard({ evento, slug }: Props) {
     return () => {
       cancelado = true;
     };
-  }, [dias, evento.nome]);
+  }, [dias, evento.nome, evento.auto_dias_por_data]);
 
   const capas = useMemo(() => {
     const misturadas = capasIniciais.map((capa, index) => capasDrive[index] ?? capa);
