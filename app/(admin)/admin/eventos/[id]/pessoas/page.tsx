@@ -45,8 +45,24 @@ export default function PessoasDoEventoPage({ params }: { params: Promise<{ id: 
   const [usuarios, setUsuarios] = useState<PerfilResumo[]>([]);
   const [perfisDescriptors, setPerfisDescriptors] = useState<Record<string, number[][]>>({});
   const [atribuicoes, setAtribuicoes] = useState<Record<string, { email: string; nome: string; auto: boolean }>>({});
+  // Clusters que o admin marcou como "não é" — não re-sugere via auto. Persiste em localStorage.
+  const [rejeitados, setRejeitados] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState("");
+
+  const REJEITADOS_KEY = `pessoas_rejeitadas_${eventoId}`;
+  // Carrega rejeições salvas
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(REJEITADOS_KEY);
+      if (raw) setRejeitados(new Set(JSON.parse(raw)));
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventoId]);
+
+  function persistirRejeitados(s: Set<string>) {
+    try { localStorage.setItem(REJEITADOS_KEY, JSON.stringify(Array.from(s))); } catch {}
+  }
 
   // Modal
   const [modalCluster, setModalCluster] = useState<ClusterPessoa | null>(null);
@@ -120,6 +136,7 @@ export default function PessoasDoEventoPage({ params }: { params: Promise<{ id: 
     if (clusters.length === 0 || Object.keys(perfisDescriptors).length === 0) return;
     const novo: Record<string, { email: string; nome: string; auto: boolean }> = {};
     for (const c of clusters) {
+      if (rejeitados.has(c.clusterId)) continue; // admin disse "não é" — não re-sugere
       let melhor: { email: string; d: number } | null = null;
       for (const [email, descs] of Object.entries(perfisDescriptors)) {
         for (const d of descs) {
@@ -133,7 +150,41 @@ export default function PessoasDoEventoPage({ params }: { params: Promise<{ id: 
       }
     }
     setAtribuicoes(prev => ({ ...novo, ...prev })); // manuais sobrescrevem auto
-  }, [clusters, perfisDescriptors, usuarios]);
+  }, [clusters, perfisDescriptors, usuarios, rejeitados]);
+
+  // "Não é essa pessoa" — desfaz atribuição (manual: limpa backend; auto: só dismiss + lembra)
+  async function rejeitar(cluster: ClusterPessoa) {
+    const atrib = atribuicoes[cluster.clusterId];
+    // Se foi atribuição manual (escrita no backend), desfaz lá
+    if (atrib && !atrib.auto && evento) {
+      try {
+        await fetch("/api/admin/atribuir-pessoa", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: atrib.email,
+            descritor_medio: cluster.descritor_medio,
+            eventoId: evento.id,
+            fotoIds: cluster.fotos,
+          }),
+        });
+      } catch (e) {
+        setErro(e instanceof Error ? e.message : String(e));
+      }
+    }
+    // Remove da UI e lembra a rejeição (pra auto não re-sugerir)
+    setAtribuicoes(prev => {
+      const n = { ...prev };
+      delete n[cluster.clusterId];
+      return n;
+    });
+    setRejeitados(prev => {
+      const n = new Set(prev);
+      n.add(cluster.clusterId);
+      persistirRejeitados(n);
+      return n;
+    });
+  }
 
   const stats = useMemo(() => {
     const total = clusters.length;
@@ -275,6 +326,7 @@ export default function PessoasDoEventoPage({ params }: { params: Promise<{ id: 
                 ordem={i + 1}
                 atribuicao={atrib}
                 onIdentificar={() => abrirModal(c)}
+                onRejeitar={() => rejeitar(c)}
               />
             );
           })}
@@ -418,11 +470,12 @@ function StatCard({ label, value, icon, tone }: {
   );
 }
 
-function ClusterCard({ cluster, ordem, atribuicao, onIdentificar }: {
+function ClusterCard({ cluster, ordem, atribuicao, onIdentificar, onRejeitar }: {
   cluster: ClusterPessoa;
   ordem: number;
   atribuicao?: { email: string; nome: string; auto: boolean };
   onIdentificar: () => void;
+  onRejeitar: () => void;
 }) {
   const previews = cluster.fotos.slice(0, 4);
 
@@ -460,21 +513,32 @@ function ClusterCard({ cluster, ordem, atribuicao, onIdentificar }: {
 
       {/* Status / ação */}
       {atribuicao ? (
-        <div className="flex items-center gap-2">
-          <CheckCircle size={14} className="text-emerald-500 shrink-0" />
-          <div className="flex-1 min-w-0">
-            <div className="text-xs font-extrabold text-[#061844] truncate">
-              {atribuicao.nome}
-              {atribuicao.auto && <span className="ml-1 text-[9px] font-bold text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded">AUTO</span>}
+        <div>
+          <div className="flex items-center gap-2">
+            <CheckCircle size={14} className="text-emerald-500 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <div className="text-xs font-extrabold text-[#061844] truncate">
+                {atribuicao.nome}
+                {atribuicao.auto && <span className="ml-1 text-[9px] font-bold text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded">AUTO</span>}
+              </div>
+              <div className="text-[10px] text-[#415d86] truncate">{atribuicao.email}</div>
             </div>
-            <div className="text-[10px] text-[#415d86] truncate">{atribuicao.email}</div>
           </div>
-          <button
-            onClick={onIdentificar}
-            className="text-[10px] font-bold text-[#415d86] hover:text-[#7C3AED] shrink-0"
-          >
-            mudar
-          </button>
+          <div className="mt-2 flex gap-1.5">
+            <button
+              onClick={onIdentificar}
+              className="flex-1 h-7 rounded-md border border-[#dde8f7] text-[10px] font-bold text-[#415d86] hover:bg-[#f5f0ff] hover:text-[#7C3AED] transition"
+            >
+              Mudar pessoa
+            </button>
+            <button
+              onClick={onRejeitar}
+              title="Marca que NÃO é essa pessoa — remove as fotos dela e não sugere de novo"
+              className="flex-1 h-7 rounded-md border border-red-200 text-[10px] font-bold text-red-600 hover:bg-red-50 transition inline-flex items-center justify-center gap-1"
+            >
+              <X size={11} /> Não é
+            </button>
+          </div>
         </div>
       ) : (
         <button

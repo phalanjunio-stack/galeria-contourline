@@ -171,3 +171,97 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: String(err) }, { status: 500 });
   }
 }
+
+/**
+ * DELETE /api/admin/atribuir-pessoa  (body igual ao POST)
+ *
+ * Desfaz uma atribuicao errada ("Não é essa pessoa"):
+ *   1. Remove as fotos do cluster do _mf_{email}.json daquele evento.
+ *   2. Remove do perfil o descritor mais proximo do descritor_medio do
+ *      cluster (se distancia < 0.30 — provavelmente foi o que adicionamos).
+ *      NUNCA remove se sobraria 0 descritores que vieram de selfie do proprio
+ *      usuario? -> removemos so o que casa; selfies legitimas ficam.
+ */
+export async function DELETE(req: NextRequest) {
+  const session = await auth();
+  if (!session?.user?.isAdmin) {
+    return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
+  }
+  const token = (await getAccessTokenFromEnv()) ?? session.accessToken;
+  if (!token) return NextResponse.json({ error: "Sem token Drive" }, { status: 401 });
+
+  let body: Body;
+  try { body = await req.json() as Body; }
+  catch { return NextResponse.json({ error: "Body invalido" }, { status: 400 }); }
+
+  const { email, descritor_medio, eventoId, fotoIds } = body;
+  if (!email || !email.includes("@")) {
+    return NextResponse.json({ error: "email obrigatorio" }, { status: 400 });
+  }
+
+  try {
+    // 1. Remove o descritor adicionado (o mais proximo do centroide do cluster)
+    if (Array.isArray(descritor_medio) && descritor_medio.length === 128) {
+      const perfis = lerPerfisLocais();
+      const idx = perfis.findIndex(p => p.email?.toLowerCase() === email.toLowerCase());
+      if (idx !== -1) {
+        const p = perfis[idx];
+        const descs: number[][] = Array.isArray(p.descriptors) && p.descriptors.length > 0
+          ? p.descriptors
+          : (Array.isArray(p.descriptor) && p.descriptor.length === 128 ? [p.descriptor] : []);
+        // Acha o mais proximo do centroide
+        let melhorI = -1, melhorD = Infinity;
+        descs.forEach((d, i) => {
+          let s = 0;
+          for (let k = 0; k < 128; k++) { const x = d[k] - descritor_medio[k]; s += x * x; }
+          const dist = Math.sqrt(s);
+          if (dist < melhorD) { melhorD = dist; melhorI = i; }
+        });
+        if (melhorI !== -1 && melhorD < 0.30) {
+          const novos = descs.filter((_, i) => i !== melhorI);
+          perfis[idx] = {
+            ...p,
+            descriptor: novos[0],
+            descriptors: novos.length > 0 ? novos : undefined,
+            atualizado_em: new Date().toISOString(),
+          };
+          salvarPerfisLocais(perfis);
+          salvarArquivoOculto(ROOT, "_perfis.json", perfis, token).catch(() => {});
+        }
+      }
+    }
+
+    // 2. Remove as fotos do cluster do _mf_ daquele evento
+    if (eventoId && Array.isArray(fotoIds) && fotoIds.length > 0) {
+      const key = `_mf_${email.toLowerCase().replace(/[^a-z0-9]/g, "_")}.json`;
+      const atual = await lerArquivoOculto<MeusFotosData>(ROOT, key, token).catch(() => null);
+      if (atual?.eventos?.length) {
+        const remover = new Set(fotoIds);
+        const eventos = atual.eventos
+          .map(e => e.eventoId === eventoId
+            ? { ...e, fotoIds: e.fotoIds.filter(id => !remover.has(id)) }
+            : e)
+          .filter(e => e.fotoIds.length > 0);
+        const novo: MeusFotosData = {
+          email: email.toLowerCase(),
+          eventos,
+          totalFotos: eventos.reduce((s, e) => s + e.fotoIds.length, 0),
+          atualizadoEm: new Date().toISOString(),
+        };
+        await salvarArquivoOculto(ROOT, key, novo, token);
+      }
+    }
+
+    await registrarAtividade({
+      tipo: "pessoa.rejeitada",
+      email: session.user.email ?? undefined,
+      nome: session.user.name ?? undefined,
+      detalhes: { eventoId, alvo: email, fotos: fotoIds?.length ?? 0 },
+    }).catch(() => {});
+
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error("[/api/admin/atribuir-pessoa DELETE]", err);
+    return NextResponse.json({ error: String(err) }, { status: 500 });
+  }
+}
