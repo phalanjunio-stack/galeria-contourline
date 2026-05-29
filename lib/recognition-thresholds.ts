@@ -6,14 +6,16 @@ export interface RecognitionThresholds {
 
 export type RecognitionThresholdKey = keyof RecognitionThresholds;
 
-// Calibrados em produção:
-//   admin    = 0.48 — admin confirma manualmente, pode ser estrito
-//   usuario  = 0.55 — busca automatica no evento, +permissivo (mais matches)
-//   resultado= 0.60 — busca direta por rosto, ainda mais permissivo
+// Calibrados em produção (distância L2 do face-api — quanto MENOR, mais parecido):
+//   < 0.40 = mesma pessoa com alta confiança
+//   0.40–0.50 = provável a mesma
+//   0.50–0.60 = incerto (pega lookalikes → muito falso positivo)
+//   > 0.60 = provável pessoa diferente
+// Mantemos abaixo de 0.50 pra priorizar PRECISÃO (menos foto errada).
 export const DEFAULT_RECOGNITION_THRESHOLDS: RecognitionThresholds = {
-  admin: 0.48,
-  usuario: 0.55,
-  resultado: 0.60,
+  admin: 0.45,
+  usuario: 0.48,
+  resultado: 0.48,
 };
 
 export const RECOGNITION_THRESHOLDS_KEY = "config_thresholds";

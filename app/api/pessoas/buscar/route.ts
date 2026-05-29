@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { buscarFotosPorRostoDb, faceIndexDbEnabled } from "@/lib/face-index-db";
 
-const DEFAULT_THRESHOLD = 0.55;
+const DEFAULT_THRESHOLD = 0.48;
+// Teto baixo de proposito: distancia L2 > 0.52 vira muito falso positivo
+// (pega lookalikes). Protege mesmo contra localStorage antigo com valor frouxo.
+const MAX_THRESHOLD = 0.52;
 
 function lerThreshold(value: unknown) {
   const threshold = Number(value);
   if (!Number.isFinite(threshold)) return DEFAULT_THRESHOLD;
-  return Math.min(0.65, Math.max(0.35, threshold));
+  return Math.min(MAX_THRESHOLD, Math.max(0.35, threshold));
 }
 
 export async function POST(req: NextRequest) {
