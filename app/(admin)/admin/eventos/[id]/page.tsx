@@ -43,9 +43,12 @@ export default function EditarEventoPage({ params }: { params: Promise<{ id: str
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
   const [dias, setDias] = useState<EventoDia[]>([]);
+  const [diasOverrides, setDiasOverrides] = useState<Record<string, { capa_id?: string; capa_position?: string }>>({});
   const [loading, setLoading] = useState(true);
   const [saving,  setSaving]  = useState(false);
   const [erro,    setErro]    = useState("");
+  // Seletor de capa: dia atualmente escolhendo a foto
+  const [capaPickerDia, setCapaPickerDia] = useState<EventoDia | null>(null);
 
   // Diagnostico do auto-dia
   interface DiasPreview {
@@ -106,6 +109,7 @@ export default function EditarEventoPage({ params }: { params: Promise<{ id: str
         });
         setTags(Array.isArray(atual.tags) ? atual.tags : []);
         setDias(Array.isArray(atual.dias) ? atual.dias : []);
+        setDiasOverrides(atual.dias_overrides ?? {});
       })
       .catch(() => setErro("Não foi possível carregar o evento."))
       .finally(() => setLoading(false));
@@ -132,6 +136,21 @@ export default function EditarEventoPage({ params }: { params: Promise<{ id: str
 
   function atualizarDia(i: number, patch: Partial<EventoDia>) {
     setDias(dias.map((d, j) => j === i ? { ...d, ...patch } : d));
+  }
+
+  // Atualiza capa/foco de um dia. No modo automatico, grava como OVERRIDE
+  // (chave = id do dia) pra sobreviver ao recalculo. No manual, edita o dia direto.
+  function atualizarCapaDia(dia: EventoDia, patch: { capa_id?: string; capa_position?: string }) {
+    if (form.auto_dias_por_data) {
+      setDiasOverrides(prev => ({
+        ...prev,
+        [dia.id]: { ...prev[dia.id], ...patch },
+      }));
+      // Reflete na UI imediatamente (atualiza o objeto do dia em memoria)
+      setDias(prev => prev.map(d => d.id === dia.id ? { ...d, ...patch } : d));
+    } else {
+      setDias(prev => prev.map(d => d.id === dia.id ? { ...d, ...patch } : d));
+    }
   }
 
   async function uploadBanner(file: File) {
@@ -195,8 +214,13 @@ export default function EditarEventoPage({ params }: { params: Promise<{ id: str
           auto_dias_por_data: form.auto_dias_por_data,
           reconhecimento_facial: form.reconhecimento_facial,
           download_liberado: form.download_liberado,
-          dias: dias.length > 0
-            ? dias.map(d => ({ ...d, folder_id: extrairFolderId(d.folder_id) }))
+          // Modo automatico: NAO persiste os dias computados (sao efemeros) — só os overrides.
+          // Modo manual: persiste os dias configurados.
+          dias: form.auto_dias_por_data
+            ? undefined
+            : (dias.length > 0 ? dias.map(d => ({ ...d, folder_id: extrairFolderId(d.folder_id) })) : undefined),
+          dias_overrides: form.auto_dias_por_data
+            ? (Object.keys(diasOverrides).length > 0 ? diasOverrides : undefined)
             : undefined,
         }),
       });
@@ -611,45 +635,64 @@ export default function EditarEventoPage({ params }: { params: Promise<{ id: str
               </div>
             )}
 
-            {/* Capa dos dias (focal point) */}
-            {dias.some(d => d.capa_id) && (
+            {/* Capa e foco dos dias */}
+            {dias.length > 0 && (
               <div className="mt-6 border-t border-[#dde8f7] pt-5">
                 <h3 className="mb-3 text-sm font-extrabold text-[#061844]">Capa e foco dos dias</h3>
                 <div className="grid gap-4">
-                  {dias.map((dia, i) => dia.capa_id ? (
+                  {dias.map((dia, i) => (
                     <div key={`${dia.id}-capa`} className="rounded-2xl border border-[#bfd0ec] bg-gradient-to-b from-white to-[#f5f9ff] p-4">
                       <div className="mb-3 flex items-center justify-between gap-3">
                         <div>
                           <p className="text-sm font-extrabold text-[#061844]">{dia.titulo || `Dia ${i + 1}`}</p>
-                          <p className="text-xs text-[#415d86]">Ajusta o card deste dia.</p>
+                          <p className="text-xs text-[#415d86]">Escolha a foto da capa e ajuste o foco.</p>
                         </div>
-                        <span className="rounded-full bg-[#dceaff] px-3 py-1 text-[11px] font-extrabold text-[#145dff]">Dia {i + 1}</span>
+                        <button
+                          type="button"
+                          onClick={() => setCapaPickerDia(dia)}
+                          className="rounded-lg bg-gradient-to-br from-[#145dff] to-[#074ee6] px-3 py-1.5 text-[11px] font-extrabold text-white inline-flex items-center gap-1.5 hover:shadow-md transition"
+                        >
+                          <ImageIcon size={12} /> {dia.capa_id ? "Trocar capa" : "Escolher capa"}
+                        </button>
                       </div>
                       <div className="grid gap-4 md:grid-cols-2">
-                        <FocalPointPicker
-                          fotoId={dia.capa_id}
-                          value={dia.capa_position ?? "center"}
-                          onChange={v => atualizarDia(i, { capa_position: v })}
-                          aspect="16/10"
-                        />
+                        {dia.capa_id ? (
+                          <FocalPointPicker
+                            fotoId={dia.capa_id}
+                            value={dia.capa_position ?? "center"}
+                            onChange={v => atualizarCapaDia(dia, { capa_position: v })}
+                            aspect="16/10"
+                          />
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setCapaPickerDia(dia)}
+                            className="aspect-[16/10] rounded-xl border-2 border-dashed border-[#bfd0ec] bg-[#f7fbff] grid place-items-center text-[#145dff] text-xs font-bold hover:bg-[#eef5ff] transition gap-1"
+                          >
+                            <ImageIcon size={20} />
+                            Escolher capa deste dia
+                          </button>
+                        )}
                         <div>
                           <p className="mb-2 text-xs font-extrabold text-[#061844]">Preview do dia</p>
                           <div className="relative aspect-[16/10] overflow-hidden rounded-xl border border-[#bfd0ec] bg-[#07182f]">
-                            <img
-                              src={`/api/thumb?id=${dia.capa_id}&sz=600`}
-                              alt=""
-                              className="absolute inset-0 h-full w-full object-cover"
-                              style={{ objectPosition: dia.capa_position ?? "center" }}
-                            />
+                            {dia.capa_id && (
+                              <img
+                                src={`/api/thumb?id=${dia.capa_id}&sz=600`}
+                                alt=""
+                                className="absolute inset-0 h-full w-full object-cover"
+                                style={{ objectPosition: dia.capa_position ?? "center" }}
+                              />
+                            )}
                             <div className="absolute inset-0 bg-gradient-to-t from-[#0D2B4E]/60 via-transparent to-transparent" />
                             <span className="absolute bottom-3 left-3 rounded-full bg-gradient-to-r from-[#145dff] to-[#7d3cff] px-2.5 py-1 text-xs font-bold text-white shadow">
-                              Dia {i + 1}
+                              {dia.titulo || `Dia ${i + 1}`}
                             </span>
                           </div>
                         </div>
                       </div>
                     </div>
-                  ) : null)}
+                  ))}
                 </div>
               </div>
             )}
@@ -778,11 +821,106 @@ export default function EditarEventoPage({ params }: { params: Promise<{ id: str
           </section>
         </aside>
       </div>
+
+      {/* Modal seletor de capa do dia */}
+      {capaPickerDia && (
+        <CapaPickerModal
+          dia={capaPickerDia}
+          autoMode={form.auto_dias_por_data}
+          onClose={() => setCapaPickerDia(null)}
+          onPick={(fotoId) => {
+            atualizarCapaDia(capaPickerDia, { capa_id: fotoId });
+            setCapaPickerDia(null);
+          }}
+        />
+      )}
     </div>
   );
 }
 
 /* ──────────────── Componentes ──────────────── */
+
+/** Modal pra escolher a foto de capa de um dia. No modo auto filtra a pasta
+ *  principal por data; no manual lista a pasta do dia. */
+function CapaPickerModal({ dia, autoMode, onClose, onPick }: {
+  dia: EventoDia;
+  autoMode: boolean;
+  onClose: () => void;
+  onPick: (fotoId: string) => void;
+}) {
+  const [fotos, setFotos] = useState<{ id: string; name: string; data?: string | null }[]>([]);
+  const [carregando, setCarregando] = useState(true);
+
+  useEffect(() => {
+    let cancel = false;
+    (async () => {
+      setCarregando(true);
+      try {
+        const r = await fetch(`/api/fotos?folderId=${encodeURIComponent(dia.folder_id)}`, { cache: "no-store" });
+        const data = await r.json();
+        let lista: { id: string; name: string; data?: string | null }[] = Array.isArray(data?.fotos) ? data.fotos : [];
+        // Modo auto: o dia compartilha a pasta principal — filtra pela data do dia (id "dia-YYYY-MM-DD")
+        if (autoMode && dia.id.startsWith("dia-")) {
+          const alvo = dia.id.replace(/^dia-/, "");
+          lista = lista.filter(f => f.data === alvo);
+        }
+        if (!cancel) setFotos(lista);
+      } catch {
+        if (!cancel) setFotos([]);
+      } finally {
+        if (!cancel) setCarregando(false);
+      }
+    })();
+    return () => { cancel = true; };
+  }, [dia, autoMode]);
+
+  return (
+    <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[88vh] flex flex-col overflow-hidden">
+        <header className="flex items-center justify-between p-4 border-b border-gray-100">
+          <div>
+            <h3 className="font-extrabold text-[#061844] text-base">Escolher capa — {dia.titulo}</h3>
+            <p className="text-xs text-[#415d86] mt-0.5">
+              {carregando ? "Carregando fotos…" : `${fotos.length} foto(s) — clique numa pra usar como capa`}
+            </p>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-400">
+            <X size={18} />
+          </button>
+        </header>
+
+        <div className="flex-1 overflow-y-auto p-4 min-h-0">
+          {carregando ? (
+            <div className="flex items-center justify-center py-16 gap-2 text-[#415d86]">
+              <Loader2 size={20} className="animate-spin" /> Carregando…
+            </div>
+          ) : fotos.length === 0 ? (
+            <p className="text-center py-16 text-sm text-gray-400">Nenhuma foto encontrada pra este dia.</p>
+          ) : (
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
+              {fotos.map(f => (
+                <button
+                  key={f.id}
+                  type="button"
+                  onClick={() => onPick(f.id)}
+                  className={`relative aspect-square rounded-lg overflow-hidden border-2 transition hover:scale-105 ${
+                    f.id === dia.capa_id ? "border-[#145dff] ring-2 ring-[#145dff]/40" : "border-transparent hover:border-[#145dff]/50"}`}
+                >
+                  <img src={`/api/thumb?id=${f.id}&sz=200`} alt="" className="absolute inset-0 w-full h-full object-cover bg-gray-100" loading="lazy" />
+                  {f.id === dia.capa_id && (
+                    <span className="absolute top-1 right-1 w-5 h-5 rounded-full bg-[#145dff] text-white flex items-center justify-center">
+                      <CheckCircle size={12} />
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function SectionHeader({ num, title, inline }: { num: string; title: string; inline?: boolean }) {
   return (

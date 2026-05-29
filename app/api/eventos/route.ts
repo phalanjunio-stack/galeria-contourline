@@ -53,6 +53,9 @@ export interface EventoItem {
   /** Quando true, ignora 'dias' configurados manualmente e gera dias automaticamente
    *  agrupando as fotos da folder_id principal por EXIF/createdTime. */
   auto_dias_por_data?: boolean;
+  /** Overrides por dia (capa/foco) que sobrevivem ao recálculo do modo automático.
+   *  Chave = id do dia (ex: "dia-2026-05-27"). */
+  dias_overrides?: Record<string, { capa_id?: string; capa_position?: string }>;
   criado_em: string;
   /** Quantas pessoas distintas a IA achou — derivado de _matches_{id}.json em runtime. */
   pessoas_encontradas?: number;
@@ -141,17 +144,35 @@ async function listarFotosComData(folderId: string, token: string): Promise<Foto
   return todasFotos;
 }
 
+// Aplica overrides de capa/foco por dia (sobrevivem ao recalculo automatico)
+function aplicarOverrides(ev: EventoItem, dias: EventoDia[]): EventoDia[] {
+  const ovs = ev.dias_overrides;
+  if (!ovs) return dias;
+  return dias.map(d => {
+    const ov = ovs[d.id];
+    if (!ov) return d;
+    return {
+      ...d,
+      capa_id: ov.capa_id ?? d.capa_id,
+      capa_position: ov.capa_position ?? d.capa_position,
+    };
+  });
+}
+
 async function diasAutoDoEvento(ev: EventoItem, token: string): Promise<EventoDia[]> {
   if (!ev.folder_id) return [];
   const cached = diasAutoCache.get(ev.id);
-  if (cached && Date.now() - cached.ts < DIAS_AUTO_TTL_MS) return cached.dias;
+  // Cache so a parte CARA (ler Drive + agrupar). Overrides sao aplicados depois,
+  // entao mudar capa/foco reflete na hora (sem esperar o TTL).
+  if (cached && Date.now() - cached.ts < DIAS_AUTO_TTL_MS) {
+    return aplicarOverrides(ev, cached.dias);
+  }
   try {
     const fotos = await listarFotosComData(ev.folder_id, token);
     const dias = agruparPorData(ev.folder_id, fotos, {
       inicio: ev.data?.slice(0, 10),
       fim: (ev.data_fim ?? ev.data)?.slice(0, 10),
     });
-    // Não enviamos as fotos inline aqui — só os dias com counts/capas
     const enxutos: EventoDia[] = dias.map(d => ({
       id: d.id,
       titulo: d.titulo,
@@ -162,9 +183,9 @@ async function diasAutoDoEvento(ev: EventoItem, token: string): Promise<EventoDi
       status: d.status,
     }));
     diasAutoCache.set(ev.id, { ts: Date.now(), dias: enxutos });
-    return enxutos;
+    return aplicarOverrides(ev, enxutos);
   } catch {
-    return cached?.dias ?? [];
+    return cached?.dias ? aplicarOverrides(ev, cached.dias) : [];
   }
 }
 
