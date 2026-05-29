@@ -233,53 +233,81 @@ export default function AdminConfigPage() {
             </span>
           )}
         </div>
-        <p className="text-[11px] text-gray-400 mb-5">
-          Distância máxima aceita para considerar duas faces iguais. Valores menores = mais rigoroso. Salvo localmente neste navegador.
+        <p className="text-[11px] text-gray-400 mb-3">
+          Distância máxima (L2) aceita para considerar duas faces iguais. Valores menores = mais rigoroso. Salvo localmente neste navegador.
         </p>
 
-        {([
-          { key: "admin" as const, label: "Admin (indexação)", desc: "Limiar usado ao processar evento no painel admin. Menor = menos falsos positivos.", color: "text-purple-600" },
-          { key: "usuario" as const, label: "Banner MinhasFotos", desc: "Limiar no banner da página inicial. Menor = menos fotos exibidas, mais precisas.", color: "text-[#2E7DD1]" },
-          { key: "resultado" as const, label: "Página Resultado", desc: "Limiar na página de busca manual do usuário. Maior = mais fotos encontradas.", color: "text-emerald-600" },
-        ] as const).map(({ key, label, desc, color }) => (
-          <div key={key} className="mb-5">
-            <div className="flex items-center justify-between mb-1">
-              <label className={`text-xs font-bold ${color}`}>{label}</label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  min={0.3}
-                  max={0.8}
-                  step={0.01}
-                  value={thresholds[key]}
-                  onChange={e => {
-                    const v = parseFloat(e.target.value);
-                    if (!isNaN(v)) aplicarThresholds({ ...thresholds, [key]: v });
-                  }}
-                  className="w-16 text-xs font-bold text-center border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:border-[#2E7DD1]"
-                />
-                <Zap size={11} className="text-yellow-400" />
-              </div>
-            </div>
-            <input
-              type="range"
-              min={0.3}
-              max={0.8}
-              step={0.01}
-              value={thresholds[key]}
-              onChange={e => aplicarThresholds({ ...thresholds, [key]: parseFloat(e.target.value) })}
-              className="w-full accent-[#2E7DD1]"
-            />
-            <p className="text-[10px] text-gray-400 mt-0.5">{desc}</p>
+        {/* Aviso se algum valor estiver na zona frouxa */}
+        {(["admin", "usuario", "resultado"] as const).some(k => thresholds[k] > 0.52) && (
+          <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-[11px] text-amber-800 flex items-start gap-2">
+            <Zap size={13} className="mt-0.5 shrink-0" />
+            <span>
+              Algum limiar está acima de <strong>0.52</strong> (zona frouxa) — pode mostrar fotos de pessoas erradas.
+              Clique em <strong>Aplicar recomendado</strong> abaixo pra usar os valores calibrados.
+            </span>
           </div>
-        ))}
+        )}
 
-        <button
-          onClick={() => aplicarThresholds(DEFAULT_RECOGNITION_THRESHOLDS)}
-          className="text-xs text-gray-400 hover:text-[#2E7DD1] hover:underline transition"
-        >
-          Restaurar padrões (0.45 / 0.50 / 0.60)
-        </button>
+        {([
+          { key: "admin" as const, label: "Admin (indexação)", desc: "Limiar usado ao processar evento no painel admin.", color: "text-purple-600" },
+          { key: "usuario" as const, label: "Banner MinhasFotos", desc: "Limiar no banner da página inicial e na busca automática do evento.", color: "text-[#2E7DD1]" },
+          { key: "resultado" as const, label: "Página Resultado", desc: "Limiar na busca manual por foto. (No servidor é travado em no máx 0.52.)", color: "text-emerald-600" },
+        ] as const).map(({ key, label, desc, color }) => {
+          const v = thresholds[key];
+          const zona = v <= 0.45
+            ? { txt: "Rigoroso", cls: "text-emerald-600 bg-emerald-50" }
+            : v <= 0.52
+              ? { txt: "Recomendado", cls: "text-[#2E7DD1] bg-[#EFF5FF]" }
+              : { txt: "Frouxo (erra)", cls: "text-amber-700 bg-amber-50" };
+          return (
+            <div key={key} className="mb-5">
+              <div className="flex items-center justify-between mb-1">
+                <label className={`text-xs font-bold ${color}`}>{label}</label>
+                <div className="flex items-center gap-2">
+                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${zona.cls}`}>{zona.txt}</span>
+                  <input
+                    type="number"
+                    min={0.35}
+                    max={0.6}
+                    step={0.01}
+                    value={v}
+                    onChange={e => {
+                      const val = parseFloat(e.target.value);
+                      if (!isNaN(val)) aplicarThresholds({ ...thresholds, [key]: val });
+                    }}
+                    className="w-16 text-xs font-bold text-center border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:border-[#2E7DD1]"
+                  />
+                </div>
+              </div>
+              <input
+                type="range"
+                min={0.35}
+                max={0.6}
+                step={0.01}
+                value={v}
+                onChange={e => aplicarThresholds({ ...thresholds, [key]: parseFloat(e.target.value) })}
+                className="w-full accent-[#2E7DD1]"
+              />
+              {/* Escala de referência */}
+              <div className="flex justify-between text-[8px] text-gray-300 font-semibold px-0.5 mt-0.5">
+                <span>0.35 rigoroso</span>
+                <span>0.48 ideal</span>
+                <span>0.60 frouxo</span>
+              </div>
+              <p className="text-[10px] text-gray-400 mt-0.5">{desc}</p>
+            </div>
+          );
+        })}
+
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => aplicarThresholds(DEFAULT_RECOGNITION_THRESHOLDS)}
+            className="px-4 py-2 rounded-lg bg-gradient-to-br from-[#2E7DD1] to-[#1A4A80] text-white text-xs font-extrabold hover:shadow-md transition inline-flex items-center gap-1.5"
+          >
+            <CheckCircle size={13} /> Aplicar recomendado
+            ({DEFAULT_RECOGNITION_THRESHOLDS.admin} / {DEFAULT_RECOGNITION_THRESHOLDS.usuario} / {DEFAULT_RECOGNITION_THRESHOLDS.resultado})
+          </button>
+        </div>
       </div>
     </div>
   );
