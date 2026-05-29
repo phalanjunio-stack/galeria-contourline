@@ -5,8 +5,13 @@ import { lerStatusFaceIndexDb } from "@/lib/face-index-db";
 async function testarFaceServer() {
   const url = process.env.FACE_SERVER_URL;
   if (!url) return { configured: false, ok: false };
+  // O servidor responde 404 na raiz — o health fica em /health.
+  const base = url.replace(/\/+$/, "");
   try {
-    const res = await fetch(url, { cache: "no-store" });
+    const res = await fetch(`${base}/health`, {
+      cache: "no-store",
+      signal: AbortSignal.timeout(8000),
+    });
     return { configured: true, ok: res.ok, status: res.status };
   } catch (err) {
     return { configured: true, ok: false, erro: err instanceof Error ? err.message : String(err) };
