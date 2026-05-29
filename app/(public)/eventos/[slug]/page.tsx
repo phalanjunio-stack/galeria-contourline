@@ -279,7 +279,10 @@ export default function EventoPage({ params }: { params: Promise<{ slug: string 
         const raw  = await res.json().catch(() => null);
         const lista: EventoItem[] = Array.isArray(raw) ? raw : [];
         const ev   = lista.find((e) => e.id === slug || slug.startsWith(`${e.id}-`)) ?? null;
-        const evComTotais = ev && !diaQuery && ev.dias?.length
+        // Em modo auto-dias TODOS os dias compartilham a pasta principal, entao
+        // recontar por folder_id daria o total da pasta inteira pra cada dia.
+        // As contagens por data ja vem corretas da API — nao recontar.
+        const evComTotais = ev && !diaQuery && ev.dias?.length && !ev.auto_dias_por_data
           ? await carregarTotaisDias(ev)
           : ev;
         setEvento(evComTotais);
