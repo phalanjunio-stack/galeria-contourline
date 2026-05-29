@@ -26,7 +26,14 @@ interface EventoBasico {
   nome: string;
 }
 
-const LIMIAR_MATCH = 0.55;
+// Niveis de confianca pro auto-match (distancia euclidiana entre centroide do
+// cluster e descritor do perfil — quanto MENOR, mais parecido):
+//   < 0.45 E com margem clara sobre o 2o lugar -> ALTA confianca (auto)
+//   0.45 .. 0.52 (ou alta dist mas ambiguo)    -> SUGESTAO (admin confirma)
+//   >= 0.52                                      -> nao identificado
+const LIMIAR_AUTO     = 0.45;   // so auto-marca abaixo disso
+const LIMIAR_SUGESTAO = 0.52;   // entre auto e isso vira sugestao
+const MARGEM_MINIMA   = 0.04;   // best precisa ganhar do 2o por essa folga
 
 function dist(a: number[], b: number[]) {
   let s = 0;
@@ -44,7 +51,8 @@ export default function PessoasDoEventoPage({ params }: { params: Promise<{ id: 
   const [clusters, setClusters] = useState<ClusterPessoa[]>([]);
   const [usuarios, setUsuarios] = useState<PerfilResumo[]>([]);
   const [perfisDescriptors, setPerfisDescriptors] = useState<Record<string, number[][]>>({});
-  const [atribuicoes, setAtribuicoes] = useState<Record<string, { email: string; nome: string; auto: boolean }>>({});
+  // tipo: "manual" = admin confirmou | "auto" = alta confianca | "sugestao" = precisa confirmar
+  const [atribuicoes, setAtribuicoes] = useState<Record<string, { email: string; nome: string; tipo: "manual" | "auto" | "sugestao"; dist?: number }>>({});
   // Clusters que o admin marcou como "não é" — não re-sugere via auto. Persiste em localStorage.
   const [rejeitados, setRejeitados] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
@@ -131,32 +139,64 @@ export default function PessoasDoEventoPage({ params }: { params: Promise<{ id: 
     return () => { cancelado = true; };
   }, [eventoId]);
 
-  // Auto-detecta matches: pra cada cluster, qual user tem o descriptor mais próximo do centroide?
+  // Auto-detecta matches com NÍVEIS DE CONFIANÇA + margem sobre o 2º lugar.
   useEffect(() => {
     if (clusters.length === 0 || Object.keys(perfisDescriptors).length === 0) return;
-    const novo: Record<string, { email: string; nome: string; auto: boolean }> = {};
+    const novo: Record<string, { email: string; nome: string; tipo: "auto" | "sugestao"; dist: number }> = {};
     for (const c of clusters) {
       if (rejeitados.has(c.clusterId)) continue; // admin disse "não é" — não re-sugere
-      let melhor: { email: string; d: number } | null = null;
+
+      // Acha a MELHOR e a 2ª MELHOR distancia (de pessoas diferentes)
+      let best: { email: string; d: number } | null = null;
+      let second: { email: string; d: number } | null = null;
       for (const [email, descs] of Object.entries(perfisDescriptors)) {
+        // menor distancia desse perfil ao centroide
+        let dPerfil = Infinity;
         for (const d of descs) {
           const dst = dist(c.descritor_medio, d);
-          if (!melhor || dst < melhor.d) melhor = { email, d: dst };
+          if (dst < dPerfil) dPerfil = dst;
+        }
+        if (!best || dPerfil < best.d) {
+          second = best;
+          best = { email, d: dPerfil };
+        } else if (!second || dPerfil < second.d) {
+          second = { email, d: dPerfil };
         }
       }
-      if (melhor && melhor.d < LIMIAR_MATCH) {
-        const u = usuarios.find(x => x.email === melhor!.email);
-        if (u) novo[c.clusterId] = { email: u.email, nome: u.nome, auto: true };
+      if (!best) continue;
+
+      const margem = second ? second.d - best.d : Infinity;
+      const u = usuarios.find(x => x.email === best!.email);
+      if (!u) continue;
+
+      // ALTA confianca: perto E com folga clara sobre o 2o lugar
+      if (best.d < LIMIAR_AUTO && margem >= MARGEM_MINIMA) {
+        novo[c.clusterId] = { email: u.email, nome: u.nome, tipo: "auto", dist: best.d };
       }
+      // SUGESTAO: razoavelmente perto, mas sem certeza (admin confirma)
+      else if (best.d < LIMIAR_SUGESTAO) {
+        novo[c.clusterId] = { email: u.email, nome: u.nome, tipo: "sugestao", dist: best.d };
+      }
+      // senao: nao identificado
     }
-    setAtribuicoes(prev => ({ ...novo, ...prev })); // manuais sobrescrevem auto
+    // Manuais (admin confirmou) sempre sobrescrevem auto/sugestao
+    setAtribuicoes(prev => {
+      const merged = { ...novo, ...prev } as typeof prev;
+      // mas garante: se prev tinha auto/sugestao e o novo recalculo mudou, prioriza manual apenas
+      for (const [cid, v] of Object.entries(prev)) {
+        if (v.tipo === "manual") merged[cid] = v;
+        else if (novo[cid]) merged[cid] = novo[cid];
+        else delete merged[cid];
+      }
+      return merged;
+    });
   }, [clusters, perfisDescriptors, usuarios, rejeitados]);
 
   // "Não é essa pessoa" — desfaz atribuição (manual: limpa backend; auto: só dismiss + lembra)
   async function rejeitar(cluster: ClusterPessoa) {
     const atrib = atribuicoes[cluster.clusterId];
     // Se foi atribuição manual (escrita no backend), desfaz lá
-    if (atrib && !atrib.auto && evento) {
+    if (atrib && atrib.tipo === "manual" && evento) {
       try {
         await fetch("/api/admin/atribuir-pessoa", {
           method: "DELETE",
@@ -188,9 +228,11 @@ export default function PessoasDoEventoPage({ params }: { params: Promise<{ id: 
 
   const stats = useMemo(() => {
     const total = clusters.length;
-    const identificadas = Object.keys(atribuicoes).length;
-    const restantes = total - identificadas;
-    return { total, identificadas, restantes };
+    const vals = Object.values(atribuicoes);
+    const identificadas = vals.filter(v => v.tipo === "manual" || v.tipo === "auto").length;
+    const sugestoes = vals.filter(v => v.tipo === "sugestao").length;
+    const restantes = total - identificadas - sugestoes;
+    return { total, identificadas, sugestoes, restantes };
   }, [clusters, atribuicoes]);
 
   const usuariosFiltrados = useMemo(() => {
@@ -207,6 +249,25 @@ export default function PessoasDoEventoPage({ params }: { params: Promise<{ id: 
     setBuscaUser("");
     setNovoNome("");
     setNovoEmail("");
+  }
+
+  // Confirma uma SUGESTÃO (grava no backend, vira "manual")
+  async function confirmarSugestao(cluster: ClusterPessoa, email: string, nome: string) {
+    if (!evento) return;
+    try {
+      await fetch("/api/admin/atribuir-pessoa", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: email.toLowerCase(), nome,
+          descritor_medio: cluster.descritor_medio,
+          eventoId: evento.id, eventoNome: evento.nome, fotoIds: cluster.fotos,
+        }),
+      });
+      setAtribuicoes(prev => ({ ...prev, [cluster.clusterId]: { email, nome, tipo: "manual" } }));
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : String(e));
+    }
   }
 
   async function atribuir(email: string, nome: string) {
@@ -231,8 +292,13 @@ export default function PessoasDoEventoPage({ params }: { params: Promise<{ id: 
         throw new Error(data?.error || `Falha (${r.status})`);
       }
 
-      // UI: marca como identificada
-      setAtribuicoes(prev => ({ ...prev, [c.clusterId]: { email, nome, auto: false } }));
+      // UI: marca como identificada (manual = confirmado pelo admin)
+      setAtribuicoes(prev => ({ ...prev, [c.clusterId]: { email, nome, tipo: "manual" } }));
+      // Tira de rejeitados se estava lá
+      setRejeitados(prev => {
+        if (!prev.has(c.clusterId)) return prev;
+        const n = new Set(prev); n.delete(c.clusterId); persistirRejeitados(n); return n;
+      });
 
       // Se for user novo, adiciona ao roll local (pra usar em outros clusters da mesma sessao)
       if (!usuarios.find(u => u.email === email)) {
@@ -287,9 +353,10 @@ export default function PessoasDoEventoPage({ params }: { params: Promise<{ id: 
 
       {/* Stats */}
       {!loading && clusters.length > 0 && (
-        <div className="grid grid-cols-3 gap-3 mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
           <StatCard label="Pessoas únicas" value={stats.total} icon={<Users size={16} />} tone="neutral" />
           <StatCard label="Identificadas" value={stats.identificadas} icon={<UserCheck size={16} />} tone="ok" />
+          <StatCard label="A confirmar" value={stats.sugestoes} icon={<ScanFace size={16} />} tone="info" />
           <StatCard label="Pendentes" value={stats.restantes} icon={<AlertCircle size={16} />} tone="warn" />
         </div>
       )}
@@ -327,6 +394,7 @@ export default function PessoasDoEventoPage({ params }: { params: Promise<{ id: 
                 atribuicao={atrib}
                 onIdentificar={() => abrirModal(c)}
                 onRejeitar={() => rejeitar(c)}
+                onConfirmar={atrib ? () => confirmarSugestao(c, atrib.email, atrib.nome) : undefined}
               />
             );
           })}
@@ -452,13 +520,15 @@ export default function PessoasDoEventoPage({ params }: { params: Promise<{ id: 
 
 function StatCard({ label, value, icon, tone }: {
   label: string; value: number; icon: React.ReactNode;
-  tone: "neutral" | "ok" | "warn";
+  tone: "neutral" | "ok" | "warn" | "info";
 }) {
   const cls = tone === "ok"
     ? "border-emerald-200 bg-emerald-50/50 text-emerald-700"
     : tone === "warn"
       ? "border-amber-200 bg-amber-50/50 text-amber-700"
-      : "border-[#dde8f7] bg-white text-[#061844]";
+      : tone === "info"
+        ? "border-[#c7b6f5] bg-[#f5f0ff] text-[#7C3AED]"
+        : "border-[#dde8f7] bg-white text-[#061844]";
   return (
     <div className={`rounded-xl border ${cls} p-4 flex items-center gap-3`}>
       <div className="shrink-0">{icon}</div>
@@ -470,20 +540,27 @@ function StatCard({ label, value, icon, tone }: {
   );
 }
 
-function ClusterCard({ cluster, ordem, atribuicao, onIdentificar, onRejeitar }: {
+function ClusterCard({ cluster, ordem, atribuicao, onIdentificar, onRejeitar, onConfirmar }: {
   cluster: ClusterPessoa;
   ordem: number;
-  atribuicao?: { email: string; nome: string; auto: boolean };
+  atribuicao?: { email: string; nome: string; tipo: "manual" | "auto" | "sugestao"; dist?: number };
   onIdentificar: () => void;
   onRejeitar: () => void;
+  onConfirmar?: () => void;
 }) {
   const previews = cluster.fotos.slice(0, 4);
+  const tipo = atribuicao?.tipo;
+  const ehSugestao = tipo === "sugestao";
+  const ehConfirmado = tipo === "manual" || tipo === "auto";
+
+  const borda = ehConfirmado
+    ? "border-emerald-300 bg-gradient-to-br from-emerald-50/60 to-white"
+    : ehSugestao
+      ? "border-amber-300 bg-gradient-to-br from-amber-50/60 to-white"
+      : "border-[#dde8f7] bg-white hover:shadow-md";
 
   return (
-    <div className={`rounded-xl border p-3 transition shadow-sm
-      ${atribuicao
-        ? "border-emerald-300 bg-gradient-to-br from-emerald-50/60 to-white"
-        : "border-[#dde8f7] bg-white hover:shadow-md"}`}>
+    <div className={`rounded-xl border p-3 transition shadow-sm ${borda}`}>
       <div className="flex items-center justify-between mb-2">
         <span className="text-[10px] font-black text-[#415d86] uppercase tracking-wider">
           Pessoa #{ordem}
@@ -512,16 +589,53 @@ function ClusterCard({ cluster, ordem, atribuicao, onIdentificar, onRejeitar }: 
       </div>
 
       {/* Status / ação */}
-      {atribuicao ? (
+      {ehSugestao ? (
+        /* SUGESTÃO — precisa o admin confirmar */
+        <div>
+          <div className="flex items-center gap-2">
+            <ScanFace size={14} className="text-amber-500 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <div className="text-xs font-extrabold text-[#061844] truncate">
+                Será {atribuicao!.nome}?
+                <span className="ml-1 text-[9px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">
+                  {atribuicao!.dist != null ? `${Math.round((1 - atribuicao!.dist) * 100)}%` : "?"}
+                </span>
+              </div>
+              <div className="text-[10px] text-[#415d86] truncate">{atribuicao!.email}</div>
+            </div>
+          </div>
+          <div className="mt-2 flex gap-1.5">
+            <button
+              onClick={onConfirmar}
+              className="flex-1 h-7 rounded-md bg-emerald-500 text-white text-[10px] font-bold hover:bg-emerald-600 transition inline-flex items-center justify-center gap-1"
+            >
+              <CheckCircle size={11} /> Sim, é
+            </button>
+            <button
+              onClick={onIdentificar}
+              className="flex-1 h-7 rounded-md border border-[#dde8f7] text-[10px] font-bold text-[#415d86] hover:bg-[#f5f0ff] transition"
+            >
+              Outra
+            </button>
+            <button
+              onClick={onRejeitar}
+              title="Não é ninguém conhecido / ignorar"
+              className="h-7 w-7 rounded-md border border-red-200 text-red-600 hover:bg-red-50 transition inline-flex items-center justify-center shrink-0"
+            >
+              <X size={11} />
+            </button>
+          </div>
+        </div>
+      ) : ehConfirmado ? (
         <div>
           <div className="flex items-center gap-2">
             <CheckCircle size={14} className="text-emerald-500 shrink-0" />
             <div className="flex-1 min-w-0">
               <div className="text-xs font-extrabold text-[#061844] truncate">
-                {atribuicao.nome}
-                {atribuicao.auto && <span className="ml-1 text-[9px] font-bold text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded">AUTO</span>}
+                {atribuicao!.nome}
+                {tipo === "auto" && <span className="ml-1 text-[9px] font-bold text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded">AUTO</span>}
               </div>
-              <div className="text-[10px] text-[#415d86] truncate">{atribuicao.email}</div>
+              <div className="text-[10px] text-[#415d86] truncate">{atribuicao!.email}</div>
             </div>
           </div>
           <div className="mt-2 flex gap-1.5">
