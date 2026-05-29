@@ -47,6 +47,30 @@ export default function EditarEventoPage({ params }: { params: Promise<{ id: str
   const [saving,  setSaving]  = useState(false);
   const [erro,    setErro]    = useState("");
 
+  // Diagnostico do auto-dia
+  interface DiasPreview {
+    totalFotos: number; diasDetectados: number;
+    dias: { ordem: number; data: string; total: number }[];
+    semData: number; foraPeriodo: number; porExif: number; porCreatedTime: number;
+    periodo: { inicio?: string; fim?: string }; semPasta?: boolean; error?: string;
+  }
+  const [diasPreview, setDiasPreview] = useState<DiasPreview | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+
+  async function carregarDiasPreview() {
+    setPreviewLoading(true);
+    setDiasPreview(null);
+    try {
+      const r = await fetch(`/api/eventos/dias-preview?id=${encodeURIComponent(id)}`, { cache: "no-store" });
+      const data = await r.json();
+      setDiasPreview(data);
+    } catch (e) {
+      setDiasPreview({ totalFotos: 0, diasDetectados: 0, dias: [], semData: 0, foraPeriodo: 0, porExif: 0, porCreatedTime: 0, periodo: {}, error: String(e) });
+    } finally {
+      setPreviewLoading(false);
+    }
+  }
+
   const ehMultiDia = useMemo(() => !!(form.data && form.data_fim && form.data_fim > form.data) || dias.length > 0, [form.data, form.data_fim, dias.length]);
   const totalDias = ehMultiDia ? Math.max(dias.length, 1) : 1;
 
@@ -476,11 +500,106 @@ export default function EditarEventoPage({ params }: { params: Promise<{ id: str
 
             <p className="text-[#415d86] text-sm mt-1 mb-4">
               {form.auto_dias_por_data
-                ? "Modo automático ligado — os dias aparecem aqui após o primeiro acesso público (cache 5min)."
+                ? "Modo automático ligado — todas as fotos devem estar na PASTA PRINCIPAL do evento (não em subpastas de dia)."
                 : dias.length === 0
                   ? "Evento de 1 dia. Adicione dias se for multi-dia — cada dia tem sua própria pasta no Drive."
                   : `${dias.length} dia(s) configurado(s).`}
             </p>
+
+            {/* Diagnóstico do auto-dia */}
+            {form.auto_dias_por_data && (
+              <div className="mb-4 rounded-xl border border-[#dde8f7] bg-[#f7fbff] p-4">
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <span className="text-xs font-extrabold text-[#061844]">🔍 Diagnóstico da separação por data</span>
+                  <button
+                    type="button"
+                    onClick={carregarDiasPreview}
+                    disabled={previewLoading}
+                    className="h-8 px-3 rounded-lg bg-[#145dff] text-white text-xs font-bold inline-flex items-center gap-1.5 disabled:opacity-50"
+                  >
+                    {previewLoading ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
+                    {previewLoading ? "Lendo fotos..." : "Testar agora"}
+                  </button>
+                </div>
+
+                {!diasPreview && !previewLoading && (
+                  <p className="text-[11px] text-[#415d86]">
+                    Clique em <strong>Testar agora</strong> pra ver como as fotos da pasta principal serão separadas.
+                  </p>
+                )}
+
+                {diasPreview?.error && (
+                  <p className="text-[11px] text-red-600">Erro: {diasPreview.error}</p>
+                )}
+
+                {diasPreview?.semPasta && (
+                  <p className="text-[11px] text-amber-700">
+                    ⚠️ O evento não tem pasta principal configurada. Configure o folder_id acima.
+                  </p>
+                )}
+
+                {diasPreview && !diasPreview.error && !diasPreview.semPasta && (
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap gap-2 text-[11px]">
+                      <span className="px-2 py-1 rounded-md bg-white border border-[#dde8f7] font-semibold text-[#061844]">
+                        {diasPreview.totalFotos} fotos na pasta
+                      </span>
+                      <span className={`px-2 py-1 rounded-md border font-semibold ${
+                        diasPreview.diasDetectados > 1
+                          ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+                          : "bg-amber-50 border-amber-200 text-amber-700"}`}>
+                        {diasPreview.diasDetectados} dia(s) detectado(s)
+                      </span>
+                      {diasPreview.porExif > 0 && (
+                        <span className="px-2 py-1 rounded-md bg-white border border-[#dde8f7] text-[#415d86]">
+                          {diasPreview.porExif} via EXIF
+                        </span>
+                      )}
+                      {diasPreview.porCreatedTime > 0 && (
+                        <span className="px-2 py-1 rounded-md bg-white border border-[#dde8f7] text-[#415d86]">
+                          {diasPreview.porCreatedTime} via data de upload
+                        </span>
+                      )}
+                      {diasPreview.foraPeriodo > 0 && (
+                        <span className="px-2 py-1 rounded-md bg-red-50 border border-red-200 text-red-600">
+                          {diasPreview.foraPeriodo} fora do período
+                        </span>
+                      )}
+                      {diasPreview.semData > 0 && (
+                        <span className="px-2 py-1 rounded-md bg-red-50 border border-red-200 text-red-600">
+                          {diasPreview.semData} sem data
+                        </span>
+                      )}
+                    </div>
+
+                    {diasPreview.dias.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {diasPreview.dias.map(d => (
+                          <span key={d.data} className="px-2 py-1 rounded-md bg-gradient-to-br from-[#145dff] to-[#074ee6] text-white text-[11px] font-bold">
+                            Dia {d.ordem}: {d.data.split("-").reverse().slice(0, 2).join("/")} ({d.total})
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {diasPreview.diasDetectados <= 1 && diasPreview.totalFotos > 0 && (
+                      <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1.5 leading-relaxed">
+                        ⚠️ Todas as fotos caíram em <strong>um único dia</strong>. Causas comuns:
+                        (1) as fotos não têm EXIF e foram enviadas todas no mesmo dia (data de upload igual);
+                        (2) o período do evento (data início/fim) está errado e está cortando datas;
+                        (3) as fotos estão em <strong>subpastas de dia</strong> em vez da pasta principal.
+                      </p>
+                    )}
+                    {diasPreview.totalFotos === 0 && (
+                      <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1.5">
+                        ⚠️ Nenhuma foto na pasta principal. No modo automático, todas as fotos devem ficar
+                        direto na pasta principal do evento — não em subpastas.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             {dias.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

@@ -206,9 +206,11 @@ export async function GET() {
     await Promise.all(eventos.map(async (ev) => {
       if (!ev.folder_id) return;
       ev.pessoas_encontradas = await contarPessoas(ev.id, ev.folder_id, token);
-      // Auto-detecta dias por data (EXIF/createdTime) quando o evento tem o flag ligado
-      // e nao tem dias configurados manualmente.
-      if (ev.auto_dias_por_data && (!ev.dias || ev.dias.length === 0)) {
+      // Auto-detecta dias por data (EXIF/createdTime) quando o flag esta ligado.
+      // PRIORIDADE sobre dias manuais: se o admin ligou o auto, ele vence —
+      // recalcula a partir das fotos da pasta principal. Se nao achar fotos
+      // (ex: estao em subpastas), mantem o que ja tinha.
+      if (ev.auto_dias_por_data) {
         const dias = await diasAutoDoEvento(ev, token);
         if (dias.length > 0) ev.dias = dias;
       }
