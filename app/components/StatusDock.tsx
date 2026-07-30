@@ -11,7 +11,7 @@
  */
 import { useEffect, useRef, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Check, AlertCircle, Loader2, ScanFace } from "lucide-react";
+import { X, Check, AlertCircle, Loader2, ScanFace, Trash2 } from "lucide-react";
 import {
   JOBS_EVENT, listJobs, oldestRunning, removeJob, updateJob, type JobLocal,
 } from "@/lib/jobs";
@@ -72,6 +72,21 @@ export default function StatusDock() {
       window.removeEventListener("storage", sync);
     };
   }, []);
+
+  // Jobs concluídos são apenas um aviso temporário. Remove automaticamente
+  // para o dock não ficar preso para sempre (especialmente no celular).
+  useEffect(() => {
+    const finishedJobs = jobs.filter((job) => job.finished);
+    if (finishedJobs.length === 0) return;
+
+    const timers = finishedJobs.map((job) => {
+      const finishedAt = job.lastStatus?.updatedAt ?? Date.now();
+      const remaining = Math.max(0, 12_000 - (Date.now() - finishedAt));
+      return window.setTimeout(() => removeJob(job.id), remaining);
+    });
+
+    return () => timers.forEach(window.clearTimeout);
+  }, [jobs]);
 
   // Polling: pra cada job não-finalizado, consulta o status a cada 2s
   useEffect(() => {
@@ -175,12 +190,18 @@ export default function StatusDock() {
   const oldest = oldestRunning() ?? jobs[jobs.length - 1];
   const oldestPct = oldest?.lastStatus?.pct ?? 0;
   const oldestState = oldest?.lastStatus?.status ?? "running";
-  const isFlipped = pos ? pos.top < window.innerHeight / 2 : false;
+  const isFlipped = pos && typeof window !== "undefined"
+    ? pos.top < window.innerHeight / 2
+    : false;
 
   // Posição default: bottom-right
   const defaultStyle = !pos
     ? { right: 24, bottom: 24 }
     : { left: pos.left, top: pos.top };
+
+  function clearFinished() {
+    jobs.filter((job) => job.finished).forEach((job) => removeJob(job.id));
+  }
 
   // ── Ring SVG ────────────────────────────────────────────────────────────
   const SIZE = 64, STROKE = 4, R = (SIZE - STROKE) / 2, C = 2 * Math.PI * R;
@@ -194,7 +215,7 @@ export default function StatusDock() {
   return (
     <div
       ref={dockRef}
-      className="fixed z-[9500]"
+      className="status-dock fixed z-[9500]"
       style={{ ...defaultStyle, cursor: dragging ? "grabbing" : "default" }}
     >
       {/* ─── Painel expandido ─── */}
@@ -205,7 +226,7 @@ export default function StatusDock() {
             animate={{ opacity: 1, y: 0,                       scale: 1    }}
             exit={{    opacity: 0, y: isFlipped ? -10 : 10, scale: 0.95 }}
             transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-            className="glow-active absolute w-[340px] rounded-2xl"
+            className="status-dock-panel glow-active absolute w-[340px] rounded-2xl"
             style={{
               [isFlipped ? "top" : "bottom"]: 76,
               left: "50%",
@@ -229,6 +250,31 @@ export default function StatusDock() {
                 <ScanFace size={14} className="text-[#5BA4E5]" />
                 <span className="text-white text-sm font-bold">Processos</span>
                 <span className="text-xs text-white/40">{jobs.length}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                {jobs.some((job) => job.finished) && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      clearFinished();
+                    }}
+                    className="h-8 px-2 rounded-lg hover:bg-white/10 flex items-center gap-1.5 text-[11px] text-white/70"
+                    aria-label="Limpar processos concluídos"
+                  >
+                    <Trash2 size={12} />
+                    <span>Limpar</span>
+                  </button>
+                )}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setOpen(false);
+                  }}
+                  className="w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center"
+                  aria-label="Fechar processos"
+                >
+                  <X size={16} className="text-white/70" />
+                </button>
               </div>
             </div>
 
@@ -403,6 +449,32 @@ export default function StatusDock() {
           )}
         </div>
       </motion.button>
+
+      <style jsx>{`
+        @media (max-width: 767px) {
+          .status-dock {
+            left: auto !important;
+            top: auto !important;
+            right: 16px !important;
+            bottom: calc(88px + env(safe-area-inset-bottom)) !important;
+          }
+
+          .status-dock-panel {
+            position: fixed !important;
+            left: 12px !important;
+            right: 12px !important;
+            top: auto !important;
+            bottom: calc(164px + env(safe-area-inset-bottom)) !important;
+            width: auto !important;
+            max-height: min(62vh, 520px);
+            transform: none !important;
+          }
+
+          .status-dock-panel > div {
+            max-height: min(62vh, 520px);
+          }
+        }
+      `}</style>
     </div>
   );
 }
