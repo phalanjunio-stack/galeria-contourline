@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState, useCallback } from "react";
-import { Filter, Calendar, Search, ScanFace, ChevronRight, X, Scan, SlidersHorizontal } from "lucide-react";
+import { Search, ScanFace, ChevronRight, X, Scan, ArrowUpDown } from "lucide-react";
 import Link from "next/link";
 import type { EventoItem } from "@/app/api/eventos/route";
 import {
@@ -10,8 +10,7 @@ import {
 import { fetchDescritores } from "@/lib/descritoresCache";
 import { lerRecognitionThresholdLocal } from "@/lib/recognition-thresholds";
 import { SkeletonEventos } from "@/app/components/Skeleton";
-import MultiDayEventCard from "@/app/components/MultiDayEventCard";
-import SingleEventCard from "@/app/components/SingleEventCard";
+import EventTile from "@/app/components/EventTile";
 import EventoEmAndamentoHero from "@/app/components/EventoEmAndamentoHero";
 
 const categorias = [
@@ -190,8 +189,6 @@ export default function EventosPage() {
     });
   }, [eventos, busca, categoria, ordem]);
 
-  const eventosComDias = filtrados.filter((e) => (e.dias?.length ?? 0) > 1);
-  const eventosSimples = filtrados.filter((e) => (e.dias?.length ?? 0) <= 1);
   const filtrosAtivos = busca.trim() !== "" || categoria !== "Todos" || ordem !== "recentes";
 
   function totalCategoria(cat: string) {
@@ -204,12 +201,44 @@ export default function EventosPage() {
   }
 
   const totalFotos = matches.reduce((s, m) => s + m.fotos.length, 0);
+  // Só mostra categorias que têm evento (e a selecionada, pra não sumir)
+  const categoriasVisiveis = categorias.filter((cat) => cat === "Todos" || cat === categoria || totalCategoria(cat) > 0);
 
   return (
-    <div className="max-w-6xl mx-auto px-4 lg:px-8 py-8">
-      <div className="mb-8">
-        <h1 className="text-2xl lg:text-3xl font-semibold text-[#0D2B4E] mb-1">Eventos</h1>
-        <p className="text-gray-500 text-sm">Encontre o evento e suas fotos</p>
+    <div className="mx-auto max-w-7xl px-4 py-10 lg:px-8 lg:py-14">
+      <div className="mb-8 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <p className="mb-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--accent)]">Galeria</p>
+          <h1 className="font-display text-3xl font-extrabold text-[var(--ink)] lg:text-4xl">Eventos</h1>
+          <p className="mt-1.5 text-[var(--ink-soft)]">Escolha o evento e encontre suas fotos.</p>
+        </div>
+        <div className="flex w-full gap-2 lg:w-auto">
+          <div className="relative flex-1 lg:w-80">
+            <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--ink-soft)]" />
+            <input
+              type="search"
+              placeholder="Buscar evento ou tag…"
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              aria-label="Buscar evento"
+              className="h-11 w-full rounded-full border border-[var(--line)] bg-[var(--card-bg)] pl-11 pr-4 text-sm text-[var(--ink)] outline-none transition placeholder:text-[var(--ink-soft)] focus:border-[var(--accent)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--accent)_15%,transparent)]"
+            />
+          </div>
+          <label className="relative">
+            <span className="sr-only">Ordenar</span>
+            <ArrowUpDown size={15} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[var(--ink-soft)]" />
+            <select
+              value={ordem}
+              onChange={(e) => setOrdem(e.target.value as OrdemEventos)}
+              className="h-11 appearance-none rounded-full border border-[var(--line)] bg-[var(--card-bg)] pl-10 pr-5 text-sm font-medium text-[var(--ink)] outline-none focus:border-[var(--accent)]"
+            >
+              <option value="recentes">Mais recentes</option>
+              <option value="antigas">Mais antigos</option>
+              <option value="maisFotos">Mais fotos</option>
+              <option value="az">A-Z</option>
+            </select>
+          </label>
+        </div>
       </div>
 
       {/* ── Hero "Evento em andamento" (só aparece se tiver um rolando hoje) ── */}
@@ -217,60 +246,53 @@ export default function EventosPage() {
 
       {/* ── Banner "Acho que é você" ─────────────────────────────── */}
       {!bannerFechado && matches.length > 0 && (
-        <div className="mb-8 bg-[#EFF5FF] border border-[#2E7DD1]/25 rounded-2xl p-5 relative animate-fade-up">
+        <div className="relative mb-8 animate-fade-up rounded-2xl border border-[var(--line)] bg-[var(--card-bg)] p-5">
           <button
             onClick={() => setBannerFechado(true)}
-            className="absolute top-3 right-3 w-7 h-7 rounded-full bg-white/70 hover:bg-white flex items-center justify-center text-gray-400 hover:text-gray-600 transition">
-            <X size={14} />
+            aria-label="Fechar"
+            className="absolute right-3 top-3 grid h-8 w-8 place-items-center rounded-full text-[var(--ink-soft)] transition hover:bg-[color-mix(in_srgb,var(--ink)_8%,transparent)]">
+            <X size={15} />
           </button>
 
-          {/* Cabeçalho */}
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center shrink-0 shadow">
-              <ScanFace size={20} className="text-white" />
-            </div>
-            <div>
-              <p className="font-bold text-[#0D2B4E]">
-                Acho que é você{nomeUsuario ? `, ${nomeUsuario}` : ""}! 🤔
+          <div className="mb-4 flex flex-wrap items-center gap-3 pr-10">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#2E7DD1] text-white">
+              <ScanFace size={20} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="font-display text-lg font-bold text-[var(--ink)]">
+                Acho que é você{nomeUsuario ? `, ${nomeUsuario}` : ""}!
               </p>
-              <p className="text-xs text-gray-500">
-                {totalFotos} possível{totalFotos !== 1 ? "is" : ""} foto{totalFotos !== 1 ? "s" : ""} sua{totalFotos !== 1 ? "s" : ""} em {matches.length} evento{matches.length !== 1 ? "s" : ""} · <em>confira pra ter certeza</em>
+              <p className="text-sm text-[var(--ink-soft)]">
+                {totalFotos} possível{totalFotos !== 1 ? "is" : ""} foto{totalFotos !== 1 ? "s" : ""} sua{totalFotos !== 1 ? "s" : ""} em {matches.length} evento{matches.length !== 1 ? "s" : ""}. A IA pode errar: confira e marque as suas em <strong>São minhas</strong>.
               </p>
             </div>
-            <Link href="/resultado"
-              className="ml-auto flex items-center gap-1 text-[#2E7DD1] text-sm font-bold hover:underline shrink-0 pr-8">
-              Conferir <ChevronRight size={14} />
+            <Link href="/resultado" className="btn-primary btn-sm">
+              Conferir <ChevronRight size={15} />
             </Link>
           </div>
-          <p className="text-[10px] text-amber-700/70 bg-amber-50/60 border border-amber-200/60 rounded-lg px-2 py-1 mb-3 inline-flex items-center gap-1">
-            💡 A IA pode errar. Confira e marque as suas em <strong className="ml-0.5">São minhas</strong>.
-          </p>
-          {/* Linha decorativa azul→roxo separando aviso dos blocos por evento */}
-          <div className="mb-4 h-px w-full bg-gradient-to-r from-[#2E7DD1] via-[#7C3AED] to-[#2E7DD1] opacity-60" />
 
-          {/* Um bloco por evento */}
           <div className="space-y-4">
             {matches.map(({ evento: ev, fotos }) => (
               <div key={ev.id}>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs font-semibold text-[#1A4A80] uppercase tracking-wide">{ev.nome}</p>
+                <div className="mb-2 flex items-center justify-between">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-[var(--ink-soft)]">{ev.nome}</p>
                   <Link href={`/eventos/${ev.id}`}
-                    className="text-[10px] text-[#2E7DD1] font-semibold hover:underline flex items-center gap-0.5">
-                    {fotos.length} foto{fotos.length !== 1 ? "s" : ""} <ChevronRight size={11} />
+                    className="flex items-center gap-0.5 text-xs font-semibold text-[var(--accent)] hover:underline">
+                    {fotos.length} foto{fotos.length !== 1 ? "s" : ""} <ChevronRight size={12} />
                   </Link>
                 </div>
-                <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
+                <div className="no-scrollbar flex gap-2 overflow-x-auto pb-1">
                   {fotos.map(id => (
                     <Link key={id} href={`/eventos/${ev.id}`}
-                      className="flex-shrink-0 w-20 h-20 sm:w-24 sm:h-24 rounded-xl overflow-hidden shadow-md hover:scale-105 transition-transform duration-200">
-                      <img src={`/api/thumb?id=${id}&sz=300`} alt=""
-                        className="w-full h-full object-cover" />
+                      className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-xl sm:h-24 sm:w-24">
+                      <img src={`/api/thumb?id=${id}&sz=300`} alt="" loading="lazy"
+                        className="h-full w-full object-cover transition-transform duration-300 hover:scale-105" />
                     </Link>
                   ))}
                   <Link href={`/eventos/${ev.id}`}
-                    className="flex-shrink-0 w-20 h-20 sm:w-24 sm:h-24 rounded-xl border-2 border-dashed border-[#2E7DD1]/40 flex flex-col items-center justify-center gap-1 text-[#2E7DD1] hover:bg-white transition">
+                    className="flex h-20 w-20 flex-shrink-0 flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-[var(--line)] text-[var(--accent)] transition hover:border-[var(--accent)] sm:h-24 sm:w-24">
                     <ChevronRight size={18} />
-                    <span className="text-[10px] font-semibold">Ver tudo</span>
+                    <span className="text-[11px] font-semibold">Ver tudo</span>
                   </Link>
                 </div>
               </div>
@@ -281,131 +303,60 @@ export default function EventosPage() {
 
       {/* CTA para quem não tem rosto cadastrado */}
       {!bannerFechado && !temRosto && !loading && (
-        <div className="mb-8 flex items-center gap-4 bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
-          <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center shrink-0 shadow">
-            <ScanFace size={20} className="text-white" />
+        <div className="mb-8 flex flex-col gap-4 rounded-2xl bg-[#0B1F3A] p-5 text-white sm:flex-row sm:items-center">
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white/10">
+            <ScanFace size={20} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="font-display text-lg font-bold">Quer encontrar suas fotos automaticamente?</p>
+            <p className="text-sm text-white/65">Cadastre seu rosto e a IA te localiza em todos os eventos.</p>
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="font-semibold text-[#0D2B4E] text-sm">Quer encontrar suas fotos automaticamente?</p>
-            <p className="text-xs text-gray-400">Nossa IA te localiza em todos os eventos em segundos.</p>
-          </div>
-          <Link href="/cadastrar-rosto"
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl gradient-primary text-white text-xs font-bold shadow hover:opacity-90 transition shrink-0">
-            <Scan size={13} /> Cadastrar rosto
+          <Link href="/cadastrar-rosto" className="btn-light btn-sm">
+            <Scan size={15} /> Cadastrar rosto
           </Link>
         </div>
       )}
 
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 mb-8">
-        <div className="grid gap-3 lg:grid-cols-[1fr_190px_190px_auto]">
-          <div className="relative">
-            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Buscar por nome, tag ou categoria..."
-              value={busca}
-              onChange={(e) => setBusca(e.target.value)}
-              className="w-full pl-9 pr-4 py-3 rounded-xl border border-gray-200 bg-[#EFF5FF] text-sm focus:outline-none focus:border-[#2E7DD1] transition"
-            />
-          </div>
-          <label className="relative">
-            <Filter size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#2E7DD1]" />
-            <select
-              value={categoria}
-              onChange={(e) => setCategoria(e.target.value)}
-              className="w-full appearance-none pl-9 pr-8 py-3 rounded-xl border border-gray-200 bg-[#EFF5FF] text-sm font-semibold text-[#1A4A80] outline-none focus:border-[#2E7DD1]"
-            >
-              {categorias.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
-            </select>
-          </label>
-          <label className="relative">
-            <Calendar size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#2E7DD1]" />
-            <select
-              value={ordem}
-              onChange={(e) => setOrdem(e.target.value as OrdemEventos)}
-              className="w-full appearance-none pl-9 pr-8 py-3 rounded-xl border border-gray-200 bg-[#EFF5FF] text-sm font-semibold text-[#1A4A80] outline-none focus:border-[#2E7DD1]"
-            >
-              <option value="recentes">Mais recentes</option>
-              <option value="antigas">Mais antigos</option>
-              <option value="maisFotos">Mais fotos</option>
-              <option value="az">A-Z</option>
-            </select>
-          </label>
-          <button
-            type="button"
-            onClick={() => { setBusca(""); setCategoria("Todos"); setOrdem("recentes"); }}
-            disabled={!filtrosAtivos}
-            className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 px-4 py-3 text-sm font-bold text-[#1A4A80] transition hover:border-[#2E7DD1] hover:bg-[#EFF5FF] disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            <SlidersHorizontal size={15} /> Limpar
+      <div className="no-scrollbar -mx-4 mb-8 flex gap-2 overflow-x-auto px-4 lg:mx-0 lg:flex-wrap lg:px-0">
+        {categoriasVisiveis.map((cat) => (
+          <button key={cat}
+            onClick={() => setCategoria(cat)}
+            aria-pressed={categoria === cat}
+            className={`chip ${categoria === cat ? "is-active" : ""}`}>
+            {cat === "Confraternizacao" ? "Confraternização" : cat}
+            <span className="chip-count">{totalCategoria(cat)}</span>
           </button>
-        </div>
-
-        <div className="mt-4 flex flex-wrap gap-2">
-          {categorias.map((cat) => {
-            const total = totalCategoria(cat);
-            return (
-              <button key={cat}
-                onClick={() => setCategoria(cat)}
-                className={`px-3.5 py-2 rounded-full text-xs font-bold whitespace-nowrap transition
-                  ${categoria === cat ? "gradient-primary text-white shadow" : "bg-[#EFF5FF] border border-gray-200 text-[#1A4A80] hover:border-[#2E7DD1]"}`}>
-                {cat} <span className={categoria === cat ? "text-white/75" : "text-gray-400"}>{total}</span>
-              </button>
-            );
-          })}
-        </div>
+        ))}
+        {filtrosAtivos && (
+          <button type="button"
+            onClick={() => { setBusca(""); setCategoria("Todos"); setOrdem("recentes"); }}
+            className="chip">
+            <X size={14} /> Limpar
+          </button>
+        )}
       </div>
 
       {/* Loading com skeleton */}
-      {loading && <SkeletonEventos count={8} />}
+      {loading && <SkeletonEventos count={6} />}
 
       {/* Sem eventos */}
       {!loading && filtrados.length === 0 && (
-        <div className="text-center py-20">
-          <p className="text-gray-400 text-sm">Nenhum evento encontrado.</p>
+        <div className="rounded-2xl border border-dashed border-[var(--line)] py-20 text-center">
+          <p className="text-sm text-[var(--ink-soft)]">Nenhum evento encontrado.</p>
         </div>
       )}
 
       {/* Grid */}
       {!loading && filtrados.length > 0 && (
         <>
-          <div className="mb-5 flex items-end justify-between gap-3">
-            <p className="text-gray-500 text-sm">{filtrados.length} eventos encontrados</p>
-            {eventosComDias.length > 0 && (
-              <p className="text-xs font-semibold text-[#2E7DD1]">{eventosComDias.length} com programacao por dias</p>
-            )}
+          <p className="mb-4 text-sm text-[var(--ink-soft)]">
+            {filtrados.length} evento{filtrados.length !== 1 ? "s" : ""}
+          </p>
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {filtrados.map((e) => (
+              <EventTile key={e.id} evento={e} slug={e.id} encontrado={matches.some(m => m.evento.id === e.id)} />
+            ))}
           </div>
-
-          {eventosComDias.length > 0 && (
-            <section className="mb-10">
-              <div className="mb-4">
-                <h2 className="text-lg font-semibold text-[#0D2B4E]">Eventos com varios dias</h2>
-                <p className="text-xs text-gray-500">Congressos, treinamentos e encontros com programacao separada por dia.</p>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-                {eventosComDias.map((e) => (
-                  <MultiDayEventCard key={e.id} evento={e} slug={e.id} />
-                ))}
-              </div>
-            </section>
-          )}
-
-          {eventosSimples.length > 0 && (
-            <section>
-              {eventosComDias.length > 0 && (
-                <div className="mb-4">
-                  <h2 className="text-lg font-semibold text-[#0D2B4E]">Outros eventos</h2>
-                  <p className="text-xs text-gray-500">Eventos com pasta unica ou um dia principal.</p>
-                </div>
-              )}
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-5">
-                {eventosSimples.map((e) => {
-                  const encontrado = matches.some(m => m.evento.id === e.id);
-                  return <SingleEventCard key={e.id} evento={e} slug={e.id} encontrado={encontrado} />;
-                })}
-              </div>
-            </section>
-          )}
         </>
       )}
     </div>

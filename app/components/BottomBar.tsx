@@ -46,18 +46,20 @@ export default function BottomBar() {
     : itemsPublic;
 
   return (
-    <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-30 gradient-navy border-t border-white/10">
-      <div className="flex items-center justify-around px-2 py-2 pb-safe">
+    <nav className="site-header lg:hidden fixed bottom-0 left-0 right-0 z-30 !border-b-0 border-t border-[var(--line)]"
+      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
+      <div className="flex items-center justify-around px-2 py-1.5">
         {items.map(({ href, label, icon: Icon }) => {
-          const active = pathname === href;
+          const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
           const isFav  = href === "/favoritos";
           const badge  = isFav && logado && notifCount > 0;
           return (
             <Link key={href} href={href}
-              className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl min-w-[56px] transition-all
-                ${active ? "text-white" : "text-white/50 hover:text-white/80"}`}>
-              <div className={`relative p-1.5 rounded-lg transition-all ${active ? "gradient-primary" : ""}`}>
-                <Icon size={18} />
+              aria-current={active ? "page" : undefined}
+              className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl min-w-[56px] transition-colors
+                ${active ? "text-[var(--accent)]" : "text-[var(--ink-soft)] hover:text-[var(--ink)]"}`}>
+              <div className={`relative px-3 py-1 rounded-full transition-colors ${active ? "bg-[color-mix(in_srgb,var(--accent)_14%,transparent)]" : ""}`}>
+                <Icon size={19} strokeWidth={active ? 2.3 : 1.8} />
                 {badge && (
                   <span className="absolute -top-1 -right-1 min-w-[14px] h-3.5 px-0.5 bg-red-500 rounded-full
                     text-white text-[8px] font-bold flex items-center justify-center leading-none">
@@ -65,7 +67,7 @@ export default function BottomBar() {
                   </span>
                 )}
               </div>
-              <span className="text-[10px] font-medium leading-none">{label}</span>
+              <span className={`text-[10px] leading-none ${active ? "font-semibold" : "font-medium"}`}>{label}</span>
             </Link>
           );
         })}

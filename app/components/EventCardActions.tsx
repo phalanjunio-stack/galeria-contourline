@@ -39,16 +39,16 @@ export default function EventCardActions({ slug, nome }: Props) {
   }
 
   return (
-    <div className="flex items-center gap-1.5">
+    <div className="flex items-center gap-0.5">
       <button
         type="button"
         onClick={curtir}
         title={curtido ? "Curtido" : "Curtir evento"}
         aria-label={curtido ? "Curtido" : "Curtir evento"}
-        className={`grid h-7 w-7 place-items-center rounded-md text-xs transition ${
+        className={`grid h-8 w-8 place-items-center rounded-full text-xs transition ${
           curtido
             ? "text-red-600"
-            : "text-[#2E7DD1] hover:bg-[#EFF6FF] dark:text-[#8CC3FF] dark:hover:bg-white/10"
+            : "text-[var(--ink-soft)] hover:text-[var(--accent)] hover:bg-[color-mix(in_srgb,var(--accent)_10%,transparent)]"
         }`}
       >
         <Heart size={14} fill={curtido ? "currentColor" : "none"} />
@@ -58,7 +58,7 @@ export default function EventCardActions({ slug, nome }: Props) {
         href={`/eventos/${slug}#comentarios`}
         title="Comentar"
         aria-label="Comentar"
-        className="grid h-7 w-7 place-items-center rounded-md text-[#2E7DD1] transition hover:bg-[#EFF6FF] dark:text-[#8CC3FF] dark:hover:bg-white/10"
+        className="grid h-8 w-8 place-items-center rounded-full text-[var(--ink-soft)] transition hover:text-[var(--accent)] hover:bg-[color-mix(in_srgb,var(--accent)_10%,transparent)]"
       >
         <MessageCircle size={14} />
       </a>
@@ -68,7 +68,7 @@ export default function EventCardActions({ slug, nome }: Props) {
         onClick={compartilhar}
         title={copiado ? "Link copiado" : "Compartilhar"}
         aria-label={copiado ? "Link copiado" : "Compartilhar"}
-        className="grid h-7 w-7 place-items-center rounded-md text-[#2E7DD1] transition hover:bg-[#EFF6FF] dark:text-[#8CC3FF] dark:hover:bg-white/10"
+        className="grid h-8 w-8 place-items-center rounded-full text-[var(--ink-soft)] transition hover:text-[var(--accent)] hover:bg-[color-mix(in_srgb,var(--accent)_10%,transparent)]"
       >
         <Share2 size={14} />
       </button>

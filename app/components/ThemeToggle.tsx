@@ -39,7 +39,7 @@ export default function ThemeToggle() {
         boxShadow: isDark
           ? "0 0 14px rgba(251,191,36,0.35), inset 0 0 0 1px rgba(251,191,36,0.3)"
           : "none",
-        color: isDark ? "#fbbf24" : "#1A4A80",
+        color: isDark ? "#fbbf24" : "currentColor",
       }}
     >
       {/* Halo dark mode */}

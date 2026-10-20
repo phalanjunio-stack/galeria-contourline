@@ -1,11 +1,9 @@
 import type { Metadata } from "next";
-import Sidebar from "../components/Sidebar";
-import Topbar from "../components/Topbar";
+import SiteHeader from "../components/SiteHeader";
 import BottomBar from "../components/BottomBar";
 import ScrollToTop from "../components/ScrollToTop";
 import Footer from "../components/Footer";
 import InfoModais from "../components/InfoModais";
-import MainContent from "../components/MainContent";
 import StatusDock from "../components/StatusDock";
 import { ToastProvider } from "../components/ToastProvider";
 
@@ -22,31 +20,17 @@ export const metadata: Metadata = {
   },
 };
 
+// Página renderizada UMA vez (antes havia uma cópia desktop e outra mobile
+// montadas juntas, o que duplicava todas as requisições de cada página).
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
     <ToastProvider>
-      <div className="min-h-screen bg-[#EFF5FF] dark:bg-[#0A1A2E]">
-        <Sidebar />
-
-        {/* Desktop: margem reage ao colapso da sidebar via MainContent client */}
-        <div className="hidden lg:block">
-          <MainContent>
-            <Topbar />
-            <main className="flex-1 pb-0 pt-16 lg:pt-20">
-              {children}
-            </main>
-            <Footer />
-          </MainContent>
-        </div>
-
-        {/* Mobile: sem sidebar, layout normal */}
-        <div className="lg:hidden flex flex-col min-h-screen">
-          <Topbar />
-          <main className="flex-1 pb-24 pt-16">
-            {children}
-          </main>
-          <Footer />
-        </div>
+      <div className="site-page flex min-h-screen flex-col">
+        <SiteHeader />
+        <main className="flex-1 pt-16 pb-24 lg:pb-0">
+          {children}
+        </main>
+        <Footer />
 
         <BottomBar />
         <ScrollToTop />

@@ -105,83 +105,190 @@ html[data-theme="dark"] ::-webkit-scrollbar-thumb:hover { background: rgba(91,16
   background-clip: text;
 }
 
-/* ── Topbar shell — light + dark ─────────────────────────────────────────── */
-.topbar-shell {
-  background: rgba(255,255,255,0.85);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-bottom: 1px solid rgba(229,231,235,0.8);
-  box-shadow: 0 1px 20px rgba(13,43,78,0.06);
-}
-html[data-theme="dark"] .topbar-shell {
-  background: rgba(10,26,46,0.78);
-  border-bottom-color: rgba(91,164,229,0.18);
-  box-shadow: 0 1px 24px rgba(0,0,0,0.4);
-}
-
-/* Topbar reage ao colapso da sidebar via custom property */
-@media (min-width: 1024px) {
-  .topbar-shell { left: var(--tb-lg-left, 240px); }
-}
-
-/* ── Topbar icon buttons (Bell, ThemeToggle wrapper) ───────────────────── */
+/* ── Ícones do header (sino) — herdam a cor do header (claro, escuro ou sobre o hero) */
 .tb-icon-btn {
-  color: #1A4A80;
+  color: inherit;
   background: transparent;
 }
-.tb-icon-btn:hover            { background: #EFF5FF; }
-.tb-icon-btn.is-active        { background: #EFF5FF; color: #2E7DD1; box-shadow: 0 0 12px rgba(46,125,209,0.18); }
+.tb-icon-btn:hover,
+.tb-icon-btn.is-active { background: color-mix(in srgb, currentColor 10%, transparent); }
 
-html[data-theme="dark"] .tb-icon-btn          { color: #E8EEF8; }
-html[data-theme="dark"] .tb-icon-btn:hover    { background: rgba(91,164,229,0.12); }
-html[data-theme="dark"] .tb-icon-btn.is-active{
-  background: rgba(91,164,229,0.18); color: #5BA4E5;
-  box-shadow: 0 0 14px rgba(91,164,229,0.3);
+/* ── Site público (v2) — tokens ──────────────────────────────────────────── */
+:root {
+  --page-bg:  #F4F7FB;
+  --card-bg:  #FFFFFF;
+  --line:     #E3EAF3;
+  --ink:      #0B1F3A;
+  --ink-soft: #5B6B82;
+  --accent:   #2E7DD1;
+}
+html[data-theme="dark"] {
+  --page-bg:  #07131F;
+  --card-bg:  #0E1F33;
+  --line:     #1D3350;
+  --ink:      #EAF1FA;
+  --ink-soft: #94A7C0;
+  --accent:   #5BA4E5;
 }
 
-/* ── Busca topbar ───────────────────────────────────────────────────────── */
-.tb-search-input {
-  background: #F5F7FA;
-  border-color: #e5e7eb;
-  color: #0D2B4E;
-}
-.tb-search-input::placeholder { color: #9ca3af; }
-.tb-search-input.is-focused {
-  background: #fff;
-  border-color: #2E7DD1;
-  box-shadow: 0 0 0 3px rgba(46,125,209,0.15), 0 2px 8px rgba(46,125,209,0.1);
-}
-.tb-search-icon { color: #9ca3af; }
+.site-page { background: var(--page-bg); color: var(--ink); }
 
-html[data-theme="dark"] .tb-search-input {
-  background: rgba(91,164,229,0.08);
-  border-color: rgba(91,164,229,0.20);
-  color: #E8EEF8;
+.font-display {
+  font-family: var(--font-display), var(--font-sans), system-ui, sans-serif;
+  letter-spacing: -0.025em;
 }
-html[data-theme="dark"] .tb-search-input::placeholder { color: rgba(232,238,248,0.4); }
-html[data-theme="dark"] .tb-search-input.is-focused {
-  background: rgba(91,164,229,0.12);
-  border-color: #5BA4E5;
-  box-shadow: 0 0 0 3px rgba(91,164,229,0.18), 0 2px 12px rgba(91,164,229,0.2);
-}
-html[data-theme="dark"] .tb-search-icon { color: rgba(232,238,248,0.5); }
 
-/* ── Botão facial busca ─────────────────────────────────────────────────── */
-.tb-facial-btn {
-  border: 1px solid rgba(46,125,209,0.3);
-  background: #EFF5FF;
-  color: #1A4A80;
+/* ── Header público ──────────────────────────────────────────────────────── */
+.site-header {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--page-bg) 92%, transparent);
+  backdrop-filter: saturate(160%) blur(16px);
+  -webkit-backdrop-filter: saturate(160%) blur(16px);
+  border-bottom: 1px solid var(--line);
+  transition: background-color .3s ease, color .3s ease, border-color .3s ease;
 }
-.tb-facial-btn:hover { box-shadow: 0 0 14px rgba(46,125,209,0.25); }
+.site-header.is-over-hero {
+  color: #fff;
+  background: linear-gradient(to bottom, rgba(4,14,30,.55), rgba(4,14,30,0));
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-bottom-color: transparent;
+}
+.site-logo { transition: filter .3s ease; }
+.site-header.is-over-hero .site-logo,
+html[data-theme="dark"] .site-logo { filter: brightness(0) invert(1); }
 
-html[data-theme="dark"] .tb-facial-btn {
-  border-color: rgba(91,164,229,0.35);
-  background: rgba(91,164,229,0.10);
-  color: #5BA4E5;
+.site-nav-link {
+  position: relative;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  color: inherit;
+  opacity: .72;
+  white-space: nowrap;
+  transition: opacity .15s ease, background-color .15s ease;
 }
-html[data-theme="dark"] .tb-facial-btn:hover {
-  background: rgba(91,164,229,0.18);
-  box-shadow: 0 0 16px rgba(91,164,229,0.35);
+.site-nav-link:hover { opacity: 1; background: color-mix(in srgb, currentColor 8%, transparent); }
+.site-nav-link.is-active { opacity: 1; font-weight: 600; }
+.site-nav-link.is-active::after {
+  content: "";
+  position: absolute;
+  left: 12px; right: 12px; bottom: 1px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+.site-header.is-over-hero .site-nav-link.is-active::after { background: #fff; }
+
+.site-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 600;
+  background: var(--ink);
+  color: var(--page-bg);
+  transition: transform .15s ease, opacity .15s ease;
+}
+.site-cta:hover { opacity: .9; }
+.site-cta:active { transform: scale(.97); }
+.site-header.is-over-hero .site-cta { background: #fff; color: #0B1F3A; }
+
+.site-avatar { box-shadow: 0 0 0 2px var(--page-bg), 0 0 0 4px var(--accent); }
+.site-header.is-over-hero .site-avatar { box-shadow: 0 0 0 2px rgba(255,255,255,.9); }
+
+/* ── Botões do site público ──────────────────────────────────────────────── */
+.btn-primary,
+.btn-light,
+.btn-glass,
+.btn-outline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 48px;
+  padding: 0 22px;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: transform .15s ease, background-color .15s ease, box-shadow .2s ease, opacity .15s ease;
+}
+.btn-primary:active, .btn-light:active, .btn-glass:active, .btn-outline:active { transform: scale(.97); }
+.btn-primary { background: #2E7DD1; color: #fff; box-shadow: 0 8px 24px -8px rgba(46,125,209,.7); }
+.btn-primary:hover { background: #2670C0; }
+.btn-light { background: #fff; color: #0B1F3A; }
+.btn-light:hover { background: #EEF4FB; }
+.btn-glass {
+  color: #fff;
+  background: rgba(255,255,255,.12);
+  border: 1px solid rgba(255,255,255,.28);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+.btn-glass:hover { background: rgba(255,255,255,.2); }
+.btn-outline { color: var(--ink); border: 1px solid var(--line); background: var(--card-bg); }
+.btn-outline:hover { border-color: var(--accent); }
+.btn-sm { height: 38px; padding: 0 16px; font-size: 13px; }
+
+/* ── Card de evento (v2) ─────────────────────────────────────────────────── */
+.event-tile {
+  background: var(--card-bg);
+  border: 1px solid var(--line);
+  transition: transform .25s cubic-bezier(.22,1,.36,1), box-shadow .25s ease, border-color .25s ease;
+}
+.event-tile:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--line));
+  box-shadow: 0 18px 40px -18px rgba(11,31,58,.35);
+}
+html[data-theme="dark"] .event-tile:hover { box-shadow: 0 18px 40px -18px rgba(0,0,0,.7); }
+.event-tile .event-tile-img { transition: transform .7s cubic-bezier(.22,1,.36,1); }
+.event-tile:hover .event-tile-img { transform: scale(1.04); }
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  color: var(--ink-soft);
+  background: var(--card-bg);
+  border: 1px solid var(--line);
+  transition: color .15s ease, border-color .15s ease, background-color .15s ease;
+}
+.chip:hover { color: var(--ink); border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+.chip.is-active { color: #fff; background: var(--ink); border-color: var(--ink); }
+html[data-theme="dark"] .chip.is-active { color: #07131F; }
+.chip:disabled { opacity: .45; cursor: not-allowed; }
+.chip .chip-count { font-size: 11px; opacity: .6; font-variant-numeric: tabular-nums; }
+
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+@keyframes hero-progress {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+.hero-progress { transform-origin: left; animation: hero-progress 6s linear both; }
+
+@keyframes ken-burns {
+  from { transform: scale(1.06); }
+  to   { transform: scale(1); }
+}
+.ken-burns { animation: ken-burns 7s ease-out both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-progress, .ken-burns { animation: none; }
+  .event-tile, .event-tile .event-tile-img { transition: none; }
 }
 
 /* ── Notif dropdown ─────────────────────────────────────────────────────── */
@@ -207,29 +314,6 @@ html[data-theme="dark"] .tb-notif-header { border-color: rgba(91,164,229,0.15); 
 html[data-theme="dark"] .tb-notif-row    { border-color: rgba(91,164,229,0.10); }
 html[data-theme="dark"] .tb-notif-row.is-unread { background: rgba(91,164,229,0.12); }
 html[data-theme="dark"] .tb-notif-row:hover    { background: rgba(91,164,229,0.18); }
-
-/* ── Layout fixo — sidebar + topbar ─────────────────────────────────────── */
-.sidebar              { display: none; }
-.topbar               { left: 0; }
-.main-with-sidebar    { margin-left: 0; }
-
-.topbar-mobile-logo   { display: flex; }
-.topbar-mobile-search { display: flex; }
-.topbar-search        { display: none; }
-.topbar-facial        { display: none; }
-.topbar-spacer        { display: flex; }
-
-@media (min-width: 768px) {
-  .sidebar              { display: flex; }
-  .topbar               { left: 240px; }
-  .main-with-sidebar    { margin-left: 240px; }
-
-  .topbar-mobile-logo   { display: none; }
-  .topbar-mobile-search { display: none; }
-  .topbar-search        { display: flex; }
-  .topbar-facial        { display: flex; }
-  .topbar-spacer        { display: none; }
-}
 
 /* ── Animações keyframes ─────────────────────────────────────────────────── */
 

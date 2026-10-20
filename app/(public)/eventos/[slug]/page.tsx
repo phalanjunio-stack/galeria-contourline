@@ -62,6 +62,26 @@ function syncEvento(ev: EventoItem, fotos: DrivePhoto[], capaOverride?: string) 
   }).catch(() => {});
 }
 
+function CapaEvento({ capaId, voltarHref, voltarLabel, children }: {
+  capaId?: string; voltarHref: string; voltarLabel: string; children: React.ReactNode;
+}) {
+  return (
+    <div className="relative overflow-hidden bg-[#06142A]">
+      {capaId && (
+        <img src={`/api/thumb?id=${capaId}&sz=1600`} alt="" aria-hidden
+          className="absolute inset-0 h-full w-full object-cover opacity-60" style={{ objectPosition: "center 35%" }} />
+      )}
+      <div className="absolute inset-0 bg-gradient-to-t from-[#06142A] via-[#06142A]/70 to-[#06142A]/30" />
+      <div className="relative mx-auto max-w-7xl px-4 pb-10 pt-8 lg:px-8 lg:pb-14 lg:pt-12">
+        <Link href={voltarHref} className="mb-10 flex w-fit items-center gap-1.5 text-sm text-white/70 transition hover:text-white">
+          <ArrowLeft size={15} /> {voltarLabel}
+        </Link>
+        {children}
+      </div>
+    </div>
+  );
+}
+
 export default function EventoPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
   const searchParams = useSearchParams();
@@ -415,6 +435,20 @@ export default function EventoPage({ params }: { params: Promise<{ slug: string 
     setBaixando(false);
   }
 
+  const [eventoCopiado, setEventoCopiado] = useState(false);
+  async function compartilharEvento() {
+    const url = `${window.location.origin}/eventos/${slug}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: evento?.nome, text: `Veja as fotos do evento ${evento?.nome ?? ""}`, url });
+      } else {
+        await navigator.clipboard.writeText(url);
+        setEventoCopiado(true);
+        window.setTimeout(() => setEventoCopiado(false), 1800);
+      }
+    } catch { /* usuário cancelou */ }
+  }
+
   function compartilharLink() {
     const ids = Array.from(selecionadas).join(",");
     const url = `${window.location.href}?fotos=${ids}`;
@@ -446,34 +480,19 @@ export default function EventoPage({ params }: { params: Promise<{ slug: string 
   if (ehMultiDia && !diaAtivo && evento) {
     return (
       <div>
-        {/* Capa */}
-        <div className="h-48 lg:h-72 relative flex items-end overflow-hidden">
-          <div className="absolute inset-0 gradient-hero" />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0D2B4E]/95 via-[#0D2B4E]/40 to-[#0D2B4E]/20" />
-          <div className="relative z-10 p-6 lg:px-10 w-full max-w-7xl mx-auto">
-            <Link href="/eventos" className="inline-flex items-center gap-1.5 text-white/70 text-sm hover:text-white mb-3 transition">
-              <ArrowLeft size={15} /> Voltar
-            </Link>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/15 backdrop-blur text-white text-[11px] font-bold">
-                <Layers size={11} /> {evento.dias!.length} dias
-              </span>
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/30 text-emerald-100 text-[11px] font-bold">
-                Multi-dia
-              </span>
-            </div>
-            <h1 className="text-white text-2xl lg:text-3xl font-bold">{evento.nome}</h1>
-            {evento.data && (
-              <div className="flex items-center gap-4 mt-2 text-white/70 text-sm">
-                <span className="flex items-center gap-1.5">
-                  <Calendar size={14} />
-                  {new Date(`${evento.data.slice(0,10)}T12:00:00`).toLocaleDateString("pt-BR", { day: "2-digit", month: "long" })}
-                  {evento.data_fim && ` a ${new Date(`${evento.data_fim.slice(0,10)}T12:00:00`).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}`}
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
+        <CapaEvento capaId={evento.capa_id} voltarHref="/eventos" voltarLabel="Todos os eventos">
+          <span className="mb-4 inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-white backdrop-blur">
+            <Layers size={12} /> {evento.dias!.length} dias
+          </span>
+          <h1 className="font-display max-w-4xl text-3xl font-extrabold leading-tight text-white lg:text-5xl">{evento.nome}</h1>
+          {evento.data && (
+            <p className="mt-3 flex items-center gap-1.5 text-sm text-white/75">
+              <Calendar size={15} className="text-[#7DB9F0]" />
+              {new Date(`${evento.data.slice(0,10)}T12:00:00`).toLocaleDateString("pt-BR", { day: "2-digit", month: "long" })}
+              {evento.data_fim && ` a ${new Date(`${evento.data_fim.slice(0,10)}T12:00:00`).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}`}
+            </p>
+          )}
+        </CapaEvento>
 
         <EventoOverview evento={evento} slug={slug} />
       </div>
@@ -485,94 +504,51 @@ export default function EventoPage({ params }: { params: Promise<{ slug: string 
       {/* Painel de comentários (sidebar hover desktop, FAB mobile) */}
       {evento && <ComentariosPanel eventoId={evento.id} eventoNome={evento.nome} />}
 
-      {/* Capa */}
-      <div className="h-48 lg:h-72 relative flex items-end overflow-hidden">
-        {/* Colagem espalhada como fundo */}
-        {fotos.length > 0 ? (
-          <div className="absolute inset-0 overflow-hidden">
-            {/* fundo sólido atrás */}
-            <div className="absolute inset-0 bg-[#0D2B4E]" />
-            {[
-              { x: "-4%",  y: "-10%", w: 260, h: 160, rot: -3  },
-              { x: "12%",  y: "-15%", w: 200, h: 130, rot:  2  },
-              { x: "28%",  y: "-8%",  w: 280, h: 170, rot: -1.5},
-              { x: "52%",  y: "-12%", w: 220, h: 145, rot:  3  },
-              { x: "70%",  y: "-6%",  w: 240, h: 155, rot: -2  },
-              { x: "88%",  y: "-14%", w: 200, h: 130, rot:  1.5},
-              { x: "-2%",  y: "38%",  w: 220, h: 145, rot:  2  },
-              { x: "18%",  y: "42%",  w: 260, h: 160, rot: -2.5},
-              { x: "38%",  y: "35%",  w: 200, h: 130, rot:  1  },
-              { x: "57%",  y: "40%",  w: 240, h: 155, rot: -1  },
-              { x: "76%",  y: "36%",  w: 220, h: 140, rot:  2.5},
-              { x: "92%",  y: "42%",  w: 190, h: 125, rot: -3  },
-            ].map((p, i) => fotos[i] && (
-              <img
-                key={fotos[i].id}
-                src={`/api/thumb?id=${fotos[i].id}&sz=400`}
-                alt="" aria-hidden
-                className="absolute object-cover rounded-lg shadow-2xl"
-                style={{
-                  left: p.x, top: p.y,
-                  width: p.w, height: p.h,
-                  transform: `rotate(${p.rot}deg)`,
-                  opacity: 0.85,
-                }}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="absolute inset-0 gradient-hero flex items-center justify-center">
-            <Camera size={64} className="text-white/20" />
+      <CapaEvento
+        capaId={evento?.capa_id ?? fotos[0]?.id}
+        voltarHref={diaAtivo ? `/eventos/${slug}` : "/eventos"}
+        voltarLabel={diaAtivo ? "Todos os dias" : "Todos os eventos"}>
+        {diaAtivo && (
+          <span className="mb-4 inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-white backdrop-blur">
+            <Layers size={12} /> {diaAtivo.titulo}
+          </span>
+        )}
+        <h1 className="font-display max-w-4xl text-3xl font-extrabold leading-tight text-white lg:text-5xl">
+          {loading && !evento ? "Carregando…" : evento?.nome ?? "Evento"}
+        </h1>
+        {evento && (
+          <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-white/75">
+            <span className="flex items-center gap-1.5">
+              <Calendar size={15} className="text-[#7DB9F0]" />
+              {new Date(`${(diaAtivo?.data ?? evento.data).slice(0,10)}T12:00:00`).toLocaleDateString("pt-BR", { day:"2-digit", month:"long", year:"numeric" })}
+            </span>
+            {fotos.length > 0 && (
+              <span className="flex items-center gap-1.5">
+                <Camera size={15} className="text-[#7DB9F0]" /> {fotos.length.toLocaleString("pt-BR")} fotos
+              </span>
+            )}
           </div>
         )}
-        {/* Overlay gradiente sobre o mosaico */}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0D2B4E]/95 via-[#0D2B4E]/50 to-[#0D2B4E]/30" />
-        <div className="relative z-10 p-6 lg:px-10 w-full">
-          <Link
-            href={diaAtivo ? `/eventos/${slug}` : "/eventos"}
-            className="inline-flex items-center gap-1.5 text-white/70 text-sm hover:text-white mb-3 transition">
-            <ArrowLeft size={15} /> {diaAtivo ? "Voltar à visão geral" : "Voltar"}
-          </Link>
-          {diaAtivo && (
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/15 backdrop-blur text-white text-[11px] font-bold mb-2">
-              <Layers size={11} /> {diaAtivo.titulo}
-            </div>
-          )}
-          <h1 className="text-white text-2xl lg:text-3xl font-bold">
-            {loading ? "Carregando..." : evento?.nome ?? "Evento"}
-          </h1>
-          {evento && (
-            <div className="flex items-center gap-4 mt-2">
-              <span className="flex items-center gap-1.5 text-white/70 text-sm">
-                <Calendar size={14} />
-                {new Date(`${(diaAtivo?.data ?? evento.data).slice(0,10)}T12:00:00`).toLocaleDateString("pt-BR", { day:"2-digit", month:"long", year:"numeric" })}
-              </span>
-              <span className="flex items-center gap-1.5 text-white/70 text-sm">
-                <Camera size={14} /> {fotos.length} fotos
-              </span>
-            </div>
-          )}
-        </div>
-      </div>
+      </CapaEvento>
 
-      <div className="w-full mx-auto px-4 lg:px-8 py-8">
+      <div className="mx-auto w-full max-w-7xl px-4 py-8 lg:px-8">
 
         {/* Ações principais */}
         {!modoSelecao && (
           <div className="flex flex-wrap gap-3 mb-6">
             <Link href="/cadastrar-rosto"
-              className="flex items-center gap-2 px-5 py-3 rounded-xl gradient-primary text-white font-semibold text-sm shadow hover:opacity-90 transition">
+              className="btn-primary btn-sm">
               <Scan size={16} /> Encontrar minhas fotos
             </Link>
             {fotos.length > 0 && (
               <button
                 onClick={() => setModoSelecao(true)}
-                className="flex items-center gap-2 px-5 py-3 rounded-xl border-2 border-[#2E7DD1] text-[#2E7DD1] font-semibold text-sm hover:bg-[#EFF5FF] transition">
+                className="btn-outline btn-sm">
                 <CheckSquare size={16} /> Selecionar fotos
               </button>
             )}
-            <button className="flex items-center gap-2 px-5 py-3 rounded-xl border border-gray-200 text-[#1A4A80] font-semibold text-sm hover:bg-[#EFF5FF] transition">
-              <Share2 size={16} /> Compartilhar evento
+            <button onClick={compartilharEvento} className="btn-outline btn-sm">
+              <Share2 size={16} /> {eventoCopiado ? "Link copiado!" : "Compartilhar evento"}
             </button>
 
           </div>
@@ -657,51 +633,34 @@ export default function EventoPage({ params }: { params: Promise<{ slug: string 
               {/* Todas */}
               <button
                 onClick={() => setFiltroAtivo("todas")}
-                className={`px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition
-                  ${filtroAtivo === "todas"
-                    ? "gradient-primary text-white shadow"
-                    : "bg-white border border-gray-200 text-[#1A4A80] hover:border-[#2E7DD1]"}`}>
+                className={`chip ${filtroAtivo === "todas" ? "is-active" : ""}`}>
                 Todas
-                <span className="ml-1.5 text-[11px] opacity-70">({fotos.length})</span>
+                <span className="chip-count">{fotos.length}</span>
               </button>
 
               {/* Minhas fotos — só mostra se tiver resultado do reconhecimento */}
               <button
                 onClick={() => setFiltroAtivo("minhas")}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition
-                  ${filtroAtivo === "minhas"
-                    ? "gradient-primary text-white shadow"
-                    : minhasFotosEvento.length > 0
-                      ? "bg-white border border-[#2E7DD1] text-[#2E7DD1] hover:bg-[#EFF5FF]"
-                      : "bg-white border border-gray-200 text-gray-400 cursor-not-allowed"}`}
+                className={`chip ${filtroAtivo === "minhas" ? "is-active" : ""}`}
                 disabled={minhasFotosEvento.length === 0}
                 title={minhasFotosEvento.length === 0 ? "Cadastre seu rosto para ver suas fotos" : undefined}>
                 <ScanFace size={13} />
                 Minhas fotos
                 {minhasFotosEvento.length > 0 && (
-                  <span className={`ml-0.5 text-[11px] ${filtroAtivo === "minhas" ? "opacity-80" : "opacity-70"}`}>
-                    ({minhasFotosEvento.length})
-                  </span>
+                  <span className="chip-count">{minhasFotosEvento.length}</span>
                 )}
               </button>
 
               {/* Favoritas */}
               <button
                 onClick={() => setFiltroAtivo("favoritas")}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition
-                  ${filtroAtivo === "favoritas"
-                    ? "bg-red-500 text-white shadow"
-                    : favoritos.size > 0
-                      ? "bg-white border border-red-300 text-red-500 hover:bg-red-50"
-                      : "bg-white border border-gray-200 text-gray-400 cursor-not-allowed"}`}
+                className={`chip ${filtroAtivo === "favoritas" ? "is-active" : ""}`}
                 disabled={favoritos.size === 0}
                 title={favoritos.size === 0 ? "Você ainda não favoritou nenhuma foto" : undefined}>
-                <Heart size={12} fill={filtroAtivo === "favoritas" ? "white" : favoritos.size > 0 ? "currentColor" : "none"} />
+                <Heart size={13} className={favoritos.size > 0 && filtroAtivo !== "favoritas" ? "text-red-500" : ""} fill={favoritos.size > 0 ? "currentColor" : "none"} />
                 Favoritas
                 {favoritos.size > 0 && (
-                  <span className={`ml-0.5 text-[11px] ${filtroAtivo === "favoritas" ? "opacity-80" : "opacity-70"}`}>
-                    ({favoritos.size})
-                  </span>
+                  <span className="chip-count">{favoritos.size}</span>
                 )}
               </button>
               {/* Aviso quando filtro não tem resultado */}
@@ -868,7 +827,7 @@ export default function EventoPage({ params }: { params: Promise<{ slug: string 
 
       {/* Barra de seleção fixada no rodapé */}
       {modoSelecao && (
-        <div className="fixed bottom-4 left-1/2 lg:left-[calc(7.5rem+50%)] -translate-x-1/2 z-40 animate-slide-up">
+        <div className="fixed bottom-24 lg:bottom-6 left-1/2 -translate-x-1/2 z-40 animate-slide-up">
           <div className="flex items-center gap-2 bg-white/90 backdrop-blur-md border border-gray-200 rounded-2xl shadow-xl px-3 py-2 text-sm whitespace-nowrap">
             <button onClick={selecionarTodas}
               className="flex items-center gap-1.5 text-[#1A4A80] font-semibold hover:text-[#2E7DD1] transition px-2 py-1">

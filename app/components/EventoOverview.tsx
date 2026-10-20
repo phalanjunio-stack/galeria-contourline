@@ -47,7 +47,7 @@ export default function EventoOverview({ evento, slug, minhasFotosPorDia = {} }:
         {/* Ações */}
         <div className="flex flex-col gap-2.5">
           <Link href={`/eventos/${slug}?view=minhas`}
-            className="h-14 rounded-2xl bg-gradient-to-r from-[#2E7DD1] to-[#7a3cff] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg hover:opacity-90 transition">
+            className="h-14 rounded-2xl bg-gradient-to-r from-[#2E7DD1] to-[#1A4A80] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg hover:opacity-90 transition">
             <ScanFace size={16} /> Buscar minhas fotos no evento inteiro
           </Link>
           <Link href={`/eventos/${slug}?view=todas`}
@@ -86,7 +86,7 @@ function DiaCard({ dia, ordem, slug, minhas }: { dia: EventoDia; ordem: number; 
   return (
     <article className="group bg-white dark:bg-[#0a1a2f]/80 border border-[#2E7DD1]/15 dark:border-[#5BA4E5]/15 rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5">
       {/* Capa clicável — landscape, sem número grande sobreposto */}
-      <Link href={`/eventos/${slug}?dia=${dia.id}`} className="block relative aspect-[16/10] bg-gradient-to-br from-[#2E7DD1] to-[#7a3cff] overflow-hidden">
+      <Link href={`/eventos/${slug}?dia=${dia.id}`} className="block relative aspect-[16/10] bg-gradient-to-br from-[#2E7DD1] to-[#1A4A80] overflow-hidden">
         {dia.capa_id && (
           <img
             src={`/api/thumb?id=${dia.capa_id}&sz=600`}
@@ -96,7 +96,7 @@ function DiaCard({ dia, ordem, slug, minhas }: { dia: EventoDia; ordem: number; 
           />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-[#0D2B4E]/60 via-transparent to-[#0D2B4E]/10" />
-        <span className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gradient-to-r from-[#2E7DD1] to-[#7a3cff] text-white text-xs font-bold shadow-md">
+        <span className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gradient-to-r from-[#2E7DD1] to-[#1A4A80] text-white text-xs font-bold shadow-md">
           Dia {ordem}
         </span>
         <span className={`absolute top-3 right-3 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/40 backdrop-blur text-white text-[10px] font-bold`}>
@@ -131,7 +131,7 @@ function DiaCard({ dia, ordem, slug, minhas }: { dia: EventoDia; ordem: number; 
             Ver fotos <ChevronRight size={11} />
           </Link>
           <Link href={`/eventos/${slug}?dia=${dia.id}&view=minhas`}
-            className="h-9 rounded-xl bg-gradient-to-r from-[#2E7DD1] to-[#7a3cff] text-white text-xs font-bold flex items-center justify-center gap-1 hover:opacity-90 transition shadow">
+            className="h-9 rounded-xl bg-gradient-to-r from-[#2E7DD1] to-[#1A4A80] text-white text-xs font-bold flex items-center justify-center gap-1 hover:opacity-90 transition shadow">
             <ScanFace size={11} /> Minhas
           </Link>
         </div>

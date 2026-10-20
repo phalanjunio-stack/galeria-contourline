@@ -17,9 +17,9 @@ export function SkeletonBox({ className = "", style }: { className?: string; sty
 /** Grid de cards de evento (página /eventos) */
 export function SkeletonEventos({ count = 8 }: { count?: number }) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-5">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
       {Array.from({ length: count }).map((_, i) => (
-        <div key={i} className="aspect-[4/5] rounded-2xl overflow-hidden bg-white shadow"
+        <div key={i} className="aspect-[4/5] rounded-2xl overflow-hidden border border-[var(--line)] bg-[var(--card-bg)]"
           style={{ animationDelay: `${i * 60}ms` }}>
           <SkeletonBox className="w-full h-full !rounded-none" />
         </div>

@@ -107,6 +107,8 @@ export default function EventCardMetrics({ slug, compact = false }: Props) {
     : "gap-1 px-2 py-1 text-[10px]";
   const iconSize = compact ? 10 : 12;
 
+  if (metrics.views + metrics.likes + metrics.shares === 0) return null;
+
   return (
     <div className="inline-flex items-center gap-1 rounded-md bg-black/45 p-0.5 text-white backdrop-blur-sm">
       <span className={`inline-flex items-center font-bold ${itemClass}`}>
