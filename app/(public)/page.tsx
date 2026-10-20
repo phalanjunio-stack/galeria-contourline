@@ -116,7 +116,7 @@ function Hero({ eventos, carregando }: { eventos: EventoItem[]; carregando: bool
               <button key={ev.id} type="button" onClick={() => setIdx(i)}
                 aria-label={`Destacar ${ev.nome}`}
                 aria-current={i === idx}
-                className={`group relative w-40 overflow-hidden rounded-xl text-left transition duration-300
+                className={`group relative w-28 2xl:w-40 overflow-hidden rounded-xl text-left transition duration-300
                   ${i === idx ? "ring-2 ring-white" : "opacity-60 hover:opacity-100"}`}>
                 <img src={`/api/thumb?id=${ev.capa_id}&sz=400`} alt="" loading="lazy"
                   className="aspect-[16/10] w-full object-cover" />
